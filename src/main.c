@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     }
     if (!strcmp(arg, "help") || !strcmp(arg, "h")) {
         printf(
-            GREEN "Welcome to Flower Compiler!\n\n" RESET
+            GREEN "🌸 Welcome to Flower Compiler!\n\n" RESET
 
             BLUE "Usage:\n" RESET
             "\tflower\t[options] <filepath>\n\n"
