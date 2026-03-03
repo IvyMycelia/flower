@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
             " - You can use any number of dashes before a flag, e.g., ---help\n"
             " - Flags are " BOLD "case-insensitive" RESET ": -HELP works too!\n"
 
-            GREEN "Happy Compiling! 🌼\n" RESET
+            GREEN "Happy Compiling with Flower! 🌼\n" RESET
         );
         return 0;
     } else {
