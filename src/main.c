@@ -50,10 +50,8 @@ int main(int argc, char *argv[]) {
                 "Version: 0.0.1\n"
             );
 
-        else {
+        else
             printf(RED "Unrecognized flag argument! Use -help for more information.\n" RESET);
-            return -1;
-        }
     }
 
     // printf("%s", argv[1]);
