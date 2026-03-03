@@ -14,16 +14,15 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    for (int i = 0; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         // Dash-insensitive
-        char *arg = argv[1];
+        char *arg = argv[i];
         while (*arg == '-') arg++;
 
         // Case-insensitive
-        char *ar = arg;
-        for (char *p = ar; *p; *p++) *p = tolower(*p);
+        for (char *p = arg; *p; p++) *p = tolower(*p);
 
-        if (!strcmp(arg, "help") || !strcmp(arg, "h")) {
+        if (!strcmp(arg, "help") || !strcmp(arg, "h"))
             printf(
                 GREEN "🌸 Welcome to Flower Compiler!\n\n" RESET
     
@@ -45,14 +44,12 @@ int main(int argc, char *argv[]) {
     
                 GREEN "Happy Compiling with Flower! 🌼\n" RESET
             );
-            return 0;
-        } 
-        else if (!strcmp(arg, "version") || !strcmp(arg, "v")) {
+
+        else if (!strcmp(arg, "version") || !strcmp(arg, "v"))
             printf(
                 "Version: 0.0.1\n"
             );
-            return 0;
-        }
+
         else {
             printf(RED "Unrecognized flag argument! Use -help for more information.\n" RESET);
             return -1;
