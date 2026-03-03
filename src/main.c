@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         );
         return 0;
     } else {
-        printf(RED "Unrecognized flag argument. Use -help for more information.\n" RESET);
+        printf(RED "Flag not recognized! Use -help for more information.\n" RESET);
         return -1;
     }
 
