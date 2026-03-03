@@ -15,43 +15,49 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 1; i < argc; i++) {
-        // Dash-insensitive
         char *arg = argv[i];
-        while (*arg == '-') arg++;
 
-        // Case-insensitive
-        for (char *p = arg; *p; p++) *p = tolower(*p);
+        if (arg[0] == '-') {
+            // Skip all leading dashes
+            while (*arg == '-') arg++;
 
-        if (!strcmp(arg, "help") || !strcmp(arg, "h"))
-            printf(
-                GREEN "🌸 Welcome to Flower Compiler!\n\n" RESET
+            // Lowercase for case-insensitivity
+            for (char *p = arg; *p; p++) *p = tolower(*p);
     
-                BLUE "Usage:\n" RESET
-                "\tflower\t[options] <filepath>\n\n"
+            if (!strcmp(arg, "help") || !strcmp(arg, "h"))
+                printf(
+                    GREEN "🌸 Welcome to Flower Compiler!\n\n" RESET
+        
+                    BLUE "Usage:\n" RESET
+                    "\tflower\t[options] <filepath>\n\n"
+        
+                    BLUE "Options:\n" RESET
+                    "\t-help,    -h\tShow this help message\n"
+                    "\t-version, -b\tShow the current version of FloC\n"
+                    "\t<filepath>\tSpecify the source code file to compile\n\n"
+        
+                    BLUE "Example:\n" RESET
+                    "\tflower -help\n"
+                    "\tflower main.flo\n\n"
+        
+                    BLUE "Tips:\n" RESET
+                    " - You can use any number of dashes before a flag, e.g., ---help\n"
+                    " - Flags are " BOLD "case-insensitive" RESET ": -HELP works too!\n\n"
+        
+                    GREEN "Happy Compiling with Flower! 🌼\n" RESET
+                );
     
-                BLUE "Options:\n" RESET
-                "\t-help,    -h\tShow this help message\n"
-                "\t-version, -b\tShow the current version of FloC\n"
-                "\t<filepath>\tSpecify the source code file to compile\n\n"
+            else if (!strcmp(arg, "version") || !strcmp(arg, "v"))
+                printf(
+                    "Version: 0.0.1\n"
+                );
     
-                BLUE "Example:\n" RESET
-                "\tflower -help\n"
-                "\tflower main.flo\n\n"
-    
-                BLUE "Tips:\n" RESET
-                " - You can use any number of dashes before a flag, e.g., ---help\n"
-                " - Flags are " BOLD "case-insensitive" RESET ": -HELP works too!\n\n"
-    
-                GREEN "Happy Compiling with Flower! 🌼\n" RESET
-            );
+            else
+                printf(RED "Unrecognized flag argument! Use -help for more information.\n" RESET);
+        } else {
+            printf("Compiling file: %s\n", argv[i]);
+        }
 
-        else if (!strcmp(arg, "version") || !strcmp(arg, "v"))
-            printf(
-                "Version: 0.0.1\n"
-            );
-
-        else
-            printf(RED "Unrecognized flag argument! Use -help for more information.\n" RESET);
     }
 
     // printf("%s", argv[1]);
