@@ -41,13 +41,13 @@ int main(int argc, char *argv[]) {
 
             BLUE "Tips:\n" RESET
             " - You can use any number of dashes before a flag, e.g., ---help\n"
-            " - Flags are " BOLD "case-insensitive" RESET ": -HELP works too!\n\n"
+            " - Flags are " BOLD "case-insensitive" RESET ": -HELP works too!\n"
 
             GREEN "Happy Compiling! 🌼\n" RESET
         );
         return 0;
     } else {
-        printf(RED "Flag not recognized! Use -help for more information.\n" RESET);
+        printf(RED "Unrecognized flag argument! Use -help for more information.\n" RESET);
         return -1;
     }
 
