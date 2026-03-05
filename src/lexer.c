@@ -5,6 +5,13 @@
 
 #include "lexer.h"
 
+
+void lex(const char* src, TokenStream* ts) {
+    int i = 0;
+
+    while(src);
+}
+
 void init_token_stream(TokenStream* ts) {
     ts->data = NULL;
     ts->count = 0;

@@ -41,6 +41,7 @@ typedef struct {
     int capacity;
 } TokenStream;
 
+void lex(const char* src, TokenStream* ts);
 
 void init_token_stream(TokenStream* ts);
 void add_token(TokenStream* ts, TokenKind kind, int start, int length);

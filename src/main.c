@@ -2,8 +2,10 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "file.h"
 #include "ANSI.h"
+
+#include "file.h"
+#include "lexer.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -57,6 +59,15 @@ int main(int argc, char *argv[]) {
             if (!file) {
                 return -1;
             }
+
+            TokenStream tokens;
+            init_token_stream(&tokens);
+
+            lex(file, &tokens);
+            print_all_tokens(&tokens, file);
+
+            free_token_stream(&tokens);
+            free(file);
 
             printf("Compiled!!!!!!");
         }
