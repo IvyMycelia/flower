@@ -1,3 +1,6 @@
+#ifndef LEXER_H
+#define LEXER_H
+
 // Token Types
 typedef enum {
     /* Types & Identifiers */
@@ -59,3 +62,5 @@ void        free_token_stream(TokenStream* ts);
 const char* token_kind_name(TokenKind kind);
 void        print_token(Token* token, const char* src);
 void        print_all_tokens(TokenStream* ts, const char* src);
+
+#endif

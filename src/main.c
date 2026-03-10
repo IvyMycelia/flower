@@ -77,7 +77,8 @@ int main(int argc, char *argv[]) {
             // parser
             Parser tree;
             init_parser(&tree, &tokens, file);
-            parse(&tree);
+            AST* ast = parse(&tree);
+            printf("Parsed Successfully!");
 
             // Cleanup
             free_token_stream(&tokens);
