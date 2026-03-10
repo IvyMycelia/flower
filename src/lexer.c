@@ -39,16 +39,20 @@ void lex(const char* src, TokenStream* ts) {
             
             int length = i - start;
 
-            if (length == 3 && !strncmp(src + start, "int", 3))
+            if (length == 2 && !strncmp(src + start, "if", 2))
+                add_token(ts, TOKEN_IF, start, length);
+            else if (length == 3 && !strncmp(src + start, "int", 3))
                 add_token(ts, TOKEN_INT, start, length);
             else if (length == 3 && !strncmp(src + start, "end", 3))
                 add_token(ts, TOKEN_END, start, length);
+            else if (length == 4 && !strncmp(src + start, "else", 4))
+                add_token(ts, TOKEN_ELSE, start, length);
+            else if (length == 4 && !strncmp(src + start, "void", 4))
+                add_token(ts, TOKEN_VOID, start, length);
             else if (length == 6 && !strncmp(src + start, "return", 6))
                 add_token(ts, TOKEN_RETURN, start, length);
             else if (length == 5 && !strncmp(src + start, "while", 5))
                 add_token(ts, TOKEN_WHILE, start, length);
-            else if (length == 4 && !strncmp(src + start, "void", 4))
-                add_token(ts, TOKEN_VOID, start, length);
             else
                 add_token(ts, TOKEN_IDENTIFIER, start, length);
             continue;
@@ -132,30 +136,32 @@ void free_token_stream(TokenStream* ts) {
 
 const char* token_kind_name(TokenKind kind) {
     switch (kind) {
-        case TOKEN_INT: return "TOKEN_INT";
-        case TOKEN_VOID: return "TOKEN_VOID";
-        case TOKEN_IDENTIFIER: return "TOKEN_IDENTIFIER";
-        case TOKEN_NUMBER: return "TOKEN_NUMBER";
-        case TOKEN_RETURN: return "TOKEN_RETURN";
-        case TOKEN_WHILE: return "TOKEN_WHILE";
-        case TOKEN_END: return "TOKEN_END";
-        case TOKEN_PLUS: return "TOKEN_PLUS";
-        case TOKEN_MINUS: return "TOKEN_MINUS";
-        case TOKEN_STAR: return "TOKEN_STAR";
-        case TOKEN_SLASH: return "TOKEN_SLASH";
-        case TOKEN_AMPERSAND: return "TOKEN_AMPERSAND";
-        case TOKEN_ASSIGN: return "TOKEN_ASSIGN";
-        case TOKEN_LT: return "TOKEN_LT";
-        case TOKEN_GT: return "TOKEN_GT";
-        case TOKEN_COMP: return "TOKEN_COMP";
-        case TOKEN_LPAREN: return "TOKEN_LPAREN";
-        case TOKEN_RPAREN: return "TOKEN_RPAREN";
-        case TOKEN_COLON: return "TOKEN_COLON";
-        case TOKEN_COMMA: return "TOKEN_COMMA";
-        case TOKEN_SEMI: return "TOKEN_SEMI";
-        case TOKEN_NEWLINE: return "TOKEN_NEWLINE";
-        case TOKEN_EOF: return "TOKEN_EOF";
-        default: return "UNKNOWN";
+        case TOKEN_INT:         return "TOKEN_INT";
+        case TOKEN_VOID:        return "TOKEN_VOID";
+        case TOKEN_IDENTIFIER:  return "TOKEN_IDENTIFIER";
+        case TOKEN_NUMBER:      return "TOKEN_NUMBER";
+        case TOKEN_RETURN:      return "TOKEN_RETURN";
+        case TOKEN_WHILE:       return "TOKEN_WHILE";
+        case TOKEN_IF:          return "TOKEN_IF";
+        case TOKEN_ELSE:        return "TOKEN_ELSE";
+        case TOKEN_END:         return "TOKEN_END";
+        case TOKEN_PLUS:        return "TOKEN_PLUS";
+        case TOKEN_MINUS:       return "TOKEN_MINUS";
+        case TOKEN_STAR:        return "TOKEN_STAR";
+        case TOKEN_SLASH:       return "TOKEN_SLASH";
+        case TOKEN_AMPERSAND:   return "TOKEN_AMPERSAND";
+        case TOKEN_ASSIGN:      return "TOKEN_ASSIGN";
+        case TOKEN_LT:          return "TOKEN_LT";
+        case TOKEN_GT:          return "TOKEN_GT";
+        case TOKEN_COMP:        return "TOKEN_COMP";
+        case TOKEN_LPAREN:      return "TOKEN_LPAREN";
+        case TOKEN_RPAREN:      return "TOKEN_RPAREN";
+        case TOKEN_COLON:       return "TOKEN_COLON";
+        case TOKEN_COMMA:       return "TOKEN_COMMA";
+        case TOKEN_SEMI:        return "TOKEN_SEMI";
+        case TOKEN_NEWLINE:     return "TOKEN_NEWLINE";
+        case TOKEN_EOF:         return "TOKEN_EOF";
+        default:                return "UNKNOWN";
     }
 }
 

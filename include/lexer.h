@@ -10,6 +10,8 @@ typedef enum {
     TOKEN_RETURN,   // Return from block
     TOKEN_WHILE,    // While loop
     TOKEN_END,      // Close block
+    TOKEN_IF,       // If statement
+    TOKEN_ELSE,     // Else block
     
     /* Operators */
     TOKEN_PLUS,     // Addition
@@ -46,14 +48,14 @@ typedef struct {
     int capacity;
 } TokenStream;
 
-void lex(const char* src, TokenStream* ts);
+void        lex(const char* src, TokenStream* ts);
 
-void init_token_stream(TokenStream* ts);
-void add_token(TokenStream* ts, TokenKind kind, int start, int length);
-Token* current(TokenStream* ts, int pos);
-Token* peek(TokenStream* ts, int pos);
-void free_token_stream(TokenStream* ts);
+void        init_token_stream(TokenStream* ts);
+void        add_token(TokenStream* ts, TokenKind kind, int start, int length);
+Token*      current(TokenStream* ts, int pos);
+Token*      peek(TokenStream* ts, int pos);
+void        free_token_stream(TokenStream* ts);
 
 const char* token_kind_name(TokenKind kind);
-void print_token(Token* token, const char* src);
-void print_all_tokens(TokenStream* ts, const char* src);
+void        print_token(Token* token, const char* src);
+void        print_all_tokens(TokenStream* ts, const char* src);

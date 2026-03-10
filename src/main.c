@@ -7,6 +7,7 @@
 
 #include "file.h"
 #include "lexer.h"
+#include "parser.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -65,12 +66,20 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
 
+            // Initialize token handling
             TokenStream tokens;
             init_token_stream(&tokens);
 
+            // Lexer
             lex(file, &tokens);
             print_all_tokens(&tokens, file);
 
+            // parser
+            Parser tree;
+            init_parser(&tree, &tokens, file);
+            parse(&tree);
+
+            // Cleanup
             free_token_stream(&tokens);
             free(file);
 
