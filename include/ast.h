@@ -1,6 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include "lexer.h"
+
 typedef enum {
     AST_RETURN,     // return a number
     AST_LITERAL,    // 
@@ -14,6 +16,11 @@ typedef enum {
     AST_IF,         // if conidtion
     AST_PARAM,      // n: int in function signatures
 } ASTkind;
+
+typedef struct {
+    TokenKind base;
+    int pointer_depth;
+} TypeInfo;
 
 typedef struct AST {
     ASTkind kind;
@@ -30,6 +37,7 @@ typedef struct AST {
         struct {
             int name_start;
             int name_length;
+            TypeInfo type;
             struct AST* value;
         } var_decl;
 
@@ -50,13 +58,13 @@ typedef struct AST {
             int name_length;
             struct AST* params;
             struct AST* body;
-            int return_type;
+            TypeInfo return_type;
         } func_def;
 
         struct {
             int name_start;
             int name_length;
-            int type;
+            TypeInfo type;
         } func_params;
 
         struct {

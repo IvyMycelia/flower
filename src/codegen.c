@@ -63,7 +63,7 @@ void gen_expr(AST* ast, FILE* out, const char* src) {
 void gen_func_def(AST* ast, FILE* out, const char* src) {
     // Emit: int fib(
     fprintf(out, "\n\n%s %.*s(",
-        token_to_string(ast->func_def.return_type),
+        token_to_string(ast->func_def.return_type.base),
         ast->func_def.name_length,
         src + ast->func_def.name_start
     );
@@ -75,7 +75,7 @@ void gen_func_def(AST* ast, FILE* out, const char* src) {
         if (param->next != NULL) fprintf(out, ", ");
         param = param->next;
     }
-    fprintf(out, ") {\n\n");
+    fprintf(out, ") {\n");
 
     // Emit: body
     AST* statement = ast->func_def.body;
@@ -89,7 +89,7 @@ void gen_func_def(AST* ast, FILE* out, const char* src) {
 void gen_param(AST* param, FILE* out, const char* src) {
     // Emit: int v,
     fprintf(out, "%s %.*s",
-        token_to_string(param->func_params.type),
+        token_to_string(param->func_params.type.base),
         param->func_params.name_length,
         src + param->func_params.name_start
     );
