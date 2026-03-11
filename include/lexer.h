@@ -5,6 +5,9 @@
 typedef enum {
     /* Types & Identifiers */
     TOKEN_INT,          // Integer
+    TOKEN_FLOAT,        // Float-point value
+    TOKEN_BOOL,         // true / false, 1 / 0
+    TOKEN_CHAR,         // Characters (represented as integers)
     TOKEN_IDENTIFIER,   // Variable & Function names
     TOKEN_NUMBER,       // Number
     TOKEN_VOID,         // Void (empty)
@@ -19,9 +22,11 @@ typedef enum {
     /* Operators */
     TOKEN_PLUS,     // Addition
     TOKEN_MINUS,    // Subtraction
-    TOKEN_STAR,     // Pointers & Multiplication
+    TOKEN_STAR,     // Multiplication
+    TOKEN_CARET,    // ^ for exponents (eventually)
     TOKEN_SLASH,    // Division
     TOKEN_AMPERSAND,// Memory address
+    TOKEN_AT,       // Pointer / deref, @
     TOKEN_ASSIGN,   // Assign value
     TOKEN_LT,       // Less than
     TOKEN_GT,       // Greater than
