@@ -23,6 +23,7 @@ typedef enum {
     TOKEN_ELSE,     // Else block
     
     /* Operators */
+    TOKEN_DOT,      // Dot access
     TOKEN_PLUS,     // Addition
     TOKEN_MINUS,    // Subtraction
     TOKEN_STAR,     // Multiplication

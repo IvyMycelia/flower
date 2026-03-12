@@ -1,11 +1,11 @@
-struct Vector2:
+struct Vector2 {
     x: int,
     y: int
-end
+}
 
-struct Vector3: x: int, y: int
+struct Vector3 { x: int, y: int
     z: int
-end
+}
 
 int main():
     point: Vector2

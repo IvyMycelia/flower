@@ -87,6 +87,7 @@ void lex(const char* src, TokenStream* ts) {
 
         // printf("CHAR: '%c' (%d)\n", src[i], src[i]);
         switch (src[i]) {
+            case '.': add_token(ts, TOKEN_DOT, i++, 1); break;
             case '+': add_token(ts, TOKEN_PLUS, i++, 1); break;
             case '-': add_token(ts, TOKEN_MINUS, i++, 1); break;
             case '*': add_token(ts, TOKEN_STAR, i++, 1); break;
@@ -170,6 +171,7 @@ const char* token_kind_name(TokenKind kind) {
         case TOKEN_IF:          return "TOKEN_IF";
         case TOKEN_ELSE:        return "TOKEN_ELSE";
         case TOKEN_END:         return "TOKEN_END";
+        case TOKEN_DOT:         return "TOKEN_DOT";
         case TOKEN_PLUS:        return "TOKEN_PLUS";
         case TOKEN_MINUS:       return "TOKEN_MINUS";
         case TOKEN_STAR:        return "TOKEN_STAR";
