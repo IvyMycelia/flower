@@ -37,6 +37,8 @@ typedef enum {
     /* Punctuation */
     TOKEN_LPAREN,   // Function handling
     TOKEN_RPAREN,   // Function handling
+    TOKEN_LBRACK,   // Array handling
+    TOKEN_RBRACK,   // Array handling
     TOKEN_COLON,    // Start block
     TOKEN_COMMA,    // Separate parameters
     TOKEN_SEMI,     // Semicolon for starting a new statement

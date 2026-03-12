@@ -7,6 +7,7 @@ typedef enum {
     AST_RETURN,     // return a number
     AST_LITERAL,    // A value
     AST_STRING_LIT, // A string "Hello, World!"
+    AST_ARRAY_LIT,  // Array literal [0, 1, 2 ..]
     AST_BINARY_OP,  // 0 + 0
     AST_VAR_DECL,   // a: int
     AST_VAR_ASS,    // a = temp
@@ -21,6 +22,7 @@ typedef enum {
 typedef struct {
     TokenKind base;
     int pointer_depth;
+    int array_size;
 } TypeInfo;
 
 typedef struct AST {
@@ -34,6 +36,11 @@ typedef struct AST {
             int str_start;
             int str_length;
         } string;
+
+        struct {
+            struct AST* elements;
+            int arr_length;
+        } array;
 
         struct {
             struct AST* left;   // left binary-op

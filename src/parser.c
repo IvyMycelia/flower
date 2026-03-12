@@ -113,17 +113,38 @@ AST* parse_primary(Parser* ps) {
             node->var_ref.name_start = tok->start;
             node->var_ref.name_length = tok->length;
             return node;
+
         case TOKEN_NUMBER:
             AST* lit = make_node(AST_LITERAL);
             lit->value = atoi(ps->src + parser_peek(ps)->start);
             parser_advance(ps);
             return lit;
+
         case TOKEN_STRING_LIT:
             AST* str = make_node(AST_STRING_LIT);
             str->string.str_start = parser_peek(ps)->start;
             str->string.str_length = parser_peek(ps)->length;
             parser_advance(ps);
             return str;
+
+        case TOKEN_LBRACK:
+            parser_advance(ps);
+            AST* arr = make_node(AST_ARRAY_LIT);
+            AST* elem_head = NULL;
+            AST* elem_tail = NULL;
+            
+            while (parser_peek(ps)->kind != TOKEN_RBRACK) {
+                AST* elem = parse_expr(ps, 0);
+                if (elem_head == NULL) elem_head = elem;
+                else elem_tail->next = elem;
+                elem_tail = elem;
+                if (parser_peek(ps)->kind == TOKEN_COMMA) parser_advance(ps);
+            }
+
+            parser_expect(ps, TOKEN_RBRACK);
+            arr->array.elements = elem_head;
+            return arr;
+
         default:
             printf(RED "parse_primary: unexpected token kind: %d\n" RESET, parser_peek(ps)->kind);
             exit(1);
@@ -225,6 +246,7 @@ AST* parse_var_ass(Parser* ps) {
 
 AST* parse_statement(Parser* ps) {
     parser_skip_newline(ps);
+    // printf("parse_statement: token kind %d\n", parser_peek(ps)->kind);
     switch (parser_peek(ps)->kind) {
         case TOKEN_IDENTIFIER:
             switch (peek(ps->ts, ps->pos + 1)->kind) {
@@ -294,11 +316,23 @@ AST* parse_func_def(Parser* ps) {
 TypeInfo parse_type(Parser* ps) {
     TypeInfo type;
     type.pointer_depth = 0;
+    type.array_size = 0;
+
     while (parser_peek(ps)->kind == TOKEN_AT) {
         type.pointer_depth++;
         parser_advance(ps);
     }
     type.base = parser_advance(ps)->kind;
+
+    if (parser_peek(ps)->kind == TOKEN_LBRACK) {
+        parser_advance(ps);
+        if (parser_peek(ps)->kind == TOKEN_NUMBER) {
+            type.array_size = atoi(ps->src + parser_peek(ps)->start);
+            parser_advance(ps);
+        } else type.array_size = -1; // Unsized
+        parser_expect(ps, TOKEN_RBRACK);
+    }
+
     return type;
 }
 

@@ -100,6 +100,8 @@ void lex(const char* src, TokenStream* ts) {
             case '>': add_token(ts, TOKEN_GT, i++, 1); break;
             case '(': add_token(ts, TOKEN_LPAREN, i++, 1); break;
             case ')': add_token(ts, TOKEN_RPAREN, i++, 1); break;
+            case '[': add_token(ts, TOKEN_LBRACK, i++, 1); break;
+            case ']': add_token(ts, TOKEN_RBRACK, i++, 1); break;
             case ':': add_token(ts, TOKEN_COLON, i++, 1); break;
             case ',': add_token(ts, TOKEN_COMMA, i++, 1); break;
             default:
@@ -178,6 +180,8 @@ const char* token_kind_name(TokenKind kind) {
         case TOKEN_COMP:        return "TOKEN_COMP";
         case TOKEN_LPAREN:      return "TOKEN_LPAREN";
         case TOKEN_RPAREN:      return "TOKEN_RPAREN";
+        case TOKEN_LBRACK:      return "TOKEN_LBRACK";
+        case TOKEN_RBRACK:      return "TOKEN_RBRACK";
         case TOKEN_COLON:       return "TOKEN_COLON";
         case TOKEN_COMMA:       return "TOKEN_COMMA";
         case TOKEN_SEMI:        return "TOKEN_SEMI";

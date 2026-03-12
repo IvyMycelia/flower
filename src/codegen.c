@@ -61,6 +61,17 @@ void gen_expr(AST* ast, FILE* out, const char* src) {
             );
             break;
 
+        case AST_ARRAY_LIT:
+            fprintf(out, "{");
+            AST* elem = ast->array.elements;
+            while (elem != NULL) {
+                gen_expr(elem, out, src);
+                if (elem->next != NULL) fprintf(out, ", ");
+                elem = elem->next;
+            }
+            fprintf(out, "}");
+            break;
+
         default:
             printf(RED "Could not generate expression: %d\n" RESET, ast->kind);
             exit(1);
@@ -119,11 +130,17 @@ void gen_func_call(AST* ast, FILE* out, const char* src) {
 }
 
 void gen_var_decl(AST* ast, FILE* out, const char* src) {
+    // printf("gen_var_decl: array_size = %d\n", ast->var_decl.type.array_size);
     typeinfo_to_string(ast->var_decl.type, out);
     fprintf(out, " %.*s", 
         ast->var_decl.name_length,
         src + ast->var_decl.name_start
     );
+    if (ast->var_decl.type.array_size == -1)
+        fprintf(out, "[]");
+    else if (ast->var_decl.type.array_size != 0)
+        fprintf(out, "[%d]", ast->var_decl.type.array_size);
+
     if (ast->var_decl.value != NULL) {
         fprintf(out, " = ");
         gen_expr(ast->var_decl.value, out, src);
