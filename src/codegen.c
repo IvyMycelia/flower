@@ -120,11 +120,14 @@ void gen_func_call(AST* ast, FILE* out, const char* src) {
 
 void gen_var_decl(AST* ast, FILE* out, const char* src) {
     typeinfo_to_string(ast->var_decl.type, out);
-    fprintf(out, " %.*s = ", 
+    fprintf(out, " %.*s", 
         ast->var_decl.name_length,
         src + ast->var_decl.name_start
     );
-    gen_expr(ast->var_decl.value, out, src);
+    if (ast->var_decl.value != NULL) {
+        fprintf(out, " = ");
+        gen_expr(ast->var_decl.value, out, src);
+    } 
     fprintf(out, ";\n");
 }
 

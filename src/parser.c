@@ -206,8 +206,10 @@ AST* parse_var_decl(Parser* ps) {
     parser_expect(ps, TOKEN_COLON);
     node->var_decl.type = parse_type(ps);
     
-    parser_expect(ps, TOKEN_ASSIGN);
-    node->var_decl.value = parse_expr(ps, 0);
+    if (parser_peek(ps)->kind == TOKEN_ASSIGN) {
+        parser_advance(ps);
+        node->var_decl.value = parse_expr(ps, 0);
+    }
     return node;
 }
 
