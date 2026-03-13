@@ -2,6 +2,8 @@ build
 fib
 bin
 output.c
+*.c
+output
 
 *.o
 .DS_Store

@@ -80,28 +80,35 @@ int main(int argc, char *argv[]) {
             init_parser(&tree, &tokens, file);
             AST* ast = parse(&tree);
 
-            // Codegen
-            char out_name[256];
-            snprintf(out_name, sizeof(out_name), "%s.c", argv[i+1] != NULL ? argv[i+1] : "output");
-            FILE *output = fopen(out_name, "w");
+            // Determine output name
+            char out_c[512];
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                snprintf(out_c, sizeof(out_c), "%s.c", argv[i + 1]);
+                i++; // skip the output name on next iteration
+            } else {
+                snprintf(out_c, sizeof(out_c), "output.c");
+            }
+
+            FILE* output = fopen(out_c, "w");
             if (!output) {
                 printf(RED "Failed to open output file\n" RESET);
                 return -1;
             }
-            fprintf(output, "// TEST");
+            fprintf(output, "// TEST\n");
             codegen(ast, output, file);
 
-            // Cleanup
             free_token_stream(&tokens);
             free(file);
             fclose(output);
 
-            // Build
-            char build_cmd[512];
-            snprintf(build_cmd, sizeof(build_cmd), "clang %s -o output && ./output", out_name);
-            system(build_cmd);
+            // Strip .c for binary name
+            char bin_name[512];
+            snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(strlen(out_c) - 2), out_c);
 
-            printf(GREEN BOLD "Compiled /%s to ./output.c\n" RESET, argv[i]);
+            char build_cmd[1024];
+            snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s && ./%s", out_c, bin_name, bin_name);
+            system(build_cmd);
+            printf(GREEN BOLD "Compiled %s → %s\n" RESET, argv[i], bin_name);
             break;
         }
 
