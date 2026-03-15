@@ -330,12 +330,12 @@ AST* parse_statement(Parser* ps) {
         case TOKEN_IF:
             return parse_if(ps, 0);
         
-        case TOKEN_PRUNE:
+        case TOKEN_PRUNE: {
             parser_advance(ps);
             AST* node = make_node(AST_PRUNE);
             node->prune_free.ptr = parse_expr(ps, 0);
             return node;
-
+        }
             
         default:
             // print error or smt

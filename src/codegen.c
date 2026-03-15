@@ -38,6 +38,12 @@ void gen_statement(AST* ast, FILE* out, const char* src) {
                 fprintf(out, ";\n");
             }
             break;
+        
+        case AST_PRUNE:
+            fprintf(out, "free(");
+            gen_expr(ast->prune_free.ptr, out, src);
+            fprintf(out, ");\n");
+            break;
 
         default:
             printf(RED "Unknown statement kind: %d\n" RESET, ast->kind);
@@ -111,8 +117,14 @@ void gen_expr(AST* ast, FILE* out, const char* src) {
             );
             break;
 
+        case AST_NEW:
+            fprintf(out, "malloc(sizeof(");
+            typeinfo_to_string(ast->new_alloc.type, out, src);
+            fprintf(out, "))");
+            break;
+
         default:
-            printf(RED "Could not generate expression: %d\n" RESET, ast->kind);
+            printf("gen_expr received node addr: %p, kind: %d\n", ast, ast->kind);
             exit(1);
     }
 }
