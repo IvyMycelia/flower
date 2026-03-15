@@ -17,15 +17,15 @@ int mtwo(name: type)
 /* custom.flo */
 let x: int = 0
 
-void mone():
+prop void mone():
     // Code
 end
 
-int mtwo(name: type):
+prop int mtwo(name: type):
     // Code
 end
 
-float helperFunction(name: type): // Private function because not in header file
+float helperFunction(name: type): // Private function because there's no `prop` keyword
     // Code
 end
 ```
@@ -34,9 +34,9 @@ end
 
 ```rust
 // main.flo
-import "./math.floh" as math    // When given an alias, functions and variables are accessed via alias.var / alias.func()
-import <system.floh>            // When no alias provided, functions and variables are accessed by their names e.g; var, func()
-import "custom.floh"            // No importing specifics; everything in the header file is what is imported, but no overhead because compiler only inlines what's needed not everything (helps with file size and compile time)
+import "./math.flo" as math     // When given an alias, functions and variables are accessed via alias.var / alias.func()
+import <system>                 // When no alias provided, functions and variables are accessed by their names e.g; var, func()
+import "custom.flo"             // No importing specifics; everything in the header file is what is imported, but no overhead because compiler only inlines what's needed not everything (helps with file size and compile time)
 /*
 You can import absolute file path, relative file path, and assuming you have compiler configs set (to be implemented eventually), you can just do <> for system path (such as usr/opt) libs and "relative" (assuming relative filepath is set, e.g; ./include/)
 */
@@ -45,7 +45,7 @@ let x: float64 = math.PI // Or just PI if imported with no alias
 let y: float64 = sqrt(x) // Or math.sqrt(x) if imported with alias
 ```
 
-### Example main.extensionTBD
+### Example main.flo
 
 ```rust
 /* Optional custom _start() */
