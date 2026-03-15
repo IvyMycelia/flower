@@ -48,7 +48,7 @@ let y: float64 = sqrt(x) // Or math.sqrt(x) if imported with alias
 ### Example main.extensionTBD
 
 ```rust
-/* Option custom _start() */
+/* Optional custom _start() */
 void _start():
     main()
 end

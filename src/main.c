@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
             char build_cmd[1024];
             snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s && ./%s", out_c, bin_name, bin_name);
             system(build_cmd);
-            printf(GREEN BOLD "Compiled %s → %s\n" RESET, argv[i], bin_name);
+            printf(GREEN BOLD "Compiled %s.c → %s\n" RESET, argv[i], bin_name);
             break;
         }
 
