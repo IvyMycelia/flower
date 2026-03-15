@@ -11,9 +11,14 @@ void codegen(AST* ast, FILE* out, const char* src) {
     AST* curr = ast;
 
     while (curr != NULL) {
-        if (curr->kind == AST_FUNC_DEF)
+        if (curr->kind == AST_IMPORT)
+            gen_import(curr, out, src);
+        else if (curr->kind == AST_FUNC_DEF)
             gen_func_def(curr, out, src);
-        else gen_struct(curr, out, src);
+        else if (curr->kind == AST_STRUCT_DEF)
+            gen_struct(curr, out, src);
+        else if (curr->kind == AST_PROP)
+            gen_func_def(curr->prop.func, out, src);
         curr = curr->next;
     }
 }
@@ -270,6 +275,19 @@ void gen_return(AST* ast, FILE* out, const char* src) {
     fprintf(out, ";\n");
 }
 
+void gen_import(AST* ast, FILE* out, const char* src) {
+    if (ast->import.is_system)
+        fprintf(out, "#include <%.*s.h>\n",
+            ast->import.path_length,
+            src + ast->import.path_start
+        );
+    else
+        // file imports - TBI
+        fprintf(out, "// import \"%.*s.flo\"\n",
+            ast->import.path_length,
+            src + ast->import.path_start
+        );
+}
 
 const char* token_to_string(TokenKind kind) {
     switch (kind) {

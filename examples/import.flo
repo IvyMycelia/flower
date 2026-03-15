@@ -1,0 +1,6 @@
+import <stdio>
+import <stdlib>
+
+int main():
+    return 0
+end
