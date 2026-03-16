@@ -8,6 +8,9 @@ typedef struct {
     TokenStream* ts;
     const char* src;
     int pos;
+    int alias_start[32];    // Start position of alias names
+    int alias_lengths[32];  // Lenghts of alias names
+    int alias_count;
 } Parser;
 
 void    init_parser(Parser* ps, TokenStream* ts, const char* src);
@@ -30,9 +33,14 @@ AST*    parse_param(Parser* ps);
 AST*    parse_struct(Parser* ps);
 AST*    parse_dot_ass(Parser* ps);
 AST*    parse_import(Parser* ps);
+AST*    parse_alias_call(Parser* ps);
+
 AST*    parse(Parser* ps);
+
 int     get_precedence(TokenKind kind);
 int     token_stream_contains(TokenStream* ts, TokenKind kind);
+int     is_alias(Parser* ps, Token* tok);
+
 TypeInfo parse_type(Parser* ps);
 
 

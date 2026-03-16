@@ -13,6 +13,7 @@ void init_parser(Parser* ps, TokenStream* ts, const char* src) {
     ps->ts = ts;
     ps->src = src;
     ps->pos = 0;
+    ps->alias_count = 0;
 }
 
 Token* parser_peek(Parser* ps) {
@@ -105,7 +106,9 @@ AST* parse_primary(Parser* ps) {
         case TOKEN_IDENTIFIER:
             if (peek(ps->ts, ps->pos + 1)->kind == TOKEN_LPAREN)
                 return parse_func_call(ps);
-
+            if (peek(ps->ts, ps->pos + 1)->kind == TOKEN_DOT && 
+                is_alias(ps, parser_peek(ps)))
+                return parse_alias_call(ps);
             Token* tok = parser_peek(ps);
             parser_advance(ps);
             AST* node = make_node(AST_VAR_REF);
@@ -437,6 +440,10 @@ AST* parse_import(Parser* ps) {
             node->import.alias_start = alias->start;
             node->import.alias_length = alias->length;
             node->import.has_alias = 1;
+
+            ps->alias_start[ps->alias_count] = alias->start;
+            ps->alias_lengths[ps->alias_count] = alias->length;
+            ps->alias_count++;
         } else
             node->import.has_alias = 0;
     } else {
@@ -452,12 +459,46 @@ AST* parse_import(Parser* ps) {
             node->import.alias_start = alias->start;
             node->import.alias_length = alias->length;
             node->import.has_alias = 1;
+
+            ps->alias_start[ps->alias_count] = alias->start;
+            ps->alias_lengths[ps->alias_count] = alias->length;
+            ps->alias_count++;
         } else
             node->import.has_alias = 0;
     }
 
     return node;
 }
+
+AST* parse_alias_call(ps) {
+    AST* node = make_node(AST_ALIAS_CALL);
+    Token* alias = parser_advance(ps);
+    node->alias_call.alias_start = alias->start;
+    node->alias_call.alias_length = alias->length;
+    parser_expect(ps, TOKEN_DOT);
+
+    Token* func = parser_advance(ps);
+    node->alias_call.func_start = func->start;
+    node->alias_call.func_length = func->length;
+    parser_expect(ps, TOKEN_LPAREN);
+
+    AST* arg_head = NULL;
+    AST* arg_tail = NULL;
+    while (parser_peek(ps)->kind != TOKEN_RPAREN) {
+        AST* arg = parse_expr(ps, 0);
+        if (arg_head == NULL) arg_head = arg;
+        else arg_tail->next = arg;
+        arg_tail = arg;
+        if (parser_peek(ps)->kind == TOKEN_COMMA) parser_advance(ps);
+    }
+    parser_expect(ps, TOKEN_RPAREN);
+
+    node->alias_call.args = arg_head;
+    return node;
+}
+
+
+
 
 TypeInfo parse_type(Parser* ps) {
     TypeInfo type;
@@ -494,6 +535,17 @@ int token_stream_contains(TokenStream* ts, TokenKind kind) {
     for (int i = 0; i < ts->count; i++)
         if (ts->data[i].kind == kind)
             return 1;
+    return 0;
+}
+
+int is_alias(Parser* ps, Token* tok) {
+    for (int i = 0; i < ps->alias_count; i++) {
+        if (ps->alias_lengths[i] == tok->length &&
+            !strncmp(ps->src + ps->alias_start[i],
+                     ps->src + tok->start,
+                     tok->start))
+            return 1;
+    }
     return 0;
 }
 

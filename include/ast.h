@@ -22,6 +22,7 @@ typedef enum {
     /* Import System */
     AST_IMPORT,     // import "custom.flo"
     AST_PROP,       // prop int test():
+    AST_ALIAS_CALL, // Alias call: math.sqrt()
 
     AST_VAR_DECL,   // a: int
     AST_VAR_ASS,    // a = temp
@@ -87,6 +88,14 @@ typedef struct AST {
         struct {
             struct AST* func;
         } prop;
+
+        struct {
+            int alias_start;
+            int alias_length;
+            int func_start;
+            int func_length;
+            struct AST* args;
+        } alias_call;
 
 
         /* Structs */
