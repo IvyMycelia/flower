@@ -470,7 +470,7 @@ AST* parse_import(Parser* ps) {
     return node;
 }
 
-AST* parse_alias_call(ps) {
+AST* parse_alias_call(Parser* ps) {
     AST* node = make_node(AST_ALIAS_CALL);
     Token* alias = parser_advance(ps);
     node->alias_call.alias_start = alias->start;
@@ -543,7 +543,7 @@ int is_alias(Parser* ps, Token* tok) {
         if (ps->alias_lengths[i] == tok->length &&
             !strncmp(ps->src + ps->alias_start[i],
                      ps->src + tok->start,
-                     tok->start))
+                     tok->length))
             return 1;
     }
     return 0;

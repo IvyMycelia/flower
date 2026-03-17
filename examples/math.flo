@@ -1,0 +1,7 @@
+prop int add(a: int, b: int):
+    return a + b
+end
+
+int helper():
+    return 0
+end

@@ -128,6 +128,20 @@ void gen_expr(AST* ast, FILE* out, const char* src) {
             fprintf(out, "))");
             break;
 
+        case AST_ALIAS_CALL:
+            fprintf(out, "%.*s(",
+                ast->alias_call.func_length,
+                src + ast->alias_call.func_start
+            );
+            AST* arg = ast->alias_call.args;
+            while (arg != NULL) {
+                gen_expr(arg, out, src);
+                if (arg->next != NULL) fprintf(out, ", ");
+                arg = arg->next;
+            }
+            fprintf(out, ")");
+            break;
+
         default:
             printf("gen_expr received node addr: %p, kind: %d\n", ast, ast->kind);
             exit(1);
@@ -283,7 +297,7 @@ void gen_import(AST* ast, FILE* out, const char* src) {
         );
     else
         // file imports - TBI
-        fprintf(out, "// import \"%.*s.flo\"\n",
+        fprintf(out, "// import %.*s.flo\n",
             ast->import.path_length,
             src + ast->import.path_start
         );
