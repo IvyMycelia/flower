@@ -334,7 +334,9 @@ AST* parse_statement(Parser* ps) {
         case TOKEN_PRINT: {
             parser_advance(ps);
             AST* node = make_node(AST_PRINT);
+            parser_expect(ps, TOKEN_LPAREN);
             node->print.value = parse_expr(ps, 0);
+            parser_expect(ps, TOKEN_RPAREN);
             return node;
         }
         

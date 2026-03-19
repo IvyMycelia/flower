@@ -80,7 +80,7 @@ typedef struct AST {
 
         /* stdio */
         struct {
-            AST* value;
+            struct AST* value;
         } print;
 
 
