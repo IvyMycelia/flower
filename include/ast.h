@@ -24,6 +24,9 @@ typedef enum {
     AST_PROP,       // prop int test():
     AST_ALIAS_CALL, // Alias call: math.sqrt()
 
+    /* stdio */
+    AST_PRINT,
+
     AST_VAR_DECL,   // a: int
     AST_VAR_ASS,    // a = temp
     AST_VAR_REF,    // Reading a variable's value
@@ -73,6 +76,12 @@ typedef struct AST {
         struct {
             struct AST* ptr;
         } prune_free;
+
+
+        /* stdio */
+        struct {
+            AST* value;
+        } print;
 
 
         /* Import System */

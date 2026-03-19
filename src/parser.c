@@ -330,6 +330,13 @@ AST* parse_statement(Parser* ps) {
             
         case TOKEN_IF:
             return parse_if(ps, 0);
+
+        case TOKEN_PRINT: {
+            parser_advance(ps);
+            AST* node = make_node(AST_PRINT);
+            node->print.value = parse_expr(ps, 0);
+            return node;
+        }
         
         case TOKEN_PRUNE: {
             parser_advance(ps);
