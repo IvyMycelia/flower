@@ -32,6 +32,9 @@ typedef enum {
     TOKEN_NEW,      // Automatically allocate memory
     TOKEN_PRUNE,    // Free memory
     
+    /* stdio */
+    TOKEN_PRINT,    // Prints out to console
+
     /* Operators */
     TOKEN_DOT,      // Dot access
     TOKEN_PLUS,     // Addition
