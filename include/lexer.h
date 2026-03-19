@@ -18,6 +18,7 @@ typedef enum {
     /* Identifiers */
     TOKEN_IDENTIFIER,   // Variable & Function names
     TOKEN_NUMBER,       // Number
+    TOKEN_FLOAT_LIT,    // Decimal number
     TOKEN_STRING_LIT,   // String literal "Hello, World!"
     TOKEN_VOID,         // Void (empty)
 

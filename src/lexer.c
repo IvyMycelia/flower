@@ -99,7 +99,12 @@ void lex(const char* src, TokenStream* ts) {
             while (isdigit(src[i]))
                 i++;
 
-            add_token(ts, TOKEN_NUMBER, start, i - start);
+            if (src[i] == '.' && isdigit(src[i+1])) {
+                i++;
+                while (isdigit(src[i]))
+                    i++;
+                add_token(ts, TOKEN_FLOAT_LIT, start, i - 1);
+            } else add_token(ts, TOKEN_NUMBER, start, i - start);
             continue;
         }
 
