@@ -95,10 +95,13 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
 
+            int has_output = 0;
             if (token_stream_contains(&tokens, TOKEN_NULL) || token_stream_contains(&tokens, TOKEN_NEW))
                 fprintf(output, "#include <stdlib.h>\n");
-            if (token_stream_contains(&tokens, TOKEN_PRINT))
+            if (token_stream_contains(&tokens, TOKEN_PRINT)) {
                 fprintf(output, "#include <stdio.h>\n");
+                has_output = 1;
+            }
 
             codegen(ast, output, file);
 
@@ -116,15 +119,18 @@ int main(int argc, char *argv[]) {
                 out_c, bin_name
             );
             system(build_cmd);
-            printf(YELLOW "\nOUTPUT:\n");
-            fflush(stdout);
-            printf(RESET);
-            fflush(stdout);
+            if (has_output) {
+                printf(YELLOW "\nOUTPUT:\n");
+                fflush(stdout);
+                printf(RESET);
+                fflush(stdout);
+                printf("\n\n");
+            }
             snprintf(build_cmd, sizeof(build_cmd),
                 "./%s", bin_name
             );
             system(build_cmd);
-            printf(GREEN BOLD "\n\nCompiled %s.c → %s\n" RESET, argv[i], bin_name);
+            printf(GREEN BOLD "Compiled %s.c → %s\n" RESET, argv[i], bin_name);
             break;
         }
 
