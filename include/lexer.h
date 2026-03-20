@@ -15,19 +15,23 @@ typedef enum {
     TOKEN_STRUCT,       // Struct keyword
     TOKEN_NULL,         // Empty value
 
+    /* Unary Operations */
+    TOKEN_TILDE,        // bitwise operation
+    
     /* Identifiers */
     TOKEN_IDENTIFIER,   // Variable & Function names
     TOKEN_NUMBER,       // Number
     TOKEN_FLOAT_LIT,    // Decimal number
     TOKEN_STRING_LIT,   // String literal "Hello, World!"
     TOKEN_VOID,         // Void (empty)
-
+    
     /* Keywords */
     TOKEN_RETURN,   // Return from block
     TOKEN_WHILE,    // While loop
     TOKEN_END,      // Close block
     TOKEN_IF,       // If statement
     TOKEN_ELSE,     // Else block
+    TOKEN_NOT,      // opposite of a value
 
     /* Import System */
     TOKEN_IMPORT,   // .flo imports

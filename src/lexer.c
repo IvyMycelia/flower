@@ -58,6 +58,8 @@ void lex(const char* src, TokenStream* ts) {
                 add_token(ts, TOKEN_END, start, length);
             else if (length == 3 && !strncmp(src + start, "new", 3))
                 add_token(ts, TOKEN_NEW, start, length);
+            else if (length == 3 && !strncmp(src + start, "not", 3))
+                add_token(ts, TOKEN_NOT, start, length);
             else if (length == 4 && !strncmp(src + start, "null", 4))
                 add_token(ts, TOKEN_NULL, start, length);
             else if (length == 4 && !strncmp(src + start, "char", 4))
@@ -113,6 +115,7 @@ void lex(const char* src, TokenStream* ts) {
             case '.': add_token(ts, TOKEN_DOT, i++, 1); break;
             case '+': add_token(ts, TOKEN_PLUS, i++, 1); break;
             case '-': add_token(ts, TOKEN_MINUS, i++, 1); break;
+            case '~': add_token(ts, TOKEN_TILDE, i++, 1); break;
             case '*': add_token(ts, TOKEN_STAR, i++, 1); break;
             case '/': add_token(ts, TOKEN_SLASH, i++, 1); break;
             case '^': add_token(ts, TOKEN_CARET, i++, 1); break;
@@ -204,6 +207,7 @@ const char* token_kind_name(TokenKind kind) {
         case TOKEN_IF:          return "TOKEN_IF";
         case TOKEN_ELSE:        return "TOKEN_ELSE";
         case TOKEN_END:         return "TOKEN_END";
+        case TOKEN_NOT:         return "TOKEN_NOT";
 
         /* Import System */
         case TOKEN_IMPORT:      return "TOKEN_IMPORT";
@@ -221,6 +225,7 @@ const char* token_kind_name(TokenKind kind) {
         case TOKEN_DOT:         return "TOKEN_DOT";
         case TOKEN_PLUS:        return "TOKEN_PLUS";
         case TOKEN_MINUS:       return "TOKEN_MINUS";
+        case TOKEN_TILDE:       return "TOKEN_TILDE";
         case TOKEN_STAR:        return "TOKEN_STAR";
         case TOKEN_SLASH:       return "TOKEN_SLASH";
         case TOKEN_CARET:       return "TOKEN_CARET";
