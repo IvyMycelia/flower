@@ -159,8 +159,9 @@ void gen_expr(AST* ast, FILE* out, const char* src) {
             break;
 
         case AST_UNARY_NOT:
-            fprintf(out, "!");
+            fprintf(out, "(!");
             gen_expr(ast->unary.operand, out, src);
+            fprintf(out, ")");
             break;
         
         case AST_UNARY_NEG:
