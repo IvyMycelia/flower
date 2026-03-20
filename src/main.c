@@ -124,12 +124,12 @@ int main(int argc, char *argv[]) {
                 fflush(stdout);
                 printf(RESET);
                 fflush(stdout);
-                printf("\n\n");
-            }
-            snprintf(build_cmd, sizeof(build_cmd),
+                snprintf(build_cmd, sizeof(build_cmd),
                 "./%s", bin_name
-            );
+                );
+            }
             system(build_cmd);
+            printf("\n");
             printf(GREEN BOLD "Compiled %s.c → %s\n" RESET, argv[i], bin_name);
             break;
         }
