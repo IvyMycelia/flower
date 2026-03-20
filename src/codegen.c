@@ -158,6 +158,16 @@ void gen_expr(AST* ast, FILE* out, const char* src) {
             fprintf(out, ")");
             break;
 
+        case AST_UNARY_NOT:
+            fprintf(out, "!");
+            gen_expr(ast->unary.operand, out, src);
+            break;
+        
+        case AST_UNARY_NEG:
+            fprintf(out, "-");
+            gen_expr(ast->unary.operand, out, src);
+            break;
+
         default:
             printf("gen_expr received node addr: %p, kind: %d\n", ast, ast->kind);
             exit(1);
