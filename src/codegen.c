@@ -59,6 +59,15 @@ void gen_statement(AST* ast, FILE* out, const char* src) {
             fprintf(out, ");\n");
             break;
 
+        case AST_DEREF_ASS:
+            fprintf(out, "*%.*s = ",
+                ast->deref_ass.name_length,
+                src + ast->deref_ass.name_start
+            );
+            gen_expr(ast->deref_ass.value, out, src);
+            fprintf(out, ";\n");
+            break;
+
         default:
             printf(RED "Unknown statement kind: %d\n" RESET, ast->kind);
             exit(1);

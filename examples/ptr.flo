@@ -5,4 +5,8 @@ end
 int main():
     x: @int = 0;
     test(x);
+
+    ptr: @int = new int
+    @ptr = 42
+    prune ptr
 end
