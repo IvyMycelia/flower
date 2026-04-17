@@ -116,8 +116,13 @@ void lex(const char* src, TokenStream* ts) {
         switch (src[i]) {
             case '.': 
                 if (src[i+1] == '.') {
-                    if (src[i+2] == '=') add_token(ts, TOKEN_DOTDOTEQ, i++, 3);
-                else add_token(ts, TOKEN_DOTDOT, i++, 2); break;
+                    if (src[i+2] == '=') {
+                        add_token(ts, TOKEN_DOTDOTEQ, i++, 3);
+                        i += 3;
+                    } else {
+                        add_token(ts, TOKEN_DOTDOT, i++, 2); 
+                        i += 2;
+                    }
                 } else add_token(ts, TOKEN_DOT, i++, 1); break;
             case '+': add_token(ts, TOKEN_PLUS, i++, 1); break;
             case '-': add_token(ts, TOKEN_MINUS, i++, 1); break;
@@ -214,6 +219,8 @@ const char* token_kind_name(TokenKind kind) {
         case TOKEN_ELSE:        return "TOKEN_ELSE";
         case TOKEN_END:         return "TOKEN_END";
         case TOKEN_NOT:         return "TOKEN_NOT";
+        case TOKEN_FOR:         return "TOKEN_FOR";
+        case TOKEN_IN:          return "TOKEN_IN";
 
         /* Import System */
         case TOKEN_IMPORT:      return "TOKEN_IMPORT";
