@@ -1,0 +1,5 @@
+int main():
+    arr: @int = new int
+    y: int = @(arr + 1)
+    return 0
+end

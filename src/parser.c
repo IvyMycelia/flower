@@ -231,6 +231,14 @@ AST* parse_primary(Parser* ps) {
             return unary;
         }
 
+        case TOKEN_AT: {
+            parser_advance(ps);
+            AST* operand = parse_primary(ps);
+            AST* deref = make_node(AST_DEREF);
+            deref->deref.operand = operand;
+            return deref;
+        }
+
         default:
             printf(RED "parse_primary: unexpected token kind: %s\n" RESET, token_kind_name(parser_peek(ps)->kind));
             exit(1);
