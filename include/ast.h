@@ -7,6 +7,7 @@ typedef enum {
     AST_RETURN,     // return a number
     AST_LITERAL,    // A value
     AST_FLOAT_LIT,  // A decimal value
+    AST_CAST,       // Cast a type
     AST_NULL,       // An empty value
     AST_STRING_LIT, // A string "Hello, World!"
     AST_ARRAY_LIT,  // Array literal [0, 1, 2 ..]
@@ -59,6 +60,12 @@ typedef struct AST {
     union {
         int value;      // For literals
         
+
+        /* Type Casting */
+        struct {
+
+        } cast;
+
 
         struct {
             int start;
