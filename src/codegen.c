@@ -294,80 +294,72 @@ void gen_while(AST* ast, FILE* out, const char* src) {
 }
 
 void gen_for(AST* ast, FILE* out, const char* src) {
-    int reverse = 0;
-    if (ast->for_loop.from->kind != AST_LITERAL || ast->for_loop.to->kind != AST_LITERAL) {    
-        // for (int i = x; x > y ? i >= y : i <= y; x > y ? i-- : i++) {
+    const char* desc_op = ast->for_loop.inclusive ? ">=" : ">";
+    const char* asc_op = ast->for_loop.inclusive ? "<=" : "<";
 
-        // for (int i = x
-        fprintf(out, "for (int %.*s = ", 
+    if (ast->for_loop.from->kind == AST_LITERAL &&
+        ast->for_loop.to->kind == AST_LITERAL) {
+        int reverse = ast->for_loop.from->value > ast->for_loop.to->value;
+        fprintf(out, "for (int %.*s = ",
             ast->for_loop.var_length,
-            ast->for_loop.var_start + src
+            src + ast->for_loop.var_start
+        );
+        gen_expr(ast->for_loop.from, out, src);
+        fprintf(out, "; %.*s %s ",
+            ast->for_loop.var_length,
+            src + ast->for_loop.var_start,
+            reverse ? desc_op : asc_op
+        );
+        gen_expr(ast->for_loop.to, out, src);
+        fprintf(out, "; %.*s%s) {\n",
+            ast->for_loop.var_length,
+            src + ast->for_loop.var_start,
+            reverse ? "--" : "++"
+        );
+    } else {
+        fprintf(out, "for (int %.*s = ",
+            ast->for_loop.var_length,
+            src + ast->for_loop.var_start
         );
         gen_expr(ast->for_loop.from, out, src);
 
-        // ; ((x) > (y)) ?
         fprintf(out, "; ((");
         gen_expr(ast->for_loop.from, out, src);
         fprintf(out, ") > (");
         gen_expr(ast->for_loop.to, out, src);
-
-        // i >= (y) : i <= (y)
-        fprintf(out, ")) ? %.*s >= (",
+        fprintf(out, ")) ? %.*s %s (",
             ast->for_loop.var_length,
-            ast->for_loop.var_start + src
+            src + ast->for_loop.var_start,
+            desc_op
         );
         gen_expr(ast->for_loop.to, out, src);
-        fprintf(out, ") : %.*s <= (",
+        fprintf(out, ") : %.*s %s (",
             ast->for_loop.var_length,
-            ast->for_loop.var_start + src
+            src + ast->for_loop.var_start,
+            asc_op
         );
-        gen_expr(ast->for_loop.from, out, src);
+        gen_expr(ast->for_loop.to, out, src);
 
-        // (x) > (y) 
-        fprintf(out, "); (");
+        fprintf(out, "); ((");
         gen_expr(ast->for_loop.from, out, src);
         fprintf(out, ") > (");
         gen_expr(ast->for_loop.to, out, src);
-
-        // ? i-- : i++
-        fprintf(out, ") ? %.*s-- : %.*s++",
+        fprintf(out, ")) ? %.*s-- : %.*s++) {\n",
             ast->for_loop.var_length,
-            ast->for_loop.var_start + src,
+            src + ast->for_loop.var_start,
             ast->for_loop.var_length,
-            ast->for_loop.var_start + src
-        );
-        fprintf(out, ") {");
-    } else {
-        reverse = ast->for_loop.from->value > ast->for_loop.to->value;
-
-        fprintf(out, "for (int %.*s = ", 
-            ast->for_loop.var_length,
-            ast->for_loop.var_start + src
-        );
-        gen_expr(ast->for_loop.from, out, src);
-
-        fprintf(out, "; %.*s %s ",
-            ast->for_loop.var_length,
-            ast->for_loop.var_start + src,
-            reverse ? (ast->for_loop.inclusive ? ">=" : ">") : (ast->for_loop.inclusive ? "<=" : "<")
-        );
-        gen_expr(ast->for_loop.to, out, src);
-
-        fprintf(out, "; %.*s%s) {\n",
-            ast->for_loop.var_length,
-            ast->for_loop.var_start + src,
-            reverse ? "--" : "++"
+            src + ast->for_loop.var_start
         );
     }
-    
+
     AST* statement = ast->for_loop.body;
     while (statement != NULL) {
         gen_statement(statement, out, src);
         statement = statement->next;
     }
-
     fprintf(out, "}\n");
 }
+
 
 void gen_if(AST* ast, FILE* out, const char* src, int is_else_if) {
     if (is_else_if) {
