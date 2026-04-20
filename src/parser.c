@@ -91,6 +91,15 @@ int get_precedence(TokenKind kind) {
 
 AST* parse_expr(Parser* ps, int min_prec) {
     AST* left = parse_primary(ps);
+
+    if (parser_peek(ps)->kind == TOKEN_AS) {
+        parser_advance(ps);
+        AST* cast = make_node(AST_CAST);
+        cast->cast.value = left;
+        cast->cast.type = parse_type(ps);
+        left = cast;
+    }
+
     while (get_precedence(parser_peek(ps)->kind) > min_prec) {
         Token* op = parser_advance(ps);
         AST* right = parse_expr(ps, get_precedence(op->kind));
