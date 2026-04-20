@@ -1,0 +1,9 @@
+FINISHED:
+* `for` loops
+
+STARTED:
+* README
+
+NEXT:
+* Type-casting (v0.0.11)
+* Bootstrapping (v0.1.0)
