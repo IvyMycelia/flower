@@ -1,17 +1,21 @@
 int main():
+    print("0..10\n")
     for i in 0..10:     // exclusive, 0 to 9
-        print("For Loop 1\n")
+        print("i\n")
     end
 
-    print("\n")
-
+    print("\n0..=10\n")
     for i in 0..=10:    // inclusive, 0 to 10
-        print("For Loop 2\n")
+        print("i\n")
     end
 
-    print("\n")
-
+    print("\n10..0\n")
     for i in 10..0:     // reverse, 10 to 1
-        print("For Loop 3\n")
+        print("i\n")
+    end
+
+    print("\n10..=0\n")
+    for i in 10..=0:     // reverse, 10 to 1
+        print("i\n")
     end
 end

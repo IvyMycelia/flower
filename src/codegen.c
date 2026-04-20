@@ -294,6 +294,10 @@ void gen_while(AST* ast, FILE* out, const char* src) {
 }
 
 void gen_for(AST* ast, FILE* out, const char* src) {
+    int reverse = 0;
+    if (ast->for_loop.from->kind == AST_LITERAL && ast->for_loop.to->kind == AST_LITERAL)
+        reverse = ast->for_loop.from->value > ast->for_loop.to->value;
+    
     fprintf(out, "for (int %.*s = ", 
         ast->for_loop.var_length,
         ast->for_loop.var_start + src
@@ -303,13 +307,14 @@ void gen_for(AST* ast, FILE* out, const char* src) {
     fprintf(out, "; %.*s %s ",
         ast->for_loop.var_length,
         ast->for_loop.var_start + src,
-        ast->for_loop.inclusive ? "<=" : "<"
+        reverse ? (ast->for_loop.inclusive ? ">=" : ">") : (ast->for_loop.inclusive ? "<=" : "<")
     );
     gen_expr(ast->for_loop.to, out, src);
 
-    fprintf(out, "; %.*s++) {\n",
+    fprintf(out, "; %.*s%s) {\n",
         ast->for_loop.var_length,
-        ast->for_loop.var_start + src
+        ast->for_loop.var_start + src,
+        reverse ? "--" : "++"
     );
     
     AST* statement = ast->for_loop.body;
