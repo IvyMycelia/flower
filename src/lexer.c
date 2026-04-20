@@ -138,8 +138,18 @@ void lex(const char* src, TokenStream* ts) {
                 if (src[i+1] == '=') { add_token(ts, TOKEN_COMP, i, 2); i+=2; }
                 else add_token(ts, TOKEN_ASSIGN, i++, 1);
                 break;
-            case '<': add_token(ts, TOKEN_LT, i++, 1); break;
-            case '>': add_token(ts, TOKEN_GT, i++, 1); break;
+            case '<':
+                if (src[i+1] == '=') { add_token(ts, TOKEN_LEQ, i, 2); i+=2; }
+                else add_token(ts, TOKEN_LT, i++, 1);
+                break;
+            case '>':
+                if (src[i+1] == '=') { add_token(ts, TOKEN_GEQ, i, 2); i+=2; }
+                else add_token(ts, TOKEN_GT, i++, 1); 
+                break;
+            case '!':
+                if (src[i+1] == '=') { add_token(ts, TOKEN_NEQ, i, 2); i+=2; }
+                else add_token(ts, TOKEN_NOT, i++, 1);
+                break;
             case '(': add_token(ts, TOKEN_LPAREN, i++, 1); break;
             case ')': add_token(ts, TOKEN_RPAREN, i++, 1); break;
             case '[': add_token(ts, TOKEN_LBRACK, i++, 1); break;
@@ -251,6 +261,9 @@ const char* token_kind_name(TokenKind kind) {
         case TOKEN_ASSIGN:      return "TOKEN_ASSIGN";
         case TOKEN_LT:          return "TOKEN_LT";
         case TOKEN_GT:          return "TOKEN_GT";
+        case TOKEN_NEQ:         return "TOKEN_NEQ";
+        case TOKEN_GEQ:         return "TOKEN_GEQ";
+        case TOKEN_LEQ:         return "TOKEN_LEQ";
         case TOKEN_COMP:        return "TOKEN_COMP";
 
         /* Punctuation */

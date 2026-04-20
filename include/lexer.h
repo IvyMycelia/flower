@@ -62,6 +62,9 @@ typedef enum {
     TOKEN_LT,       // Less than
     TOKEN_GT,       // Greater than
     TOKEN_COMP,     // Comparison `==`
+    TOKEN_NEQ,      // !=
+    TOKEN_GEQ,      // >=
+    TOKEN_LEQ,      // <=
 
     /* Punctuation */
     TOKEN_LPAREN,   // Function handling
