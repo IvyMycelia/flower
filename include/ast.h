@@ -63,7 +63,8 @@ typedef struct AST {
 
         /* Type Casting */
         struct {
-
+            struct AST* value;
+            TypeInfo type;
         } cast;
 
 
