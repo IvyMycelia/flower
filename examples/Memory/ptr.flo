@@ -1,10 +1,10 @@
-prop void innerTest(ptr: @int):
+prop void inner_test(ptr: @int):
     x: @int = ptr
 end
 
 prop int test3():
     x: @int = 0;
-    innerTest(x);
+    inner_test(x);
 
     ptr: @int = new int
     @ptr = 42

@@ -46,10 +46,10 @@ void lex(const char* src, TokenStream* ts) {
             continue;
         }
 
-        if (isalpha(src[i])) {
+        if (isalpha(src[i]) || src[i] == '_') {
             int start = i;
 
-            while (isalnum(src[i]))
+            while (isalnum(src[i]) || src[i] == '_')
                 i++;
             
             int length = i - start;
