@@ -119,13 +119,13 @@ void lex(const char* src, TokenStream* ts) {
             case '.': 
                 if (src[i+1] == '.') {
                     if (src[i+2] == '=') {
-                        add_token(ts, TOKEN_DOTDOTEQ, i++, 3);
+                        add_token(ts, TOKEN_DOTDOTEQ, i, 3);
                         i += 3;
                     } else {
-                        add_token(ts, TOKEN_DOTDOT, i++, 2); 
+                        add_token(ts, TOKEN_DOTDOT, i, 2); 
                         i += 2;
                     }
-                } else add_token(ts, TOKEN_DOT, i++, 1); break;
+                } else add_token(ts, TOKEN_DOT, i, 1); break;
             case '+': add_token(ts, TOKEN_PLUS, i++, 1); break;
             case '-': add_token(ts, TOKEN_MINUS, i++, 1); break;
             case '~': add_token(ts, TOKEN_TILDE, i++, 1); break;
