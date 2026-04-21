@@ -97,13 +97,11 @@ int main(int argc, char *argv[]) {
             }
 
             int has_output = 0;
-            if (token_stream_contains(&tokens, TOKEN_NULL) || token_stream_contains(&tokens, TOKEN_NEW))
-                fprintf(output, "#include <stdlib.h>\n");
             if (token_stream_contains(&tokens, TOKEN_PRINT)) {
-                fprintf(output, "#include <stdio.h>\n");
                 has_output = 1;
             }
 
+            emit_includes(ast, output, file, &tokens);
             codegen(ast, output, file);
 
             free_token_stream(&tokens);

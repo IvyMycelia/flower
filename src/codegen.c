@@ -10,6 +10,9 @@
 
 #include "codegen.h"
 
+int has_stdlib = 0;
+int has_stdio = 0;
+
 void codegen(AST* ast, FILE* out, const char* src) {
     AST* curr = ast;
 
@@ -412,12 +415,23 @@ static const char* open_imports[64];
 static int open_import_count = 0;
 
 void gen_import(AST* ast, FILE* out, const char* src) {
-    if (ast->import.is_system)
-        fprintf(out, "#include <%.*s.h>\n",
+    if (ast->import.is_system) {
+        char name[64];
+        snprintf(name, sizeof(name), "%.*s",
             ast->import.path_length,
-            src + ast->import.path_start
+            ast->import.path_start + src
         );
-    else {
+
+        if (!strcmp(name, "stdio") && !has_stdio) {
+            fprintf(out, "#include <stdio.h>\n");
+            has_stdio = 1;
+        } else if (!strcmp(name, "stdlib") && !has_stdlib) {
+            fprintf(out, "#include <stdlib.h>\n");
+            has_stdlib = 1;
+        } else if (!strcmp(name, "stdio") && !strcmp(name, "stdlib")) {
+            fprintf(out, "#include <%s.h>\n", name);
+        }
+    } else {
         char path[256];
         snprintf(path, sizeof(path), "%.*s",
             ast->import.path_length - 2,
@@ -436,7 +450,7 @@ void gen_import(AST* ast, FILE* out, const char* src) {
         printf("attempting to import: %s\n", path);
         char* imported_src = read_file(path);
         if (!imported_src) {
-            printf(RED "Couldn't improt file: %s\n" RESET, path);
+            printf(RED "Couldn't import file: %s\n" RESET, path);
             exit(1);
         }
 
@@ -461,6 +475,18 @@ void gen_import(AST* ast, FILE* out, const char* src) {
         free(imported_src);
 
         open_import_count--;
+    }
+}
+
+void emit_includes(AST* ast, FILE* out, const char* src, TokenStream* ts) {
+    if (!has_stdlib && (token_stream_contains(ts, TOKEN_NULL) || token_stream_contains(ts, TOKEN_NEW))) {
+        fprintf(out, "#include <stdlib.h>\n");
+        has_stdlib = 1;
+    }
+
+    if (!has_stdio && token_stream_contains(ts, TOKEN_PRINT)) {
+        fprintf(out, "#include <stdio.h>\n");
+        has_stdio = 1;
     }
 }
 
