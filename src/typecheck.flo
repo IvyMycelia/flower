@@ -19,3 +19,30 @@ struct TypeEnv {
     error_count: int
 }
 
+struct StructInfo {
+    name_start: int,
+    name_length: int,
+    fields: FieldInfo[128],
+    field_count: int
+}
+
+struct FieldInfo {
+    name_start: int,
+    name_length: int,
+    type: TypeInfo
+}
+
+struct VarInfo {
+    name_start: int,
+    name_length: int,
+    type: TypeInfo
+
+    // Simple implementation for now.. will add scope depth and 
+    // function ID tracking for more advanced system later
+}
+
+struct FuncInfo {
+    name_start: int,
+    name_length: int,
+    return_type: TypeInfo
+}
