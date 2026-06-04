@@ -126,6 +126,7 @@ void register_struct(env: @TypeEnv, ast: @AST):
         copy_type(&finfo.type, &field.data._struct_field.type)
 
         info.field_count = info.field_count + 1
+        field = field.next
     end
 
     env.struct_count = env.struct_count + 1
@@ -236,6 +237,9 @@ int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo):
         out.pointer_depth = out.pointer_depth + 1
         return 1
 
+    else if expr.kind == AST_DOT_ACCESS:
+        return resolve_dot(env, expr, out)
+
     else if expr.kind == AST_FUNC_CALL:
         return lookup_func_return_type(env, expr.data._func_call.name_start, expr.data._func_call.name_length, out)
 
@@ -259,15 +263,17 @@ end
 
 
 int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo):
-    object_type: @TypeInfo
+    object_type: @TypeInfo = new TypeInfo
     
     if !resolve_expr(env, expr.data._dot_access.object, object_type):
-        //type_error("could not resolve object type for field access")
+        type_error(env, expr, "could not resolve object type for field access")
+        prune object_type
         return 0
     end
 
     if object_type.base != TOKEN_IDENTIFIER:
         type_error(env, expr, "cannot access field on non-struct type")
+        prune object_type
         return 0
     end
 
@@ -276,24 +282,28 @@ int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo):
     else if object_type.pointer_depth == 1:
         expr.data._dot_access.access_kind = ACCESS_ARROW
     else:
-        // error "cannot directly access field through multi-pointer type"
+        type_error(env, expr, "cannot directly access field through multi-pointer type")
+        prune object_type
         return 0
     end
 
     base_struct: @StructInfo = lookup_struct(env, object_type.name_start, object_type.name_length)
     if base_struct == null:
-        // error "unknown struct type in field access"
+        type_error(env, expr, "unknown struct type in field access")
+        prune object_type
         return 0
     end
 
     field: @FieldInfo = lookup_field(env, base_struct, expr.data._dot_access.field_start, expr.data._dot_access.field_length)
     if field == null:
-        // error "unknown field on struct"
+        type_error(env, expr, "unknown field on struct")
+        prune object_type
         return 0
     end
 
     copy_type(out, &field.type)
     copy_type(&expr.data._dot_access.resolved_type, &field.type)
+    prune object_type
     return 1
 end
 
@@ -301,31 +311,37 @@ void typecheck_statement(env: @TypeEnv, ast: @AST):
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast)
         if ast.data._var_decl.value != null:
-            tmp: @TypeInfo
+            tmp: @TypeInfo = new TypeInfo
             resolve_expr(env, ast.data._var_decl.value, tmp)
+            prune tmp
         end
 
     else if ast.kind == AST_VAR_ASS:
-        tmp: @TypeInfo
+        tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast.data._var_ass.value, tmp)
+        prune tmp
 
     else if ast.kind == AST_DOT_ACCESS:
-        tmp: @TypeInfo
+        tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast, tmp)
+        prune tmp
         if ast.data._dot_access.value != null:
-            value_type: TypeInfo
-            resolve_expr(env, ast.data._dot_access.value, &value_type)
+            value_type: @TypeInfo = new TypeInfo
+            resolve_expr(env, ast.data._dot_access.value, value_type)
+            prune value_type
         end
 
     else if ast.kind == AST_IF:
-        tmp: @TypeInfo
+        tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast.data._if_condition.condition, tmp)
         walk_statement_list(env, ast.data._if_condition.body)
         walk_statement_list(env, ast.data._if_condition.else_branch)
+        prune tmp
 
     else if ast.kind == AST_FLOW_CONTROL:
-        tmp: @TypeInfo
+        tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast.data._flow_ctrl.value, tmp)
+        prune tmp
     end
 end
 
@@ -354,7 +370,7 @@ end
 
 @StructInfo lookup_struct(env: @TypeEnv, start: int, length: int):
     for i in 0..env.struct_count:
-        info: @StructInfo = env.structs + 1
+        info: @StructInfo = env.structs + i
         if same_name(env.src, info.name_start, info.name_length, start, length):
             return info
         end
@@ -365,7 +381,7 @@ end
 
 @FieldInfo lookup_field(env: @TypeEnv, info: @StructInfo, start: int, length: int):
     for i in 0..info.field_count:
-        field: @FieldInfo = info.fields + 1
+        field: @FieldInfo = info.fields + i
         if same_name(env.src, field.name_start, field.name_length, start, length):
             return field
         end
@@ -393,7 +409,7 @@ end
 
 int lookup_func_return_type(env: @TypeEnv, start: int, length: int, out: @TypeInfo):
     for i in 0..env.func_count:
-        info: @FuncInfo = env.funcs + 1
+        info: @FuncInfo = env.funcs + i
 
         if same_name(env.src, info.name_start, info.name_length, start, length):
             copy_type(out, &info.return_type)

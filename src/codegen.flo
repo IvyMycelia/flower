@@ -739,11 +739,18 @@ void gen_expr(ast: @AST, out: @FILE, src: @char):
     else if ast.kind == AST_DOT_ACCESS:
         object: @AST = ast.data._dot_access.object
         gen_expr(object, out, src)
-        obj_kind: int = object.kind
-        if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+        obj_kind: int = ast.data._dot_access.access_kind
+        if obj_kind == ACCESS_ARROW:
+            fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+        else if obj_kind == ACCESS_DOT:
             fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
         else:
-            fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+            obj_kind: int = object.kind
+            if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+                fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+            else:
+                fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+            end
         end
         
     else if ast.kind == AST_NEW:
@@ -848,12 +855,20 @@ void gen_statement(ast: @AST, out: @FILE, src: @char):
     else if ast.kind == AST_DOT_ACCESS:
         object: @AST = ast.data._dot_access.object
         gen_expr(object, out, src)
-        obj_kind: int = object.kind
-        if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+        obj_kind: int = ast.data._dot_access.access_kind
+        if obj_kind == ACCESS_ARROW:
+            fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+        else if obj_kind == ACCESS_DOT:
             fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
         else:
-            fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+            obj_kind: int = object.kind
+            if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+                fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+            else:
+                fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+            end
         end
+        
         if ast.data._dot_access.value != null:
             fprintf(out, " = ")
             gen_expr(ast.data._dot_access.value, out, src)
