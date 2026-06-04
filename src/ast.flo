@@ -193,11 +193,23 @@ struct struct_lit {
     elements: @AST,
 }
 
+
+// Constants for dot access
+ACCESS_UNKNOWN: int = 0
+ACCESS_DOT:     int = 1
+ACCESS_ARROW:   int = 2
+
 struct dot_access {
     object: @AST,
     field_start: int,
     field_length: int,
     value: @AST,
+
+    // 0 = unknown / unresolved, 1 = '.', 2 = '->'
+    access_kind: int,
+
+    // Resulting type of this access
+    resolved_type: TypeInfo
 }
 
     // === Operations ===
