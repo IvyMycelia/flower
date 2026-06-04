@@ -1,9 +1,12 @@
 import "./ast.flo"
 
 forward struct StructInfo
+forward struct FieldInfo
 forward struct VarInfo
 forward struct FuncInfo
 
+
+// Type Environment, hosts registries and their data
 struct TypeEnv {
     src: @char,
 
@@ -46,3 +49,4 @@ struct FuncInfo {
     name_length: int,
     return_type: TypeInfo
 }
+
