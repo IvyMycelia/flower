@@ -418,7 +418,7 @@ end
 // Entry Point
 
 prop int check(ast: @AST, src: @char):
-    env: TypeEnv
+    env: @TypeEnv = new TypeEnv
     env.src = src
 
     env.struct_count = 0
@@ -426,8 +426,10 @@ prop int check(ast: @AST, src: @char):
     env.func_count = 0
     env.error_count = 0
 
-    typecheck_collect(&env, ast)
-    typecheck_ast(&env, ast)
+    typecheck_collect(env, ast)
+    typecheck_ast(env, ast)
 
-    return env.error_count
+    count: int = env.error_count
+    prune env
+    return count
 end

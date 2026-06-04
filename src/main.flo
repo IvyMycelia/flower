@@ -9,8 +9,8 @@ import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
 import "src/parser.flo" as parser
 import "src/file.flo" as file
-import "src/codegen.flo" as codegen
 import "src/typecheck.flo" as typecheck
+import "src/codegen.flo" as codegen
 
 int main(argc: int, argv: @char[]):
     getcwd(project_root, sizeof(project_root));
@@ -93,7 +93,7 @@ int main(argc: int, argv: @char[]):
 
             // Typecheck
             print("Checking types...\n");
-            type_errors: int = typecheck(ast, file)
+            type_errors: int = typecheck.check(ast, file)
             if type_errors > 0:
                 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET)
                 return -1
