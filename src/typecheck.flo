@@ -1,25 +1,12 @@
-import "./ast.flo"
-
 forward struct StructInfo
 forward struct FieldInfo
 forward struct VarInfo
 forward struct FuncInfo
 
-
-// Type Environment, hosts registries and their data
-struct TypeEnv {
-    src: @char,
-
-    structs: StructInfo[256],
-    struct_count: int,
-
-    vars: VarInfo[512],
-    var_count: int,
-
-    funcs: FuncInfo[256],
-    func_count: int,
-
-    error_count: int
+struct FieldInfo {
+    name_start: int,
+    name_length: int,
+    type: TypeInfo
 }
 
 struct StructInfo {
@@ -27,12 +14,6 @@ struct StructInfo {
     name_length: int,
     fields: FieldInfo[128],
     field_count: int
-}
-
-struct FieldInfo {
-    name_start: int,
-    name_length: int,
-    type: TypeInfo
 }
 
 struct VarInfo {
@@ -50,6 +31,21 @@ struct FuncInfo {
     return_type: TypeInfo
 }
 
+// Type Environment, hosts registries and their data
+struct TypeEnv {
+    src: @char,
+
+    structs: StructInfo[256],
+    struct_count: int,
+
+    vars: VarInfo[512],
+    var_count: int,
+
+    funcs: FuncInfo[256],
+    func_count: int,
+
+    error_count: int
+}
 
 
 // Helper Functions
@@ -74,6 +70,10 @@ end
 
 // === PASSES ===
 
+forward void register_struct(env: @TypeEnv, ast: @AST)
+forward int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo)
+forward int dot_resolution(env: @TypeEnv, expr: @AST, out: @TypeInfo)
+
 // Collection Pass
 
 void typecheck_collect(env: @TypeEnv, ast: @AST):
@@ -91,7 +91,7 @@ void typecheck_collect(env: @TypeEnv, ast: @AST):
         else if curr.kind == AST_PROP:
             // prop
 
-        else if curr.kind == AST_VAR_DEF:
+        else if curr.kind == AST_VAR_DECL:
             // var
         end
         curr = curr.next
@@ -99,3 +99,22 @@ void typecheck_collect(env: @TypeEnv, ast: @AST):
 end
 
 // Registrations
+
+void register_struct(env: @TypeEnv, ast: @AST):
+    info: @StructInfo = env.structs + env.struct_count
+    info.name_start = ast.data._struct_def.name_start
+    info.name_length = ast.data._struct_def.name_length
+    info.field_count = 0
+
+    field: @AST = ast.data._struct_def.fields
+    while field != null:
+        finfo: @FieldInfo = info.fields + info.field_count
+        finfo.name_start = field.data._struct_field.name_start
+        finfo.name_length = field.data._struct_field.name_length
+        copy_type(&finfo.type, &field.data._struct_field.type)
+
+        info.field_count = info.field_count + 1
+    end
+
+    env.struct_count = env.struct_count + 1
+end

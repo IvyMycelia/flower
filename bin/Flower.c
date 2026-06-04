@@ -2353,6 +2353,108 @@ fclose(f);
 return buffer;
 }
 #include <stdlib.h>
+#include <stdlib.h>
+typedef struct StructInfo StructInfo;
+typedef struct FieldInfo FieldInfo;
+typedef struct VarInfo VarInfo;
+typedef struct FuncInfo FuncInfo;
+
+
+typedef struct FieldInfo {
+int name_start;
+int name_length;
+TypeInfo type;
+} FieldInfo;
+
+
+typedef struct StructInfo {
+int name_start;
+int name_length;
+FieldInfo fields[128];
+int field_count;
+} StructInfo;
+
+
+typedef struct VarInfo {
+int name_start;
+int name_length;
+TypeInfo type;
+} VarInfo;
+
+
+typedef struct FuncInfo {
+int name_start;
+int name_length;
+TypeInfo return_type;
+} FuncInfo;
+
+
+typedef struct TypeEnv {
+char* src;
+StructInfo structs[256];
+int struct_count;
+VarInfo vars[512];
+int var_count;
+FuncInfo funcs[256];
+int func_count;
+int error_count;
+} TypeEnv;
+
+
+int same_name(char* src, int a_start, int a_len, int b_start, int b_len) {
+if (a_len != b_len) {
+return 0;
+}
+return !(strncmp(src + a_start, src + b_start, a_len));
+}
+
+
+void copy_type(TypeInfo* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+}
+void register_struct(TypeEnv* env, AST* ast);
+int resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out);
+int dot_resolution(TypeEnv* env, AST* expr, TypeInfo* out);
+
+
+void typecheck_collect(TypeEnv* env, AST* ast) {
+AST* curr = ast;
+while (curr != NULL) {
+if (curr->kind == AST_STRUCT_DEF) {
+}
+else if (curr->kind == AST_UNION_DEF) {
+}
+else if (curr->kind == AST_FUNC_DEF) {
+}
+else if (curr->kind == AST_PROP) {
+}
+else if (curr->kind == AST_VAR_DECL) {
+}
+curr = curr->next;
+}
+}
+
+
+void register_struct(TypeEnv* env, AST* ast) {
+StructInfo* info = env->structs + env->struct_count;
+info->name_start = ast->data._struct_def.name_start;
+info->name_length = ast->data._struct_def.name_length;
+info->field_count = 0;
+AST* field = ast->data._struct_def.fields;
+while (field != NULL) {
+FieldInfo* finfo = info->fields + info->field_count;
+finfo->name_start = field->data._struct_field.name_start;
+finfo->name_length = field->data._struct_field.name_length;
+copy_type(&(finfo->type), &(field->data._struct_field.type));
+info->field_count = info->field_count + 1;
+}
+env->struct_count = env->struct_count + 1;
+}
 int has_stdlib = 0;
 int has_stdio = 0;
 
