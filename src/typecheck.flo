@@ -1,0 +1,21 @@
+import "./ast.flo"
+
+forward struct StructInfo
+forward struct VarInfo
+forward struct FuncInfo
+
+struct TypeEnv {
+    src: @char,
+
+    structs: StructInfo[256],
+    struct_count: int,
+
+    vars: VarInfo[512],
+    var_count: int,
+
+    funcs: FuncInfo[256],
+    func_count: int,
+
+    error_count: int
+}
+

@@ -912,6 +912,9 @@ TypeInfo type;
 typedef struct struct_lit {
 AST* elements;
 } struct_lit;
+int ACCESS_UNKNOWN = 0;
+int ACCESS_DOT = 1;
+int ACCESS_ARROW = 2;
 
 
 typedef struct dot_access {
@@ -919,6 +922,8 @@ AST* object;
 int field_start;
 int field_length;
 AST* value;
+int access_kind;
+TypeInfo resolved_type;
 } dot_access;
 
 
