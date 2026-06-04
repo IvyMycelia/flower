@@ -2418,22 +2418,35 @@ dst->name_start = src_type->name_start;
 dst->name_length = src_type->name_length;
 }
 void register_struct(TypeEnv* env, AST* ast);
+void register_union(TypeEnv* env, AST* ast);
+void register_func(TypeEnv* env, AST* ast);
+void register_var(TypeEnv* env, AST* ast);
+void register_params(TypeEnv* env, AST* ast);
+void walk_statement_list(TypeEnv* env, AST* func);
+StructInfo* lookup_struct(TypeEnv* env, int start, int length);
+FieldInfo* lookup_field(TypeEnv* env, StructInfo* info, int start, int length);
 int resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out);
 int dot_resolution(TypeEnv* env, AST* expr, TypeInfo* out);
+void type_error(TypeEnv* env, AST* ast, char* message);
 
 
 void typecheck_collect(TypeEnv* env, AST* ast) {
 AST* curr = ast;
 while (curr != NULL) {
 if (curr->kind == AST_STRUCT_DEF) {
+register_struct(env, curr);
 }
 else if (curr->kind == AST_UNION_DEF) {
+register_union(env, curr);
 }
 else if (curr->kind == AST_FUNC_DEF) {
+register_func(env, curr);
 }
 else if (curr->kind == AST_PROP) {
+register_func(env, curr->data._prop.func);
 }
 else if (curr->kind == AST_VAR_DECL) {
+register_var(env, curr);
 }
 curr = curr->next;
 }
@@ -2454,6 +2467,256 @@ copy_type(&(finfo->type), &(field->data._struct_field.type));
 info->field_count = info->field_count + 1;
 }
 env->struct_count = env->struct_count + 1;
+}
+
+
+void register_union(TypeEnv* env, AST* ast) {
+StructInfo* info = env->structs + env->struct_count;
+info->name_start = ast->data._union_def.name_start;
+info->name_length = ast->data._union_def.name_length;
+info->field_count = 0;
+AST* field = ast->data._union_def.fields;
+while (field != NULL) {
+FieldInfo* finfo = info->fields + info->field_count;
+finfo->name_start = field->data._struct_field.name_start;
+finfo->name_length = field->data._struct_field.name_length;
+copy_type(&(finfo->type), &(field->data._struct_field.type));
+info->field_count = info->field_count + 1;
+field = field->next;
+}
+env->struct_count = env->struct_count + 1;
+}
+
+
+void register_func(TypeEnv* env, AST* ast) {
+FuncInfo* info = env->funcs + env->func_count;
+info->name_start = ast->data._func_def.name_start;
+info->name_length = ast->data._func_def.name_length;
+copy_type(&(info->return_type), &(ast->data._func_def.return_type));
+env->func_count = env->func_count + 1;
+}
+
+
+void register_var(TypeEnv* env, AST* ast) {
+if (ast == NULL) {
+return;}
+VarInfo* info = env->vars + env->var_count;
+info->name_start = ast->data._var_decl.name_start;
+info->name_length = ast->data._var_decl.name_length;
+copy_type(&(info->type), &(ast->data._var_decl.type));
+env->var_count = env->var_count + 1;
+}
+
+
+void register_params(TypeEnv* env, AST* func) {
+AST* param = func->data._func_def.params;
+while (param != NULL) {
+VarInfo* info = env->vars + env->var_count;
+info->name_start = param->data._func_params.name_start;
+info->name_length = param->data._func_params.name_length;
+copy_type(&(info->type), &(param->data._func_params.type));
+env->var_count = env->var_count + 1;
+param = param->next;
+}
+}
+
+
+void type_error(TypeEnv* env, AST* ast, char* message) {
+printf("%serror:%s %s\n", RED, RESET, message);
+env->error_count = env->error_count + 1;
+}
+int lookup_var_type(TypeEnv* env, int start, int length, TypeInfo* out);
+int lookup_func_return_type(TypeEnv* env, int start, int length, TypeInfo* out);
+
+
+int resolve_expr_type(TypeEnv* env, AST* expr, TypeInfo* out) {
+if (expr == NULL) {
+return 0;
+}
+if (expr->kind == AST_VAR_REF) {
+return lookup_var_type(env, expr->data._var_ref.name_start, expr->data._var_ref.name_length, out);
+}
+else if (expr->kind == AST_NEW) {
+copy_type(out, &(expr->data._new_alloc.type));
+out->pointer_depth = out->pointer_depth + 1;
+return 1;
+}
+else if (expr->kind == AST_DEREF) {
+if (!(resolve_expr_type(env, expr->data._deref.operand, out))) {
+return 0;
+}
+if (out->pointer_depth <= 0) {
+return 0;
+}
+out->pointer_depth = out->pointer_depth - 1;
+return 1;
+}
+else if (expr->kind == AST_GET_ADDR) {
+if (!(resolve_expr_type(env, expr->data._get_addr.operand, out))) {
+return 0;
+}
+out->pointer_depth = out->pointer_depth + 1;
+return 1;
+}
+else if (expr->kind == AST_FUNC_CALL) {
+return lookup_func_return_type(env, expr->data._func_call.name_start, expr->data._func_call.name_length, out);
+}
+else if (expr->kind == AST_SUBSCRIPT) {
+if (!(resolve_expr_type(env, expr->data._subscript.array, out))) {
+return 0;
+}
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_LITERAL) {
+out->base = TOKEN_INT;
+out->pointer_depth = 0;
+return 1;
+}
+return 0;
+}
+
+
+int resolve_dot_type(TypeEnv* env, AST* expr, TypeInfo* out) {
+TypeInfo* object_type;
+if (!(resolve_expr_type(env, expr->data._dot_access.object, object_type))) {
+return 0;
+}
+if (object_type->base != TOKEN_IDENTIFIER) {
+type_error(env, expr, "cannot access field on non-struct type");
+return 0;
+}
+if (object_type->pointer_depth == 0) {
+expr->data._dot_access.access_kind = ACCESS_DOT;
+}
+else if (object_type->pointer_depth == 1) {
+expr->data._dot_access.access_kind = ACCESS_ARROW;
+}
+else {
+return 0;
+}
+StructInfo* base_struct = lookup_struct(env, object_type->name_start, object_type->name_length);
+if (base_struct == NULL) {
+return 0;
+}
+FieldInfo* field = lookup_field(env, base_struct, expr->data._dot_access.field_start, expr->data._dot_access.field_length);
+if (field == NULL) {
+return 0;
+}
+copy_type(out, &(field->type));
+copy_type(&(expr->data._dot_access.resolved_type), &(field->type));
+return 1;
+}
+
+
+void typecheck_statement(TypeEnv* env, AST* ast) {
+if (ast->kind == AST_VAR_DECL) {
+register_var(env, ast);
+if (ast->data._var_decl.value != NULL) {
+TypeInfo* tmp;
+resolve_expr_type(env, ast->data._var_decl.value, tmp);
+}
+}
+else if (ast->kind == AST_VAR_ASS) {
+TypeInfo* tmp;
+resolve_expr_type(env, ast->data._var_ass.value, tmp);
+}
+else if (ast->kind == AST_DOT_ACCESS) {
+TypeInfo* tmp;
+resolve_expr_type(env, ast, tmp);
+if (ast->data._dot_access.value != NULL) {
+TypeInfo value_type;
+resolve_expr_type(env, ast->data._dot_access.value, &(value_type));
+}
+}
+else if (ast->kind == AST_IF) {
+TypeInfo* tmp;
+resolve_expr_type(env, ast->data._if_condition.condition, tmp);
+walk_statement_list(env, ast->data._if_condition.body);
+walk_statement_list(env, ast->data._if_condition.else_branch);
+}
+else if (ast->kind == AST_FLOW_CONTROL) {
+TypeInfo* tmp;
+resolve_expr_type(env, ast->data._flow_ctrl.value, tmp);
+}
+}
+
+
+void typecheck_ast(TypeEnv* env, AST* ast) {
+AST* curr = ast;
+while (curr != NULL) {
+if (curr->kind == AST_FUNC_DEF) {
+register_params(env, curr);
+walk_statement_list(env, curr->data._func_def.body);
+}
+else if (curr->kind == AST_PROP) {
+AST* _prop = curr->data._prop.func;
+register_params(env, _prop);
+walk_statement_list(env, _prop->data._func_def.body);
+}
+else if (curr->kind == AST_VAR_DECL) {
+typecheck_statement(env, curr);
+}
+curr = curr->next;
+}
+}
+
+
+StructInfo* lookup_struct(TypeEnv* env, int start, int length) {
+for (int i = 0; ((0) > (env->struct_count)) ? i > (env->struct_count) : i < (env->struct_count); ((0) > (env->struct_count)) ? i-- : i++) {
+StructInfo* info = env->structs + 1;
+if (same_name(env->src, info->name_start, info->name_length, start, length)) {
+return info;
+}
+}
+return NULL;
+}
+
+
+FieldInfo* lookup_field(TypeEnv* env, StructInfo* info, int start, int length) {
+for (int i = 0; ((0) > (info->field_count)) ? i > (info->field_count) : i < (info->field_count); ((0) > (info->field_count)) ? i-- : i++) {
+FieldInfo* field = info->fields + 1;
+if (same_name(env->src, field->name_start, field->name_length, start, length)) {
+return field;
+}
+}
+return NULL;
+}
+
+
+int lookup_var_type(TypeEnv* env, int start, int length, TypeInfo* out) {
+int i = env->var_count - 1;
+while (i >= 0) {
+VarInfo* info = env->vars + i;
+if (same_name(env->src, info->name_start, info->name_length, start, length)) {
+copy_type(out, &(info->type));
+return 1;
+}
+i = i - 1;
+}
+return 0;
+}
+
+
+int lookup_func_return_type(TypeEnv* env, int start, int length, TypeInfo* out) {
+for (int i = 0; ((0) > (env->func_count)) ? i > (env->func_count) : i < (env->func_count); ((0) > (env->func_count)) ? i-- : i++) {
+FuncInfo* info = env->funcs + 1;
+if (same_name(env->src, info->name_start, info->name_length, start, length)) {
+copy_type(out, &(info->return_type));
+return 1;
+}
+}
+return 0;
+}
+
+
+void walk_statement_list(TypeEnv* env, AST* list) {
+AST* curr = list;
+while (curr != NULL) {
+typecheck_statement(env, curr);
+curr = curr->next;
+}
 }
 int has_stdlib = 0;
 int has_stdio = 0;
