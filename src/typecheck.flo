@@ -50,3 +50,52 @@ struct FuncInfo {
     return_type: TypeInfo
 }
 
+
+
+// Helper Functions
+
+int same_name(src: @char, a_start: int, a_len: int, b_start: int, b_len: int):
+    if a_len != b_len:
+        return 0
+    end
+
+    return not strncmp(src + a_start, src + b_start, a_len)
+end
+
+void copy_type(dst: @TypeInfo, src_type: @TypeInfo):
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+end
+
+
+// === PASSES ===
+
+// Collection Pass
+
+void typecheck_collect(env: @TypeEnv, ast: @AST):
+    curr: @AST = ast
+    while curr != null:
+        if curr.kind == AST_STRUCT_DEF:
+            // struct
+
+        else if curr.kind == AST_UNION_DEF:
+            // union
+
+        else if curr.kind == AST_FUNC_DEF:
+            // func
+
+        else if curr.kind == AST_PROP:
+            // prop
+
+        else if curr.kind == AST_VAR_DEF:
+            // var
+        end
+        curr = curr.next
+    end
+end
+
+// Registrations
