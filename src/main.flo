@@ -10,6 +10,7 @@ import "src/ast.flo" as parser
 import "src/parser.flo" as parser
 import "src/file.flo" as file
 import "src/codegen.flo" as codegen
+import "src/typecheck.flo" as typecheck
 
 int main(argc: int, argv: @char[]):
     getcwd(project_root, sizeof(project_root));
@@ -89,6 +90,14 @@ int main(argc: int, argv: @char[]):
             tree: Parser;
             parser.init_parser(&tree, tokens, file, argv[i])
             ast: @AST = parser.parse(&tree)
+
+            // Typecheck
+            print("Checking types...\n");
+            type_errors: int = typecheck(ast, file)
+            if type_errors > 0:
+                printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET)
+                return -1
+            end
 
             // Codegen
             out_c: char[512]
