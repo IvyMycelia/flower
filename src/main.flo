@@ -9,6 +9,7 @@ import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
 import "src/parser.flo" as parser
 import "src/file.flo" as file
+import "src/module.flo" as module
 import "src/typecheck.flo" as typecheck
 import "src/codegen.flo" as codegen
 
@@ -66,34 +67,45 @@ int main(argc: int, argv: @char[]):
             realpath(argv[i], abs_path)
             set_current_file(abs_path)
 
-            file: @char = file.read_file(argv[i])
-            if not file:
+            // file: @char = file.read_file(argv[i])
+            // if not file:
+            //     return -1
+            // end
+
+            // // Initialize token handling
+            // tokens: @TokenStream = new TokenStream
+            // lexer.init_token_stream(tokens)
+
+            // // Lexer
+            // print("Lexing...\n"); fflush(stdout)
+            // lexer.lex(tokens, file)
+            // // lexer.print_all_tokens(tokens, file)
+
+            // // printf("sizeof AST: %d\n", sizeof(AST))
+            // // printf("sizeof Token: %d\n", sizeof(Token))
+            // // printf("sizeof TokenStream: %d\n", sizeof(TokenStream))
+
+            // // Parser
+            // print("Parsing...\n"); fflush(stdout)
+            // tree: Parser;
+            // parser.init_parser(&tree, tokens, file, argv[i])
+            // ast: @AST = parser.parse(&tree)
+
+            // // Typecheck
+            // print("Checking types...\n");
+            
+
+            print("Initializing modules..\n")
+            mods: @ModuleSet = new ModuleSet
+            init_modules(mods)
+
+            main_mod: @Module = load_module(mods, abs_path)
+            if main_mod == null:
                 return -1
             end
 
-
-            // Initialize token handling
-            tokens: @TokenStream = new TokenStream
-            lexer.init_token_stream(tokens)
-
-            // Lexer
-            print("Lexing...\n"); fflush(stdout)
-            lexer.lex(tokens, file)
-            // lexer.print_all_tokens(tokens, file)
-
-            // printf("sizeof AST: %d\n", sizeof(AST))
-            // printf("sizeof Token: %d\n", sizeof(Token))
-            // printf("sizeof TokenStream: %d\n", sizeof(TokenStream))
-
-            // Parser
-            print("Parsing...\n"); fflush(stdout)
-            tree: Parser;
-            parser.init_parser(&tree, tokens, file, argv[i])
-            ast: @AST = parser.parse(&tree)
-
-            // Typecheck
-            print("Checking types...\n");
-            type_errors: int = typecheck.check(ast, file)
+            print("Checking types..\n")
+            type_errors: int = check_modules(mods)
             if type_errors > 0:
                 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET)
                 return -1
@@ -114,18 +126,22 @@ int main(argc: int, argv: @char[]):
             end
 
             has_output: int = 0
-            if token_stream_contains(tokens, TOKEN_PRINT):
-                has_output = 1
+            for j in 0..mods.count:
+                m: @Module = mods.modules + j
+                if token_stream_contains(m.tokens, TOKEN_PRINT):
+                    has_output = 1
+                end
             end
 
             print("Codegen...\n"); fflush(stdout)
-            emit_includes(ast, output, file, tokens)
-            fprintf(output, "typedef struct { char* value; int length; } string;\n\n")
-            codegen(ast, output, file)
+            emit_includes(mods, output)
+            // fprintf(output, "typedef struct { char* value; int length; } string;\n\n")
+            codegen(mods, output)
 
-            free_token_stream(tokens)
-            prune tokens
-            prune file
+            // free_token_stream(tokens)
+            // prune tokens
+            // prune file
+            prune mods
             fclose(output)
 
             bin_name: char[512]

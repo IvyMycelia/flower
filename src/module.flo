@@ -1,0 +1,96 @@
+import "src/lexer.flo" as lexer
+import "src/parser.flo" as parser
+import "src/file.flo" as file
+
+// Modules
+forward struct Module
+
+struct Module {
+    path: @char,
+    src: @char,
+    tokens: @TokenStream,
+    ast: @AST
+}
+
+struct ModuleSet {
+    modules: Module[128],
+    count: int
+}
+
+void init_modules(set: @ModuleSet):
+    set.count = 0
+end
+
+forward @Module find_module(set: @ModuleSet, path: @char)
+forward void load_imports(set: @ModuleSet, module: @Module)
+forward @Module load_module(set: @ModuleSet, path: @char)
+
+
+@Module find_module(set: @ModuleSet, path: @char):
+    for i in 0..set.count:
+        m: @Module = set.modules + i
+        if not strcmp(m.path, path):
+            return m
+        end
+    end
+    return null
+end
+
+
+@char import_path_from_ast(import_ast: @AST, src: @char, current_path: @char):
+    if import_ast.data._import.is_system:
+        return null
+    end
+
+    raw_path: char[256]
+    snprintf(raw_path, sizeof(raw_path), "%.*s", import_ast.data._import.path_length - 2, src + import_ast.data._import.path_start + 1)
+
+    return resolve_path(current_path, raw_path)
+end
+
+void load_imports(set: @ModuleSet, module: @Module):
+    curr: @AST = module.ast
+
+    while curr != null:
+        if curr.kind == AST_IMPORT and not curr.data._import.is_system:
+            path: @char = import_path_from_ast(curr, module.src, module.path)
+            if path != null:
+                load_module(set, path)
+                prune path
+            end
+        end
+
+        curr = curr.next
+    end
+end
+
+@Module load_module(set: @ModuleSet, path: @char):
+    existing: @Module = find_module(set, path)
+    if existing != null:
+        return existing
+    end
+
+    src: @char = file.read_file(path)
+    if src == null:
+        printf("%sCould not import file: %s%s\n", RED, path, RESET)
+        return null
+    end
+
+    m: @Module = set.modules + set.count
+    m.path = strdup(path)
+    m.src = src
+
+    m.tokens = new TokenStream
+    lexer.init_token_stream(m.tokens)
+    lexer.lex(m.tokens, src)
+
+    p: Parser
+    parser.init_parser(&p, m.tokens, src, path)
+    m.ast = parser.parse(&p)
+
+    set.count = set.count + 1
+
+    load_imports(set, m)
+
+    return m
+end

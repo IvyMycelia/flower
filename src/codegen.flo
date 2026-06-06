@@ -1,21 +1,67 @@
 import "src/lexer.flo" as lexer
 import "src/parser.flo" as parser
 import "src/file.flo" as file
+import "src/module.flo" as module
 
 has_stdlib: int = 0
 has_stdio: int = 0
 
 // === UTILITIES ===
 
-void emit_includes(ast: @AST, out: @FILE, src: @char, ts: @TokenStream):
-    if not has_stdlib and (token_stream_contains(ts, TOKEN_NULL) or token_stream_contains(ts, TOKEN_NEW)):
-        fprintf(out, "#include <stdlib.h>\n")
-        has_stdlib = 1
+void emit_includes(mods: @ModuleSet, out: @FILE):
+    need_stdlib: int = 0
+    need_stdio: int = 0
+    need_string: int = 0
+    need_ctype: int = 0
+    need_unistd: int = 0
+
+    for i in 0..mods.count:
+        m: @Module = mods.modules + i
+
+        if token_stream_contains(m.tokens, TOKEN_NULL) or token_stream_contains(m.tokens, TOKEN_NEW):
+            has_stdlib = 1
+        end
+
+        if token_stream_contains(m.tokens, TOKEN_PRINT):
+            has_stdio = 1
+        end
+
+        curr: @AST = m.ast
+        while curr != null:
+            if curr.kind == AST_IMPORT and curr.data._import.is_system:
+                name: char[64]
+                snprintf(name, sizeof(name), "%.*s", curr.data._import.path_length, m.src + curr.data._import.path_start)
+
+                if not strcmp(name, "stdio"):
+                    need_stdio = 1
+                else if not strcmp(name, "stdlib"):
+                    need_stdlib = 1
+                else if not strcmp(name, "string"):
+                    need_string = 1
+                else if not strcmp(name, "ctype"):
+                    need_ctype = 1
+                else if not strcmp(name, "unistd"):
+                    need_unistd = 1
+                end
+            end
+            curr = curr.next
+        end
     end
 
-    if not has_stdio and token_stream_contains(ts, TOKEN_PRINT):
+    if need_stdlib:
+        fprintf(out, "#include <stdlib.h>\n")
+    end
+    if need_stdio:
         fprintf(out, "#include <stdio.h>\n")
-        has_stdio = 1
+    end
+    if need_string:
+        fprintf(out, "#include <string.h>\n")
+    end
+    if need_ctype:
+        fprintf(out, "#include <ctype.h>\n")
+    end
+    if need_unistd:
+        fprintf(out, "#include <unistd.h>\n")
     end
 end
 
@@ -517,15 +563,15 @@ void gen_forward(ast: @AST, out: @FILE, src: @char):
     end
 end
 
-// Import Cache
-struct ImportCache {
-    path: @char,
-    ast: @AST,
-    src: @char
-}
+// // Import Cache
+// struct ImportCache {
+//     path: @char,
+//     ast: @AST,
+//     src: @char
+// }
 
-import_cache: ImportCache[64]
-cache_count: int = 0
+// import_cache: ImportCache[64]
+// cache_count: int = 0
 
 // Track emitted alias+file combos to prevent duplicates
 struct EmittedImport {
@@ -537,31 +583,54 @@ emitted_imports: EmittedImport[256]
 emitted_count: int = 0
 
 // Currently processing (for circular detection)
-in_progress: @char[64]
-in_progress_count: int = 0
+// in_progress: @char[64]
+// in_progress_count: int = 0
+active_modules: @ModuleSet
+
+forward void gen_import(ast: @AST, out: @FILE, src: @char)
+forward void emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_alias: int)
+
+void emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_alias: int):
+    original: @char = current_file
+    current_file = mod.path
+
+    // Emit imported file
+    curr: @AST = mod.ast
+    while curr != null:
+        if curr.kind == AST_IMPORT:
+            gen_import(curr, out, mod.src)
+        else if curr.kind == AST_STRUCT_DEF:
+            gen_struct(curr, out, mod.src)
+        else if curr.kind == AST_UNION_DEF:
+            gen_union(curr, out, mod.src)
+        else if curr.kind == AST_PROP:
+            if has_alias:
+                gen_func_def_aliased(curr.data._prop.func, out, mod.src, alias, strlen(alias))
+            else:
+                gen_func_def(curr.data._prop.func, out, mod.src)
+            end
+        else if curr.kind == AST_FORWARD:
+            gen_forward(curr, out, mod.src)
+        else if curr.kind == AST_FUNC_DEF:
+            gen_func_def(curr, out, mod.src)
+        else if curr.kind == AST_VAR_DECL:
+            gen_var_decl(curr, out, mod.src)
+        end
+        curr = curr.next
+    end
+
+    current_file = original
+end
 
 void gen_import(ast: @AST, out: @FILE, src: @char):
     if ast.data._import.is_system:
-        name: char[64]
-        snprintf(name, sizeof(name), "%.*s", ast.data._import.path_length, src + ast.data._import.path_start)
-        if not strcmp(name, "stdio") and not has_stdio:
-            fprintf(out, "#include <stdio.h>\n")
-            has_stdio = 1
-        else if not strcmp(name, "stdlib") and not has_stdlib:
-            fprintf(out, "#include <stdlib.h>\n")
-            has_stdlib = 1
-        else if strcmp(name, "stdio") and strcmp(name, "stdlib"):
-            fprintf(out, "#include <%s.h>\n", name)
-        end
         return
     end
 
     raw_path: char[256]
     snprintf(raw_path, sizeof(raw_path), "%.*s", ast.data._import.path_length - 2, src + ast.data._import.path_start + 1)
     
-    original: @char = current_file
     path: @char = resolve_path(current_file, raw_path)
-    current_file = path
 
     alias: char[64] = ""
     if ast.data._import.has_alias:
@@ -571,110 +640,113 @@ void gen_import(ast: @AST, out: @FILE, src: @char):
     // Check if this exact path+alias combo already emitted
     for i in 0..emitted_count:
         if not strcmp(emitted_imports[i].path, path) and not strcmp(emitted_imports[i].alias, alias):
+            prune path
             return
         end
     end
 
-    // Check for circular imports
-    for i in 0..in_progress_count:
-        if not strcmp(in_progress[i], path):
-            printf("Circular import detected: %s\n", path)
-            exit(1)
-        end
+    // Module handling
+    imported: @Module = find_module(active_modules, path)
+    if imported == null:
+        printf("%sCould not find loaded import module: %s%s", RED, RESET, path)
+        prune path
+        return
     end
 
-    // Mark as in progress
-    in_progress[in_progress_count] = strdup(path)
-    in_progress_count = in_progress_count + 1
+    // // Mark as in progress
+    // in_progress[in_progress_count] = strdup(path)
+    // in_progress_count = in_progress_count + 1
 
-    // Check cache for already-parsed AST
-    imported_ast: @AST = null
-    imported_src: @char = null
-    cached_ts: @TokenStream = null
+    // // Check cache for already-parsed AST
+    // imported_ast: @AST = null
+    // imported_src: @char = null
+    // cached_ts: @TokenStream = null
 
-    for i in 0..cache_count:
-        if not strcmp(import_cache[i].path, path):
-            imported_ast = import_cache[i].ast
-            imported_src = import_cache[i].src
-            break
-        end
-    end
+    // for i in 0..cache_count:
+    //     if not strcmp(import_cache[i].path, path):
+    //         imported_ast = import_cache[i].ast
+    //         imported_src = import_cache[i].src
+    //         break
+    //     end
+    // end
     
-    // If not cached, read and parse
-    if imported_ast == null:
-        imported_src = file.read_file(path)
-        if not imported_src:
-            printf("%sCould not import file: %s\nfrom file:%s\nwith root: %s%s\n", RED, path, original, project_root, RESET)
-            exit(1)
-        end
+    // // If not cached, read and parse
+    // if imported_ast == null:
+    //     imported_src = file.read_file(path)
+    //     if not imported_src:
+    //         printf("%sCould not import file: %s\nfrom file:%s\nwith root: %s%s\n", RED, path, original, project_root, RESET)
+    //         exit(1)
+    //     end
 
-        set_current_file(path)
+    //     set_current_file(path)
 
-        printf("Importing: %s\n", path)
-        ts: @TokenStream = new TokenStream
-        lexer.init_token_stream(ts)
-        lexer.lex(ts, imported_src)
+    //     printf("Importing: %s\n", path)
+    //     ts: @TokenStream = new TokenStream
+    //     lexer.init_token_stream(ts)
+    //     lexer.lex(ts, imported_src)
         
-        if strcmp(path, "PATH") == 0:
-            lexer.print_all_tokens(ts, imported_src)
-        end
+    //     if strcmp(path, "PATH") == 0:
+    //         lexer.print_all_tokens(ts, imported_src)
+    //     end
 
-        if not has_stdlib and (token_stream_contains(ts, TOKEN_NEW) or token_stream_contains(ts, TOKEN_NULL)):
-            fprintf(out, "#include <stdlib.h>\n")
-            has_stdlib = 1
-        end
-        if not has_stdio and token_stream_contains(ts, TOKEN_PRINT):
-            fprintf(out, "#include <stdio.h>\n")
-            has_stdio = 1
-        end
+    //     if not has_stdlib and (token_stream_contains(ts, TOKEN_NEW) or token_stream_contains(ts, TOKEN_NULL)):
+    //         fprintf(out, "#include <stdlib.h>\n")
+    //         has_stdlib = 1
+    //     end
+    //     if not has_stdio and token_stream_contains(ts, TOKEN_PRINT):
+    //         fprintf(out, "#include <stdio.h>\n")
+    //         has_stdio = 1
+    //     end
 
-        p: Parser
-        parser.init_parser(&p, ts, imported_src, path)
-        imported_ast = parser.parse(&p)
+    //     p: Parser
+    //     parser.init_parser(&p, ts, imported_src, path)
+    //     imported_ast = parser.parse(&p)
 
-        // Store in cache
-        import_cache[cache_count].path = strdup(path)
-        import_cache[cache_count].ast = imported_ast
-        import_cache[cache_count].src = imported_src
-        cache_count = cache_count + 1
-    end
+    //     // Store in cache
+    //     import_cache[cache_count].path = strdup(path)
+    //     import_cache[cache_count].ast = imported_ast
+    //     import_cache[cache_count].src = imported_src
+    //     cache_count = cache_count + 1
+    // end
 
     // Record this path+alias as emitted
     emitted_imports[emitted_count].path = strdup(path)
     emitted_imports[emitted_count].alias = strdup(alias)
     emitted_count = emitted_count + 1
 
-    // Emit functions
-    curr: @AST = imported_ast
-    while curr != null:
-        if curr.kind == AST_IMPORT:
-            gen_import(curr, out, imported_src)
-        else if curr.kind == AST_STRUCT_DEF:
-            gen_struct(curr, out, imported_src)
-        else if curr.kind == AST_UNION_DEF:
-            gen_union(curr, out, imported_src)
-        else if curr.kind == AST_PROP:
-            if ast.data._import.has_alias:
-                gen_func_def_aliased(curr.data._prop.func, out, imported_src, alias, strlen(alias))
-            else:
-                gen_func_def(curr.data._prop.func, out, imported_src)
-            end
-        else if curr.kind == AST_FORWARD:
-            gen_forward(curr, out, imported_src)
-        else if curr.kind == AST_FUNC_DEF:
-            gen_func_def(curr, out, imported_src)
-        else if curr.kind == AST_VAR_DECL:
-            gen_var_decl(curr, out, imported_src)
-        end
-        curr = curr.next
-    end
+    emit_module(imported, out, alias, strlen(alias), ast.data._import.has_alias)
+
+    // // Emit functions
+    // curr: @AST = imported_ast
+    // while curr != null:
+    //     if curr.kind == AST_IMPORT:
+    //         gen_import(curr, out, imported_src)
+    //     else if curr.kind == AST_STRUCT_DEF:
+    //         gen_struct(curr, out, imported_src)
+    //     else if curr.kind == AST_UNION_DEF:
+    //         gen_union(curr, out, imported_src)
+    //     else if curr.kind == AST_PROP:
+    //         if ast.data._import.has_alias:
+    //             gen_func_def_aliased(curr.data._prop.func, out, imported_src, alias, strlen(alias))
+    //         else:
+    //             gen_func_def(curr.data._prop.func, out, imported_src)
+    //         end
+    //     else if curr.kind == AST_FORWARD:
+    //         gen_forward(curr, out, imported_src)
+    //     else if curr.kind == AST_FUNC_DEF:
+    //         gen_func_def(curr, out, imported_src)
+    //     else if curr.kind == AST_VAR_DECL:
+    //         gen_var_decl(curr, out, imported_src)
+    //     end
+    //     curr = curr.next
+    // end
 
     prune path
-    current_file = original
+    // current_file = original
 
-    // Remove from in_progress
-    in_progress_count = in_progress_count - 1
-    prune in_progress[in_progress_count]
+    // // Remove from in_progress
+    // in_progress_count = in_progress_count - 1
+    // prune in_progress[in_progress_count]
 end
 
 
@@ -916,25 +988,13 @@ end
 
 // === SETUP ===
 
-void codegen(ast: @AST, out: @FILE, src: @char):
-    curr: @AST = ast
+void codegen(mods: @ModuleSet, out: @FILE):
+    active_modules = mods
 
-    while curr != null:
-        if curr.kind == AST_IMPORT:
-            gen_import(curr, out, src)
-        else if curr.kind == AST_FUNC_DEF:
-            gen_func_def(curr, out, src)
-        else if curr.kind == AST_STRUCT_DEF:
-            gen_struct(curr, out, src)
-        else if curr.kind == AST_UNION_DEF:
-            gen_union(curr, out, src)
-        else if curr.kind == AST_PROP:
-            gen_func_def(curr.data._prop.func, out, src)
-        else if curr.kind == AST_FORWARD:
-            gen_forward(curr, out, src)
-        else if curr.kind == AST_VAR_DECL:
-            gen_var_decl(curr, out, src)
-        end
-        curr = curr.next
+    if mods.count == 0:
+        return
     end
+
+    main_mod: @Module = mods.modules + 0
+    emit_module(main_mod, out, "", 0, 0)
 end

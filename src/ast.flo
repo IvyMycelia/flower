@@ -62,7 +62,8 @@ struct TypeInfo {
     array_size: int,
     arr_size_expr: @AST,
     name_start: int,
-    name_length: int
+    name_length: int,
+    name_src: @char
 }
 
     // === Type Casting ===
