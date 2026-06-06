@@ -125,6 +125,7 @@ Current experiments welcome. See [Docs/CONTRIBUTING.md](Docs/CONTRIBUTING.md) fo
 ## Next
 
 - ~~Error Recovery (better compiler feedback, non-terminating parser)~~
+- ~~More in-depth context-aware type tracking system~~
 - String operations
 - Standard library creation / expansion
 - Performance optimizations

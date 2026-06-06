@@ -6,10 +6,9 @@ Where Flower is going. Subject to change based on feedback, experiments, and pro
 
 Focus: Polish the working compiler.
 
-- [x] Error Recovery            : Continue parsing after first error
-- [x] Better Error Messages     : Context, suggestions, etc
-- [ ] Standard Library Basics   : More stdio, string operations
-- [ ] Documentation             : Complete language spec examples
+- [x] Error Recovery                : Continue parsing after first error
+- [x] Better Error Messages         : Context, suggestions, etc
+- [x] Better Type-Tracking System   : Import handling / separation, proper type / pointer aware codegen
 
 ## v1.2.0 (Strings & Bools)
 
@@ -18,6 +17,11 @@ Core feature: Proper String and Boolean support.
 - [ ] String operations
 - [ ] Boolean support distinct from `1` and `0`
 - [ ] Examples and tests
+- [ ] Standard Library Basics
+
+## v1.3.0 (Documentation)
+
+- [ ] Documentation : Complete language spec examples
 
 **Why String Operations and Booleans first?** Many programs need them. Current work arounds are verbose.
 
