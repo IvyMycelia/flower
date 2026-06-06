@@ -104,6 +104,7 @@ end
     type.pointer_depth = 0
     type.array_size = 0
     type.arr_size_expr = null
+    type.name_src = ps.src
 
     while parser_peek(ps).kind == TOKEN_AT:
         type.pointer_depth = type.pointer_depth + 1

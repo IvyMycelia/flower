@@ -1,11 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
-typedef struct { char* value; int length; } string;
-
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <stdlib.h>
 char project_root[512];
 char* current_file;
 
@@ -49,7 +46,6 @@ snprintf(resolved, sizeof(resolved), "%s/%s", project_root, import_path);
 }
 return strdup(resolved);
 }
-#include <stdlib.h>
 int TOKEN_INT = 1;
 int TOKEN_FLOAT = 2;
 int TOKEN_DOUBLE = 3;
@@ -773,6 +769,7 @@ int array_size;
 AST* arr_size_expr;
 int name_start;
 int name_length;
+char* name_src;
 } TypeInfo;
 
 
@@ -912,6 +909,9 @@ TypeInfo type;
 typedef struct struct_lit {
 AST* elements;
 } struct_lit;
+int ACCESS_UNKNOWN = 0;
+int ACCESS_DOT = 1;
+int ACCESS_ARROW = 2;
 
 
 typedef struct dot_access {
@@ -919,6 +919,8 @@ AST* object;
 int field_start;
 int field_length;
 AST* value;
+int access_kind;
+TypeInfo resolved_type;
 } dot_access;
 
 
@@ -1046,7 +1048,6 @@ AST* next;
 int value;
 NodeData data;
 } AST;
-#include <stdlib.h>
 
 
 typedef struct Parser {
@@ -1140,6 +1141,7 @@ TypeInfo* type = malloc(sizeof(TypeInfo));
 type->pointer_depth = 0;
 type->array_size = 0;
 type->arr_size_expr = NULL;
+type->name_src = ps->src;
 while (parser_peek(ps)->kind == TOKEN_AT) {
 type->pointer_depth = type->pointer_depth + 1;
 parser_advance(ps);
@@ -2330,7 +2332,6 @@ tail = node;
 }
 return head;
 }
-#include <stdlib.h>
 
 
 char* file_read_file(char* path) {
@@ -2347,19 +2348,592 @@ buffer[length] = '\0';
 fclose(f);
 return buffer;
 }
-#include <stdlib.h>
+typedef struct Module Module;
+
+
+typedef struct Module {
+char* path;
+char* src;
+TokenStream* tokens;
+AST* ast;
+} Module;
+
+
+typedef struct ModuleSet {
+Module modules[128];
+int count;
+} ModuleSet;
+
+
+void init_modules(ModuleSet* set) {
+set->count = 0;
+}
+Module* find_module(ModuleSet* set, char* path);
+void load_imports(ModuleSet* set, Module* module);
+Module* load_module(ModuleSet* set, char* path);
+
+
+Module* find_module(ModuleSet* set, char* path) {
+for (int i = 0; ((0) > (set->count)) ? i > (set->count) : i < (set->count); ((0) > (set->count)) ? i-- : i++) {
+Module* m = set->modules + i;
+if (!(strcmp(m->path, path))) {
+return m;
+}
+}
+return NULL;
+}
+
+
+char* import_path_from_ast(AST* import_ast, char* src, char* current_path) {
+if (import_ast->data._import.is_system) {
+return NULL;
+}
+char raw_path[256];
+snprintf(raw_path, sizeof(raw_path), "%.*s", import_ast->data._import.path_length - 2, src + import_ast->data._import.path_start + 1);
+return resolve_path(current_path, raw_path);
+}
+
+
+void load_imports(ModuleSet* set, Module* module) {
+AST* curr = module->ast;
+while (curr != NULL) {
+if (curr->kind == AST_IMPORT  &&  !(curr->data._import.is_system)) {
+char* path = import_path_from_ast(curr, module->src, module->path);
+if (path != NULL) {
+load_module(set, path);
+free(path);
+}
+}
+curr = curr->next;
+}
+}
+
+
+Module* load_module(ModuleSet* set, char* path) {
+Module* existing = find_module(set, path);
+if (existing != NULL) {
+return existing;
+}
+char* src = file_read_file(path);
+if (src == NULL) {
+printf("%sCould not import file: %s%s\n", RED, path, RESET);
+return NULL;
+}
+Module* m = set->modules + set->count;
+m->path = strdup(path);
+m->src = src;
+m->tokens = malloc(sizeof(TokenStream));
+lexer_init_token_stream(m->tokens);
+lexer_lex(m->tokens, src);
+Parser p;
+parser_init_parser(&(p), m->tokens, src, path);
+m->ast = parser_parse(&(p));
+set->count = set->count + 1;
+load_imports(set, m);
+return m;
+}
+typedef struct StructInfo StructInfo;
+typedef struct FieldInfo FieldInfo;
+typedef struct VarInfo VarInfo;
+typedef struct FuncInfo FuncInfo;
+
+
+typedef struct FieldInfo {
+char* src;
+int name_start;
+int name_length;
+TypeInfo type;
+} FieldInfo;
+
+
+typedef struct StructInfo {
+char* src;
+int name_start;
+int name_length;
+FieldInfo fields[128];
+int field_count;
+} StructInfo;
+
+
+typedef struct VarInfo {
+char* src;
+int name_start;
+int name_length;
+TypeInfo type;
+} VarInfo;
+
+
+typedef struct FuncInfo {
+char* src;
+int name_start;
+int name_length;
+TypeInfo return_type;
+} FuncInfo;
+
+
+typedef struct TypeEnv {
+char* src;
+StructInfo structs[1024];
+int struct_count;
+VarInfo vars[2048];
+int var_count;
+FuncInfo funcs[1024];
+int func_count;
+int error_count;
+} TypeEnv;
+
+
+int same_name(char* a_src, int a_start, int a_len, char* b_src, int b_start, int b_len) {
+if (a_len != b_len) {
+return 0;
+}
+return !(strncmp(a_src + a_start, b_src + b_start, a_len));
+}
+
+
+void copy_type(TypeInfo* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+}
+
+
+void type_error(TypeEnv* env, AST* ast, char* message) {
+printf("%serror:%s %s\n", RED, RESET, message);
+env->error_count = env->error_count + 1;
+}
+void register_struct(TypeEnv* env, AST* ast, char* src);
+void register_union(TypeEnv* env, AST* ast, char* src);
+void register_func(TypeEnv* env, AST* ast, char* src);
+void register_var(TypeEnv* env, AST* ast, char* src);
+void register_params(TypeEnv* env, AST* ast, char* src);
+void walk_statement_list(TypeEnv* env, AST* list, char* src);
+void typecheck_statement(TypeEnv* env, AST* ast, char* src);
+StructInfo* lookup_struct(TypeEnv* env, char* src, int start, int length);
+FieldInfo* lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length);
+int resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
+int resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
+void type_error(TypeEnv* env, AST* ast, char* message);
+
+
+void typecheck_collect(TypeEnv* env, AST* ast, char* src) {
+AST* curr = ast;
+while (curr != NULL) {
+if (curr->kind == AST_STRUCT_DEF) {
+register_struct(env, curr, src);
+}
+else if (curr->kind == AST_UNION_DEF) {
+register_union(env, curr, src);
+}
+else if (curr->kind == AST_FUNC_DEF) {
+register_func(env, curr, src);
+}
+else if (curr->kind == AST_PROP) {
+register_func(env, curr->data._prop.func, src);
+}
+else if (curr->kind == AST_VAR_DECL) {
+register_var(env, curr, src);
+}
+curr = curr->next;
+}
+}
+
+
+void register_struct(TypeEnv* env, AST* ast, char* src) {
+if (env->struct_count >= 1024) {
+type_error(env, ast, "type environment struct table overflow");
+return;}
+StructInfo* info = env->structs + env->struct_count;
+info->src = src;
+info->name_start = ast->data._struct_def.name_start;
+info->name_length = ast->data._struct_def.name_length;
+info->field_count = 0;
+AST* field = ast->data._struct_def.fields;
+while (field != NULL) {
+FieldInfo* finfo = info->fields + info->field_count;
+finfo->src = src;
+finfo->name_start = field->data._struct_field.name_start;
+finfo->name_length = field->data._struct_field.name_length;
+copy_type(&(finfo->type), &(field->data._struct_field.type));
+info->field_count = info->field_count + 1;
+field = field->next;
+}
+env->struct_count = env->struct_count + 1;
+}
+
+
+void register_union(TypeEnv* env, AST* ast, char* src) {
+if (env->struct_count >= 1024) {
+type_error(env, ast, "type environment struct table overflow");
+return;}
+StructInfo* info = env->structs + env->struct_count;
+info->src = src;
+info->name_start = ast->data._union_def.name_start;
+info->name_length = ast->data._union_def.name_length;
+info->field_count = 0;
+AST* field = ast->data._union_def.fields;
+while (field != NULL) {
+FieldInfo* finfo = info->fields + info->field_count;
+finfo->src = src;
+finfo->name_start = field->data._struct_field.name_start;
+finfo->name_length = field->data._struct_field.name_length;
+copy_type(&(finfo->type), &(field->data._struct_field.type));
+info->field_count = info->field_count + 1;
+field = field->next;
+}
+env->struct_count = env->struct_count + 1;
+}
+
+
+void register_func(TypeEnv* env, AST* ast, char* src) {
+if (env->func_count >= 1024) {
+type_error(env, ast, "type environment struct table overflow");
+return;}
+FuncInfo* info = env->funcs + env->func_count;
+info->src = src;
+info->name_start = ast->data._func_def.name_start;
+info->name_length = ast->data._func_def.name_length;
+copy_type(&(info->return_type), &(ast->data._func_def.return_type));
+env->func_count = env->func_count + 1;
+}
+
+
+void register_var(TypeEnv* env, AST* ast, char* src) {
+if (ast == NULL) {
+return;}
+if (env->var_count >= 2048) {
+type_error(env, ast, "type environment struct table overflow");
+return;}
+VarInfo* info = env->vars + env->var_count;
+info->src = src;
+info->name_start = ast->data._var_decl.name_start;
+info->name_length = ast->data._var_decl.name_length;
+copy_type(&(info->type), &(ast->data._var_decl.type));
+env->var_count = env->var_count + 1;
+}
+
+
+void register_params(TypeEnv* env, AST* func, char* src) {
+AST* param = func->data._func_def.params;
+while (param != NULL) {
+if (env->var_count >= 2048) {
+type_error(env, func, "type environment struct table overflow");
+return;}
+VarInfo* info = env->vars + env->var_count;
+info->src = src;
+info->name_start = param->data._func_params.name_start;
+info->name_length = param->data._func_params.name_length;
+copy_type(&(info->type), &(param->data._func_params.type));
+env->var_count = env->var_count + 1;
+param = param->next;
+}
+}
+int lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
+int lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
+
+
+int resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+if (expr == NULL) {
+return 0;
+}
+if (expr->kind == AST_VAR_REF) {
+return lookup_var_type(env, src, expr->data._var_ref.name_start, expr->data._var_ref.name_length, out);
+}
+else if (expr->kind == AST_NEW) {
+copy_type(out, &(expr->data._new_alloc.type));
+out->pointer_depth = out->pointer_depth + 1;
+return 1;
+}
+else if (expr->kind == AST_DEREF) {
+if (!(resolve_expr(env, expr->data._deref.operand, out, src))) {
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+return 0;
+}
+if (out->pointer_depth <= 0) {
+return 0;
+}
+out->pointer_depth = out->pointer_depth - 1;
+return 1;
+}
+else if (expr->kind == AST_GET_ADDR) {
+if (!(resolve_expr(env, expr->data._get_addr.operand, out, src))) {
+return 0;
+}
+out->pointer_depth = out->pointer_depth + 1;
+return 1;
+}
+else if (expr->kind == AST_DOT_ACCESS) {
+return resolve_dot(env, expr, out, src);
+}
+else if (expr->kind == AST_FUNC_CALL) {
+return lookup_func_return_type(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length, out);
+}
+else if (expr->kind == AST_SUBSCRIPT) {
+if (!(resolve_expr(env, expr->data._subscript.array, out, src))) {
+return 0;
+}
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_LITERAL) {
+out->base = TOKEN_INT;
+out->pointer_depth = 0;
+return 1;
+}
+return 0;
+}
+
+
+int resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+TypeInfo* object_type = malloc(sizeof(TypeInfo));
+if (!(resolve_expr(env, expr->data._dot_access.object, object_type, src))) {
+type_error(env, expr, "could not resolve object type for field access");
+free(object_type);
+return 0;
+}
+if (object_type->base != TOKEN_IDENTIFIER) {
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+free(object_type);
+return 0;
+}
+if (object_type->pointer_depth == 0) {
+expr->data._dot_access.access_kind = ACCESS_DOT;
+}
+else if (object_type->pointer_depth == 1) {
+expr->data._dot_access.access_kind = ACCESS_ARROW;
+}
+else {
+type_error(env, expr, "cannot directly access field through multi-pointer type");
+free(object_type);
+return 0;
+}
+StructInfo* base_struct = lookup_struct(env, object_type->name_src, object_type->name_start, object_type->name_length);
+if (base_struct == NULL) {
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+free(object_type);
+return 0;
+}
+FieldInfo* field = lookup_field(env, base_struct, src, expr->data._dot_access.field_start, expr->data._dot_access.field_length);
+if (field == NULL) {
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+free(object_type);
+return 0;
+}
+copy_type(out, &(field->type));
+copy_type(&(expr->data._dot_access.resolved_type), &(field->type));
+free(object_type);
+return 1;
+}
+
+
+void typecheck_statement(TypeEnv* env, AST* ast, char* src) {
+if (ast->kind == AST_VAR_DECL) {
+register_var(env, ast, src);
+if (ast->data._var_decl.value != NULL) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+resolve_expr(env, ast->data._var_decl.value, tmp, src);
+free(tmp);
+}
+}
+else if (ast->kind == AST_VAR_ASS) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+resolve_expr(env, ast->data._var_ass.value, tmp, src);
+free(tmp);
+}
+else if (ast->kind == AST_DOT_ACCESS) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+resolve_expr(env, ast, tmp, src);
+free(tmp);
+if (ast->data._dot_access.value != NULL) {
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+resolve_expr(env, ast->data._dot_access.value, value_type, src);
+free(value_type);
+}
+}
+else if (ast->kind == AST_IF) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+resolve_expr(env, ast->data._if_condition.condition, tmp, src);
+walk_statement_list(env, ast->data._if_condition.body, src);
+walk_statement_list(env, ast->data._if_condition.else_branch, src);
+free(tmp);
+}
+else if (ast->kind == AST_FLOW_CONTROL) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+resolve_expr(env, ast->data._flow_ctrl.value, tmp, src);
+free(tmp);
+}
+}
+
+
+void typecheck_ast(TypeEnv* env, AST* ast, char* src) {
+AST* curr = ast;
+while (curr != NULL) {
+if (curr->kind == AST_FUNC_DEF) {
+int saved_var_count = env->var_count;
+register_params(env, curr, src);
+walk_statement_list(env, curr->data._func_def.body, src);
+env->var_count = saved_var_count;
+}
+else if (curr->kind == AST_PROP) {
+int saved_var_count = env->var_count;
+AST* _prop = curr->data._prop.func;
+register_params(env, _prop, src);
+walk_statement_list(env, _prop->data._func_def.body, src);
+env->var_count = saved_var_count;
+}
+else if (curr->kind == AST_VAR_DECL) {
+if (curr->data._var_decl.value != NULL) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+resolve_expr(env, curr->data._var_decl.value, tmp, src);
+free(tmp);
+}
+}
+curr = curr->next;
+}
+}
+
+
+StructInfo* lookup_struct(TypeEnv* env, char* src, int start, int length) {
+for (int i = 0; ((0) > (env->struct_count)) ? i > (env->struct_count) : i < (env->struct_count); ((0) > (env->struct_count)) ? i-- : i++) {
+StructInfo* info = env->structs + i;
+if (same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+return info;
+}
+}
+return NULL;
+}
+
+
+FieldInfo* lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length) {
+for (int i = 0; ((0) > (info->field_count)) ? i > (info->field_count) : i < (info->field_count); ((0) > (info->field_count)) ? i-- : i++) {
+FieldInfo* field = info->fields + i;
+if (same_name(field->src, field->name_start, field->name_length, src, start, length)) {
+return field;
+}
+}
+return NULL;
+}
+
+
+int lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
+int i = env->var_count - 1;
+while (i >= 0) {
+VarInfo* info = env->vars + i;
+if (same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+copy_type(out, &(info->type));
+return 1;
+}
+i = i - 1;
+}
+return 0;
+}
+
+
+int lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
+for (int i = 0; ((0) > (env->func_count)) ? i > (env->func_count) : i < (env->func_count); ((0) > (env->func_count)) ? i-- : i++) {
+FuncInfo* info = env->funcs + i;
+if (same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+copy_type(out, &(info->return_type));
+return 1;
+}
+}
+return 0;
+}
+
+
+void walk_statement_list(TypeEnv* env, AST* list, char* src) {
+AST* curr = list;
+while (curr != NULL) {
+typecheck_statement(env, curr, src);
+curr = curr->next;
+}
+}
+
+
+void init_type_env(TypeEnv* env) {
+env->struct_count = 0;
+env->var_count = 0;
+env->func_count = 0;
+env->error_count = 0;
+}
+
+
+int check_modules(ModuleSet* mods) {
+TypeEnv* env = malloc(sizeof(TypeEnv));
+init_type_env(env);
+for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
+Module* m = mods->modules + i;
+typecheck_collect(env, m->ast, m->src);
+}
+for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
+Module* m = mods->modules + i;
+typecheck_ast(env, m->ast, m->src);
+}
+int count = env->error_count;
+free(env);
+return count;
+}
 int has_stdlib = 0;
 int has_stdio = 0;
 
 
-void emit_includes(AST* ast, FILE* out, char* src, TokenStream* ts) {
-if (!(has_stdlib)  &&  token_stream_contains(ts, TOKEN_NULL)  ||  token_stream_contains(ts, TOKEN_NEW)) {
-fprintf(out, "#include <stdlib.h>\n");
+void emit_includes(ModuleSet* mods, FILE* out) {
+int need_stdlib = 0;
+int need_stdio = 0;
+int need_string = 0;
+int need_ctype = 0;
+int need_unistd = 0;
+for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
+Module* m = mods->modules + i;
+if (token_stream_contains(m->tokens, TOKEN_NULL)  ||  token_stream_contains(m->tokens, TOKEN_NEW)) {
 has_stdlib = 1;
 }
-if (!(has_stdio)  &&  token_stream_contains(ts, TOKEN_PRINT)) {
-fprintf(out, "#include <stdio.h>\n");
+if (token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_stdio = 1;
+}
+AST* curr = m->ast;
+while (curr != NULL) {
+if (curr->kind == AST_IMPORT  &&  curr->data._import.is_system) {
+char name[64];
+snprintf(name, sizeof(name), "%.*s", curr->data._import.path_length, m->src + curr->data._import.path_start);
+if (!(strcmp(name, "stdio"))) {
+need_stdio = 1;
+}
+else if (!(strcmp(name, "stdlib"))) {
+need_stdlib = 1;
+}
+else if (!(strcmp(name, "string"))) {
+need_string = 1;
+}
+else if (!(strcmp(name, "ctype"))) {
+need_ctype = 1;
+}
+else if (!(strcmp(name, "unistd"))) {
+need_unistd = 1;
+}
+}
+curr = curr->next;
+}
+}
+if (need_stdlib) {
+fprintf(out, "#include <stdlib.h>\n");
+}
+if (need_stdio) {
+fprintf(out, "#include <stdio.h>\n");
+}
+if (need_string) {
+fprintf(out, "#include <string.h>\n");
+}
+if (need_ctype) {
+fprintf(out, "#include <ctype.h>\n");
+}
+if (need_unistd) {
+fprintf(out, "#include <unistd.h>\n");
 }
 }
 
@@ -2829,139 +3403,79 @@ fprintf(out, "typedef struct %.*s %.*s;\n", ast->data._forward.name_length, src 
 }
 
 
-typedef struct ImportCache {
-char* path;
-AST* ast;
-char* src;
-} ImportCache;
-ImportCache import_cache[64];
-int cache_count = 0;
-
-
 typedef struct EmittedImport {
 char* path;
 char* alias;
 } EmittedImport;
 EmittedImport emitted_imports[256];
 int emitted_count = 0;
-char* in_progress[64];
-int in_progress_count = 0;
+ModuleSet* active_modules;
+void gen_import(AST* ast, FILE* out, char* src);
+void emit_module(Module* mod, FILE* out, char* alias, int alias_len, int has_alias);
+
+
+void emit_module(Module* mod, FILE* out, char* alias, int alias_len, int has_alias) {
+char* original = current_file;
+current_file = mod->path;
+AST* curr = mod->ast;
+while (curr != NULL) {
+if (curr->kind == AST_IMPORT) {
+gen_import(curr, out, mod->src);
+}
+else if (curr->kind == AST_STRUCT_DEF) {
+gen_struct(curr, out, mod->src);
+}
+else if (curr->kind == AST_UNION_DEF) {
+gen_union(curr, out, mod->src);
+}
+else if (curr->kind == AST_PROP) {
+if (has_alias) {
+gen_func_def_aliased(curr->data._prop.func, out, mod->src, alias, strlen(alias));
+}
+else {
+gen_func_def(curr->data._prop.func, out, mod->src);
+}
+}
+else if (curr->kind == AST_FORWARD) {
+gen_forward(curr, out, mod->src);
+}
+else if (curr->kind == AST_FUNC_DEF) {
+gen_func_def(curr, out, mod->src);
+}
+else if (curr->kind == AST_VAR_DECL) {
+gen_var_decl(curr, out, mod->src);
+}
+curr = curr->next;
+}
+current_file = original;
+}
 
 
 void gen_import(AST* ast, FILE* out, char* src) {
 if (ast->data._import.is_system) {
-char name[64];
-snprintf(name, sizeof(name), "%.*s", ast->data._import.path_length, src + ast->data._import.path_start);
-if (!(strcmp(name, "stdio"))  &&  !(has_stdio)) {
-fprintf(out, "#include <stdio.h>\n");
-has_stdio = 1;
-}
-else if (!(strcmp(name, "stdlib"))  &&  !(has_stdlib)) {
-fprintf(out, "#include <stdlib.h>\n");
-has_stdlib = 1;
-}
-else if (strcmp(name, "stdio")  &&  strcmp(name, "stdlib")) {
-fprintf(out, "#include <%s.h>\n", name);
-}
 return;}
 char raw_path[256];
 snprintf(raw_path, sizeof(raw_path), "%.*s", ast->data._import.path_length - 2, src + ast->data._import.path_start + 1);
-char* original = current_file;
 char* path = resolve_path(current_file, raw_path);
-current_file = path;
 char alias[64] = "";
 if (ast->data._import.has_alias) {
 snprintf(alias, sizeof(alias), "%.*s", ast->data._import.alias_length, src + ast->data._import.alias_start);
 }
 for (int i = 0; ((0) > (emitted_count)) ? i > (emitted_count) : i < (emitted_count); ((0) > (emitted_count)) ? i-- : i++) {
 if (!(strcmp(emitted_imports[i].path, path))  &&  !(strcmp(emitted_imports[i].alias, alias))) {
+free(path);
 return;}
 }
-for (int i = 0; ((0) > (in_progress_count)) ? i > (in_progress_count) : i < (in_progress_count); ((0) > (in_progress_count)) ? i-- : i++) {
-if (!(strcmp(in_progress[i], path))) {
-printf("Circular import detected: %s\n", path);
-exit(1);
-}
-}
-in_progress[in_progress_count] = strdup(path);
-in_progress_count = in_progress_count + 1;
-AST* imported_ast = NULL;
-char* imported_src = NULL;
-TokenStream* cached_ts = NULL;
-for (int i = 0; ((0) > (cache_count)) ? i > (cache_count) : i < (cache_count); ((0) > (cache_count)) ? i-- : i++) {
-if (!(strcmp(import_cache[i].path, path))) {
-imported_ast = import_cache[i].ast;
-imported_src = import_cache[i].src;
-break;
-}
-}
-if (imported_ast == NULL) {
-imported_src = file_read_file(path);
-if (!(imported_src)) {
-printf("%sCould not import file: %s\nfrom file:%s\nwith root: %s%s\n", RED, path, original, project_root, RESET);
-exit(1);
-}
-set_current_file(path);
-printf("Importing: %s\n", path);
-TokenStream* ts = malloc(sizeof(TokenStream));
-lexer_init_token_stream(ts);
-lexer_lex(ts, imported_src);
-if (strcmp(path, "PATH") == 0) {
-lexer_print_all_tokens(ts, imported_src);
-}
-if (!(has_stdlib)  &&  token_stream_contains(ts, TOKEN_NEW)  ||  token_stream_contains(ts, TOKEN_NULL)) {
-fprintf(out, "#include <stdlib.h>\n");
-has_stdlib = 1;
-}
-if (!(has_stdio)  &&  token_stream_contains(ts, TOKEN_PRINT)) {
-fprintf(out, "#include <stdio.h>\n");
-has_stdio = 1;
-}
-Parser p;
-parser_init_parser(&(p), ts, imported_src, path);
-imported_ast = parser_parse(&(p));
-import_cache[cache_count].path = strdup(path);
-import_cache[cache_count].ast = imported_ast;
-import_cache[cache_count].src = imported_src;
-cache_count = cache_count + 1;
-}
+Module* imported = find_module(active_modules, path);
+if (imported == NULL) {
+printf("%sCould not find loaded import module: %s%s", RED, RESET, path);
+free(path);
+return;}
 emitted_imports[emitted_count].path = strdup(path);
 emitted_imports[emitted_count].alias = strdup(alias);
 emitted_count = emitted_count + 1;
-AST* curr = imported_ast;
-while (curr != NULL) {
-if (curr->kind == AST_IMPORT) {
-gen_import(curr, out, imported_src);
-}
-else if (curr->kind == AST_STRUCT_DEF) {
-gen_struct(curr, out, imported_src);
-}
-else if (curr->kind == AST_UNION_DEF) {
-gen_union(curr, out, imported_src);
-}
-else if (curr->kind == AST_PROP) {
-if (ast->data._import.has_alias) {
-gen_func_def_aliased(curr->data._prop.func, out, imported_src, alias, strlen(alias));
-}
-else {
-gen_func_def(curr->data._prop.func, out, imported_src);
-}
-}
-else if (curr->kind == AST_FORWARD) {
-gen_forward(curr, out, imported_src);
-}
-else if (curr->kind == AST_FUNC_DEF) {
-gen_func_def(curr, out, imported_src);
-}
-else if (curr->kind == AST_VAR_DECL) {
-gen_var_decl(curr, out, imported_src);
-}
-curr = curr->next;
-}
+emit_module(imported, out, alias, strlen(alias), ast->data._import.has_alias);
 free(path);
-current_file = original;
-in_progress_count = in_progress_count - 1;
-free(in_progress[in_progress_count]);
 }
 
 
@@ -3023,12 +3537,21 @@ fprintf(out, ")");
 else if (ast->kind == AST_DOT_ACCESS) {
 AST* object = ast->data._dot_access.object;
 gen_expr(object, out, src);
+int obj_kind = ast->data._dot_access.access_kind;
+if (obj_kind == ACCESS_ARROW) {
+fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+else if (obj_kind == ACCESS_DOT) {
+fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+else {
 int obj_kind = object->kind;
 if (obj_kind == AST_DOT_ACCESS  ||  obj_kind == AST_SUBSCRIPT) {
 fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
 }
 else {
 fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
 }
 }
 else if (ast->kind == AST_NEW) {
@@ -3137,12 +3660,21 @@ gen_if(ast, out, src, 0);
 else if (ast->kind == AST_DOT_ACCESS) {
 AST* object = ast->data._dot_access.object;
 gen_expr(object, out, src);
+int obj_kind = ast->data._dot_access.access_kind;
+if (obj_kind == ACCESS_ARROW) {
+fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+else if (obj_kind == ACCESS_DOT) {
+fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+else {
 int obj_kind = object->kind;
 if (obj_kind == AST_DOT_ACCESS  ||  obj_kind == AST_SUBSCRIPT) {
 fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
 }
 else {
 fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
 }
 if (ast->data._dot_access.value != NULL) {
 fprintf(out, " = ");
@@ -3187,32 +3719,12 @@ exit(1);
 }
 
 
-void codegen(AST* ast, FILE* out, char* src) {
-AST* curr = ast;
-while (curr != NULL) {
-if (curr->kind == AST_IMPORT) {
-gen_import(curr, out, src);
-}
-else if (curr->kind == AST_FUNC_DEF) {
-gen_func_def(curr, out, src);
-}
-else if (curr->kind == AST_STRUCT_DEF) {
-gen_struct(curr, out, src);
-}
-else if (curr->kind == AST_UNION_DEF) {
-gen_union(curr, out, src);
-}
-else if (curr->kind == AST_PROP) {
-gen_func_def(curr->data._prop.func, out, src);
-}
-else if (curr->kind == AST_FORWARD) {
-gen_forward(curr, out, src);
-}
-else if (curr->kind == AST_VAR_DECL) {
-gen_var_decl(curr, out, src);
-}
-curr = curr->next;
-}
+void codegen(ModuleSet* mods, FILE* out) {
+active_modules = mods;
+if (mods->count == 0) {
+return;}
+Module* main_mod = mods->modules + 0;
+emit_module(main_mod, out, "", 0, 0);
 }
 
 
@@ -3261,20 +3773,19 @@ printf("%sCompiling file: %s%s\n", BLUE, argv[i], RESET);
 char abs_path[512];
 realpath(argv[i], abs_path);
 set_current_file(abs_path);
-char* file = file_read_file(argv[i]);
-if (!(file)) {
+printf("Initializing modules..\n");
+ModuleSet* mods = malloc(sizeof(ModuleSet));
+init_modules(mods);
+Module* main_mod = load_module(mods, abs_path);
+if (main_mod == NULL) {
 return -1;
 }
-TokenStream* tokens = malloc(sizeof(TokenStream));
-lexer_init_token_stream(tokens);
-printf("Lexing...\n");
-fflush(stdout);
-lexer_lex(tokens, file);
-printf("Parsing...\n");
-fflush(stdout);
-Parser tree;
-parser_init_parser(&(tree), tokens, file, argv[i]);
-AST* ast = parser_parse(&(tree));
+printf("Checking types..\n");
+int type_errors = check_modules(mods);
+if (type_errors > 0) {
+printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
+return -1;
+}
 char out_c[512];
 if (i + 1 < argc  &&  argv[i + 1][0] != '-') {
 snprintf(out_c, sizeof(out_c), "%s.c", argv[i + 1]);
@@ -3288,17 +3799,17 @@ printf("%sFailed to open output file\n%s", RED, RESET);
 return -1;
 }
 int has_output = 0;
-if (token_stream_contains(tokens, TOKEN_PRINT)) {
+for (int j = 0; ((0) > (mods->count)) ? j > (mods->count) : j < (mods->count); ((0) > (mods->count)) ? j-- : j++) {
+Module* m = mods->modules + j;
+if (token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = 1;
+}
 }
 printf("Codegen...\n");
 fflush(stdout);
-emit_includes(ast, output, file, tokens);
-fprintf(output, "typedef struct { char* value; int length; } string;\n\n");
-codegen(ast, output, file);
-free_token_stream(tokens);
-free(tokens);
-free(file);
+emit_includes(mods, output);
+codegen(mods, output);
+free(mods);
 fclose(output);
 char bin_name[512];
 snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(strlen(out_c) - 2), out_c);

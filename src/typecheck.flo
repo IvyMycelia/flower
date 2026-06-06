@@ -1,0 +1,529 @@
+import "src/module.flo" as module
+import "src/lexer.flo" as lexer
+import "src/ast.flo" as parser
+import "src/parser.flo" as parser
+import "src/file.flo" as file
+
+forward struct StructInfo
+forward struct FieldInfo
+forward struct VarInfo
+forward struct FuncInfo
+
+struct FieldInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+    type: TypeInfo
+}
+
+struct StructInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+    fields: FieldInfo[128],
+    field_count: int
+}
+
+struct VarInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+    type: TypeInfo
+
+    // Simple implementation for now.. will add scope depth and 
+    // function ID tracking for more advanced system later
+}
+
+struct FuncInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+    return_type: TypeInfo
+}
+
+// Type Environment, hosts registries and their data
+struct TypeEnv {
+    src: @char,
+
+    structs: StructInfo[1024],
+    struct_count: int,
+
+    vars: VarInfo[2048],
+    var_count: int,
+
+    funcs: FuncInfo[1024],
+    func_count: int,
+
+    error_count: int
+}
+
+
+// Helper Functions
+
+int same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int):
+    if a_len != b_len:
+        return 0
+    end
+
+    return not strncmp(a_src + a_start, b_src + b_start, a_len)
+end
+
+void copy_type(dst: @TypeInfo, src_type: @TypeInfo):
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+end
+
+// Utility
+
+void type_error(env: @TypeEnv, ast: @AST, message: @char):
+    printf("%serror:%s %s\n", RED, RESET, message)
+    env.error_count = env.error_count + 1
+end
+
+// === PASSES ===
+
+forward void register_struct(env: @TypeEnv, ast: @AST, src: @char)
+forward void register_union(env: @TypeEnv, ast: @AST, src: @char)
+forward void register_func(env: @TypeEnv, ast: @AST, src: @char)
+forward void register_var(env: @TypeEnv, ast: @AST, src: @char)
+forward void register_params(env: @TypeEnv, ast: @AST, src: @char)
+
+forward void walk_statement_list(env: @TypeEnv, list: @AST, src: @char)
+forward void typecheck_statement(env: @TypeEnv, ast: @AST, src: @char)
+
+forward @StructInfo lookup_struct(env: @TypeEnv, src: @char, start: int, length: int)
+forward @FieldInfo lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int)
+
+forward int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char)
+forward int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char)
+
+forward void type_error(env: @TypeEnv, ast: @AST, message: @char)
+
+// Collection Pass
+
+void typecheck_collect(env: @TypeEnv, ast: @AST, src: @char):
+    curr: @AST = ast
+    while curr != null:
+        if curr.kind == AST_STRUCT_DEF:
+            register_struct(env, curr, src)
+
+        else if curr.kind == AST_UNION_DEF:
+            register_union(env, curr, src)
+
+        else if curr.kind == AST_FUNC_DEF:
+            register_func(env, curr, src)
+
+        else if curr.kind == AST_PROP:
+            register_func(env, curr.data._prop.func, src)
+
+        else if curr.kind == AST_VAR_DECL:
+            register_var(env, curr, src)
+        end
+        curr = curr.next
+    end
+end
+
+// Registrations
+
+void register_struct(env: @TypeEnv, ast: @AST, src: @char):
+    if env.struct_count >= 1024:
+        type_error(env, ast, "type environment struct table overflow")
+        return
+    end
+    info: @StructInfo = env.structs + env.struct_count
+    
+    info.src = src
+    info.name_start = ast.data._struct_def.name_start
+    info.name_length = ast.data._struct_def.name_length
+    info.field_count = 0
+
+    field: @AST = ast.data._struct_def.fields
+    while field != null:
+        finfo: @FieldInfo = info.fields + info.field_count
+        finfo.src = src
+        finfo.name_start = field.data._struct_field.name_start
+        finfo.name_length = field.data._struct_field.name_length
+        copy_type(&finfo.type, &field.data._struct_field.type)
+
+        info.field_count = info.field_count + 1
+        field = field.next
+    end
+
+    env.struct_count = env.struct_count + 1
+end
+
+void register_union(env: @TypeEnv, ast: @AST, src: @char):
+    if env.struct_count >= 1024:
+        type_error(env, ast, "type environment struct table overflow")
+        return
+    end
+    info: @StructInfo = env.structs + env.struct_count
+
+    info.src = src
+    info.name_start = ast.data._union_def.name_start
+    info.name_length = ast.data._union_def.name_length
+    info.field_count = 0
+
+    field: @AST = ast.data._union_def.fields
+    while field != null:
+        finfo: @FieldInfo = info.fields + info.field_count
+        finfo.src = src
+        finfo.name_start = field.data._struct_field.name_start
+        finfo.name_length = field.data._struct_field.name_length
+        copy_type(&finfo.type, &field.data._struct_field.type)
+
+        info.field_count = info.field_count + 1
+        field = field.next
+    end
+
+    env.struct_count = env.struct_count + 1
+end
+
+void register_func(env: @TypeEnv, ast: @AST, src: @char):
+    if env.func_count >= 1024:
+        type_error(env, ast, "type environment struct table overflow")
+        return
+    end
+    info: @FuncInfo = env.funcs + env.func_count
+
+    info.src = src
+    info.name_start = ast.data._func_def.name_start
+    info.name_length = ast.data._func_def.name_length
+    copy_type(&info.return_type, &ast.data._func_def.return_type)
+
+    env.func_count = env.func_count + 1
+end
+
+void register_var(env: @TypeEnv, ast: @AST, src: @char):
+    if ast == null:
+        return
+    end
+
+    if env.var_count >= 2048:
+        type_error(env, ast, "type environment struct table overflow")
+        return
+    end
+    info: @VarInfo = env.vars + env.var_count
+
+    info.src = src
+    info.name_start = ast.data._var_decl.name_start
+    info.name_length = ast.data._var_decl.name_length
+    copy_type(&info.type, &ast.data._var_decl.type)
+
+    env.var_count = env.var_count + 1
+end
+
+void register_params(env: @TypeEnv, func: @AST, src: @char):
+    param: @AST = func.data._func_def.params
+
+    while param != null:
+        if env.var_count >= 2048:
+            type_error(env, func, "type environment struct table overflow")
+            return
+        end
+        info: @VarInfo = env.vars + env.var_count
+
+        info.src = src
+        info.name_start = param.data._func_params.name_start
+        info.name_length = param.data._func_params.name_length
+        copy_type(&info.type, &param.data._func_params.type)
+
+        env.var_count = env.var_count + 1
+        param = param.next
+    end
+end
+
+
+// Resolve Types
+
+forward int lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo)
+forward int lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo)
+
+int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char):
+    if expr == null:
+        return 0
+    end
+
+    if expr.kind == AST_VAR_REF:
+        return lookup_var_type(env, src, expr.data._var_ref.name_start, expr.data._var_ref.name_length, out)
+    
+    else if expr.kind == AST_NEW:
+        copy_type(out, &expr.data._new_alloc.type)
+        out.pointer_depth = out.pointer_depth + 1
+        return 1
+    
+    else if expr.kind == AST_DEREF:
+        if !resolve_expr(env, expr.data._deref.operand, out, src):
+            // type_error(env, expr, "could not resolve object type for field access")
+            expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+            return 0
+        end
+
+        if out.pointer_depth <= 0:
+            // error
+            return 0
+        end
+
+        out.pointer_depth = out.pointer_depth - 1
+        return 1
+
+    else if expr.kind == AST_GET_ADDR:
+        if !resolve_expr(env, expr.data._get_addr.operand, out, src):
+            return 0
+        end
+
+        out.pointer_depth = out.pointer_depth + 1
+        return 1
+
+    else if expr.kind == AST_DOT_ACCESS:
+        return resolve_dot(env, expr, out, src)
+
+    else if expr.kind == AST_FUNC_CALL:
+        return lookup_func_return_type(env, src, expr.data._func_call.name_start, expr.data._func_call.name_length, out)
+
+    else if expr.kind == AST_SUBSCRIPT:
+        if !resolve_expr(env, expr.data._subscript.array, out, src):
+            return 0
+        end
+
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_LITERAL:
+        out.base = TOKEN_INT
+        out.pointer_depth = 0
+        return 1
+    end
+
+    return 0
+end
+
+int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char):
+    object_type: @TypeInfo = new TypeInfo
+    
+    if !resolve_expr(env, expr.data._dot_access.object, object_type, src):
+        type_error(env, expr, "could not resolve object type for field access")
+        prune object_type
+        return 0
+    end
+
+    if object_type.base != TOKEN_IDENTIFIER:
+        // type_error(env, expr, "cannot access field on non-struct type")
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+        prune object_type
+        return 0
+    end
+
+    if object_type.pointer_depth == 0:
+        expr.data._dot_access.access_kind = ACCESS_DOT
+    else if object_type.pointer_depth == 1:
+        expr.data._dot_access.access_kind = ACCESS_ARROW
+    else:
+        type_error(env, expr, "cannot directly access field through multi-pointer type")
+        prune object_type
+        return 0
+    end
+
+    base_struct: @StructInfo = lookup_struct(env, object_type.name_src, object_type.name_start, object_type.name_length)
+    if base_struct == null:
+        // type_error(env, expr, "unknown struct type in field access")
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+        prune object_type
+        return 0
+    end
+
+    field: @FieldInfo = lookup_field(env, base_struct, src, expr.data._dot_access.field_start, expr.data._dot_access.field_length)
+    if field == null:
+        // type_error(env, expr, "unknown field on struct")
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+        prune object_type
+        return 0
+    end
+
+    copy_type(out, &field.type)
+    copy_type(&expr.data._dot_access.resolved_type, &field.type)
+    prune object_type
+    return 1
+end
+
+void typecheck_statement(env: @TypeEnv, ast: @AST, src: @char):
+    if ast.kind == AST_VAR_DECL:
+        register_var(env, ast, src)
+        if ast.data._var_decl.value != null:
+            tmp: @TypeInfo = new TypeInfo
+            resolve_expr(env, ast.data._var_decl.value, tmp, src)
+            prune tmp
+        end
+
+    else if ast.kind == AST_VAR_ASS:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast.data._var_ass.value, tmp, src)
+        prune tmp
+
+    else if ast.kind == AST_DOT_ACCESS:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast, tmp, src)
+        prune tmp
+        if ast.data._dot_access.value != null:
+            value_type: @TypeInfo = new TypeInfo
+            resolve_expr(env, ast.data._dot_access.value, value_type, src)
+            prune value_type
+        end
+
+    else if ast.kind == AST_IF:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast.data._if_condition.condition, tmp, src)
+        walk_statement_list(env, ast.data._if_condition.body, src)
+        walk_statement_list(env, ast.data._if_condition.else_branch, src)
+        prune tmp
+
+    else if ast.kind == AST_FLOW_CONTROL:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast.data._flow_ctrl.value, tmp, src)
+        prune tmp
+    end
+end
+
+void typecheck_ast(env: @TypeEnv, ast: @AST, src: @char):
+    curr: @AST = ast
+    while curr != null:
+        if curr.kind == AST_FUNC_DEF:
+            saved_var_count: int = env.var_count
+            register_params(env, curr, src)
+            walk_statement_list(env, curr.data._func_def.body, src)
+            env.var_count = saved_var_count
+
+        else if curr.kind == AST_PROP:
+            saved_var_count: int = env.var_count
+            _prop: @AST = curr.data._prop.func
+            register_params(env, _prop, src)
+            walk_statement_list(env, _prop.data._func_def.body, src)
+            env.var_count = saved_var_count
+        
+        else if curr.kind == AST_VAR_DECL:
+            if curr.data._var_decl.value != null:
+                tmp: @TypeInfo = new TypeInfo
+                resolve_expr(env, curr.data._var_decl.value, tmp, src)
+                prune tmp
+            end
+        end
+        curr = curr.next
+    end
+end
+
+
+// Lookups
+
+@StructInfo lookup_struct(env: @TypeEnv, src: @char, start: int, length: int):
+    for i in 0..env.struct_count:
+        info: @StructInfo = env.structs + i
+        if same_name(info.src, info.name_start, info.name_length, src, start, length):
+            return info
+        end
+    end
+
+    return null
+end
+
+@FieldInfo lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int):
+    for i in 0..info.field_count:
+        field: @FieldInfo = info.fields + i
+        if same_name(field.src, field.name_start, field.name_length, src, start, length):
+            return field
+        end
+    end
+
+    return null
+end
+
+int lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo):
+    i: int = env.var_count - 1
+
+    while i >= 0:
+        info: @VarInfo = env.vars + i
+
+        if same_name(info.src, info.name_start, info.name_length, src, start, length):
+            copy_type(out, &info.type)
+            return 1
+        end
+
+        i = i - 1
+    end
+
+    return 0
+end
+
+int lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo):
+    for i in 0..env.func_count:
+        info: @FuncInfo = env.funcs + i
+
+        if same_name(info.src, info.name_start, info.name_length, src, start, length):
+            copy_type(out, &info.return_type)
+            return 1
+        end
+    end
+
+    return 0
+end
+
+// Walk statement
+
+void walk_statement_list(env: @TypeEnv, list: @AST, src: @char):
+    curr: @AST = list
+
+    while curr != null:
+        typecheck_statement(env, curr, src)
+        curr = curr.next
+    end
+end
+
+// Entry Point
+
+// prop int check(ast: @AST, src: @char):
+//     env: @TypeEnv = new TypeEnv
+//     env.src = src
+
+//     env.struct_count = 0
+//     env.var_count = 0
+//     env.func_count = 0
+//     env.error_count = 0
+
+//     typecheck_collect(env, ast)
+//     typecheck_ast(env, ast)
+
+//     count: int = env.error_count
+//     prune env
+//     return count
+// end
+
+void init_type_env(env: @TypeEnv):
+    env.struct_count = 0
+    env.var_count = 0
+    env.func_count = 0
+    env.error_count = 0
+end
+
+int check_modules(mods: @ModuleSet):
+    env: @TypeEnv = new TypeEnv
+    init_type_env(env)
+
+    for i in 0..mods.count:
+        m: @Module = mods.modules + i
+        typecheck_collect(env, m.ast, m.src)
+    end
+
+    for i in 0..mods.count:
+        m: @Module = mods.modules + i
+        typecheck_ast(env, m.ast, m.src)
+    end
+
+    count: int = env.error_count
+    prune env
+    return count
+end
