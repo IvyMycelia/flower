@@ -7,8 +7,14 @@
 ```rust
 /* custom.floh */
 x: int
-void mone()
-int mtwo(name: type)
+
+func mone(): void
+    // code
+end
+
+func mtwo(name: type): int
+    // code
+end
 ```
 
 ### Module FIle
@@ -17,15 +23,15 @@ int mtwo(name: type)
 /* custom.flo */
 let x: int = 0
 
-prop void mone():
+prop func mone(): void
     // Code
 end
 
-prop int mtwo(name: type):
+prop func mtwo(name: type): int
     // Code
 end
 
-float helperFunction(name: type): // Private function because there's no `prop` keyword
+func helperFunction(name: type): float // Private function because there's no `prop` keyword
     // Code
 end
 ```
@@ -49,12 +55,12 @@ let y: float64 = sqrt(x) // Or math.sqrt(x) if imported with alias
 
 ```rust
 /* Optional custom _start() */
-void _start():
+func _start(): void
     main()
-end
+end // NOT IMPLEMENTED YET
 
 /* Default program entry */
-int main(args: string[]):
+func main(args: string[]): int
     if args.length > 0:
         if args[2] == "--p":
             print("P Mode enabled\n")
