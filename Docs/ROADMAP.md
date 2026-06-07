@@ -14,10 +14,10 @@ Focus: Polish the working compiler.
 
 Focus: Clean up core language syntax before larger features.
 
-- [ ] Replace old function syntax with `func name(...): type`
-- [ ] Support `prop func name(...): type`
+- [x] Replace old function syntax with `func name(...): type`
+- [x] Support `prop func name(...): type`
 - [ ] Update parser / examples / tests / EVERYTHING
-- [ ] Remove legacy function syntax
+- [x] Remove legacy function syntax
 
 ## v1.2.0 (Modules & Interfaces)
 
