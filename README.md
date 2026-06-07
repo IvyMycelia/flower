@@ -30,14 +30,14 @@ A compiled, self-hosting language that targets to C (ignore the irony in it bein
 ```lua
 import <stdio>
 
-int factorial(n: int):
+func factorial(n: int): int
     if n <= 1:
         return 1
     end
     return n * factorial(n - 1)
 end
 
-int main():
+func main(): int
     printf("5! = %d\n", factorial(5))
     return 0
 end
@@ -51,7 +51,7 @@ struct Node {
     next: @Node
 }
 
-@Node create_list(values: int[], len: int):
+func create_list(values: int[], len: int): @Node
     head: @Node = null
     current: @Node = null
 
