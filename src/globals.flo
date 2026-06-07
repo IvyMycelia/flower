@@ -2,7 +2,7 @@ project_root: char[512]
 
 current_file: @char
 
-void set_current_file(f: @char):
+func set_current_file(f: @char): void
     current_file = f
 end
 
@@ -13,7 +13,7 @@ RESET:  @char   =   "\033[0m"
 BLUE:   @char   =   "\033[0;34m"
 BOLD:   @char   =   "\033[1m"
 
-@char resolve_path(importing_file: @char, import_path: @char):
+func resolve_path(importing_file: @char, import_path: @char): @char
     if import_path[0] == '<': return null
     end
 

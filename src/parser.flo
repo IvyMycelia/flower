@@ -14,7 +14,7 @@ struct Parser {
 
 // === SETUP ===
 
-@AST make_node(kind: int):
+func make_node(kind: int): @AST
     node: @AST = calloc(1, sizeof(AST))
     node.kind = kind
     node.value = 0
@@ -22,7 +22,7 @@ struct Parser {
     return node
 end
 
-prop void init_parser(ps: @Parser, ts: @TokenStream, src: @char, filename: @char):
+prop func init_parser(ps: @Parser, ts: @TokenStream, src: @char, filename: @char): void
     ps.ts = ts
     ps.src = src
     ps.pos = 0
@@ -31,43 +31,43 @@ prop void init_parser(ps: @Parser, ts: @TokenStream, src: @char, filename: @char
     ps.error_count = 0
 end
 
-forward void parser_error(ps: @Parser, message: @char)
+forward func parser_error(ps: @Parser, message: @char): void
 
-forward @AST parse_var_decl(ps: @Parser)
-forward @AST parse_var_ass(ps: @Parser)
-forward @AST parse_subscript_ass(ps: @Parser)
+forward func parse_var_decl(ps: @Parser):               @AST
+forward func parse_var_ass(ps: @Parser):                @AST
+forward func parse_subscript_ass(ps: @Parser):          @AST
 
-forward @AST parse_return(ps: @Parser)
-forward @AST parse_continue(ps: @Parser)
-forward @AST parse_break(ps: @Parser)
-forward @AST parse_while(ps: @Parser)
-forward @AST parse_if(ps: @Parser, is_elf_if: int)
-forward @AST parse_for(ps: @Parser)
+forward func parse_return(ps: @Parser):                 @AST
+forward func parse_continue(ps: @Parser):               @AST
+forward func parse_break(ps: @Parser):                  @AST
+forward func parse_while(ps: @Parser):                  @AST
+forward func parse_if(ps: @Parser, is_elf_if: int):     @AST
+forward func parse_for(ps: @Parser):                    @AST
 
-forward @AST parse_expr(ps: @Parser, min_prec: int)
-forward @AST parse_statement(ps: @Parser)
-forward @AST parse_primary(ps: @Parser)
+forward func parse_expr(ps: @Parser, min_prec: int):    @AST
+forward func parse_statement(ps: @Parser):              @AST
+forward func parse_primary(ps: @Parser):                @AST
 
-forward @AST parse_func_def(ps: @Parser)
-forward @AST parse_func_call(ps: @Parser)
-forward @AST parse_alias_call(ps: @Parser)
-forward @AST parse_param(ps: @Parser)
+forward func parse_func_def(ps: @Parser):               @AST
+forward func parse_func_call(ps: @Parser):              @AST
+forward func parse_alias_call(ps: @Parser):             @AST
+forward func parse_param(ps: @Parser):                  @AST
 
-forward @AST parse_struct(ps: @Parser)
-forward @AST parse_dot_ass(ps: @Parser)
+forward func parse_struct(ps: @Parser):                 @AST
+forward func parse_dot_ass(ps: @Parser):                @AST
 
-forward @AST parse_forward(ps: @Parser)
-forward @AST parse_import(ps: @Parser)
+forward func parse_forward(ps: @Parser):                @AST
+forward func parse_import(ps: @Parser):                 @AST
 
 
 
 // === UTILITIES ===
 
-@Token parser_peek(ps: @Parser):
+func parser_peek(ps: @Parser): @Token
     return peek(ps.ts, ps.pos)
 end
 
-@Token parser_advance(ps: @Parser):
+func parser_advance(ps: @Parser): @Token
     token: @Token = parser_peek(ps)
 
     if token.kind != TOKEN_EOF:
@@ -76,13 +76,13 @@ end
     return token
 end
 
-void parser_skip_newline(ps: @Parser):
+func parser_skip_newline(ps: @Parser): void
     while parser_peek(ps).kind == TOKEN_NEWLINE or parser_peek(ps).kind == TOKEN_SEMI:
         parser_advance(ps)
     end    
 end    
 
-int parser_expect(ps: @Parser, kind: int):
+func parser_expect(ps: @Parser, kind: int): int
     curr_tok: @Token = parser_peek(ps)
 
     if curr_tok.kind != kind:
@@ -98,7 +98,7 @@ int parser_expect(ps: @Parser, kind: int):
     return 1
 end    
 
-@TypeInfo parse_type(ps: @Parser):
+func parse_type(ps: @Parser): @TypeInfo
     type: @TypeInfo = new TypeInfo
 
     type.pointer_depth = 0
@@ -156,7 +156,7 @@ end
     return type
 end
 
-int get_precedence(kind: int):
+func get_precedence(kind: int): int
     if kind == TOKEN_STAR or kind == TOKEN_SLASH:
         return 3
     else if kind == TOKEN_AND or kind == TOKEN_PLUS or kind == TOKEN_MINUS:
@@ -172,7 +172,7 @@ int get_precedence(kind: int):
     end
 end
 
-int token_stream_contains(ts: @TokenStream, kind: int):
+func token_stream_contains(ts: @TokenStream, kind: int): int
     for i in 0..ts.count:
         t: @Token = ts.data + i
         if t.kind == kind:
@@ -182,7 +182,7 @@ int token_stream_contains(ts: @TokenStream, kind: int):
     return 0
 end
 
-int is_alias(ps: @Parser, tok: @Token):
+func is_alias(ps: @Parser, tok: @Token): int
     for i in 0..ps.alias_count:
         if ps.alias_lengths[i] == tok.length and !strncmp(ps.src + ps.alias_start[i], ps.src + tok.start, tok.length):
             return 1
@@ -191,7 +191,7 @@ int is_alias(ps: @Parser, tok: @Token):
     return 0
 end
 
-void parser_error(ps: @Parser, message: @char):
+func parser_error(ps: @Parser, message: @char): void
     token: @Token = parser_peek(ps)
     line: int = get_line(ps.src, token.start)
     col: int = get_col(ps.src, token.start)
@@ -203,7 +203,7 @@ end
 
 // === VARIABLES ===
 
-@AST parse_var_decl(ps: @Parser):
+func parse_var_decl(ps: @Parser): @AST
     node: @AST = make_node(AST_VAR_DECL)
 
     tok: @Token = parser_advance(ps)
@@ -241,7 +241,7 @@ end
     return node
 end
 
-@AST parse_var_ass(ps: @Parser):
+func parse_var_ass(ps: @Parser): @AST
     node: @AST = make_node(AST_VAR_ASS)
 
     tok: @Token = parser_advance(ps)
@@ -268,7 +268,7 @@ end
     return node
 end
 
-@AST parse_subscript_ass(ps: @Parser):
+func parse_subscript_ass(ps: @Parser): @AST
     name: @Token = parser_advance(ps)
 
     arr_ref: @AST = make_node(AST_VAR_REF)
@@ -315,7 +315,7 @@ end
 
 // === CONTROL FLOW ===
 
-@AST parse_return(ps: @Parser):
+func parse_return(ps: @Parser): @AST
     node: @AST = make_node(AST_FLOW_CONTROL)
 
     node.data._flow_ctrl.base = parser_peek(ps)
@@ -332,7 +332,7 @@ end
     return node
 end
 
-@AST parse_continue(ps: @Parser):
+func parse_continue(ps: @Parser): @AST
     node: @AST = make_node(AST_FLOW_CONTROL)
 
     node.data._flow_ctrl.value = null
@@ -347,7 +347,7 @@ end
     return node
 end
 
-@AST parse_break(ps: @Parser):
+func parse_break(ps: @Parser): @AST
     node: @AST = make_node(AST_FLOW_CONTROL)
 
     node.data._flow_ctrl.value = null
@@ -362,7 +362,7 @@ end
     return node
 end
 
-@AST parse_while(ps: @Parser):
+func parse_while(ps: @Parser): @AST
     node: @AST = make_node(AST_WHILE)
 
     if !parser_expect(ps, TOKEN_WHILE):
@@ -405,7 +405,7 @@ end
     return node
 end
 
-@AST parse_if(ps: @Parser, is_elf_if: int):
+func parse_if(ps: @Parser, is_elf_if: int): @AST
     node: @AST = make_node(AST_IF)
 
     if !parser_expect(ps, TOKEN_IF):
@@ -494,7 +494,7 @@ end
     return node
 end
 
-@AST parse_for(ps: @Parser):
+func parse_for(ps: @Parser): @AST
     node: @AST = make_node(AST_FOR)
 
     if !parser_expect(ps, TOKEN_FOR):
@@ -568,7 +568,7 @@ end
 
 // === EXECUTIVE ===
 
-@AST parse_expr(ps: @Parser, min_prec: int):
+func parse_expr(ps: @Parser, min_prec: int): @AST
     if parser_peek(ps).kind == TOKEN_EOF:
         parser_error(ps, "Unexpected end of file in expression")
         return null
@@ -626,7 +626,7 @@ end
     return left
 end
 
-@AST parse_statement(ps: @Parser):
+func parse_statement(ps: @Parser): @AST
     parser_skip_newline(ps)
 
     if parser_peek(ps).kind == TOKEN_EOF:
@@ -755,7 +755,7 @@ end
     end
 end
 
-@AST parse_primary(ps: @Parser):
+func parse_primary(ps: @Parser): @AST
     if parser_peek(ps).kind == TOKEN_EOF:
         parser_error(ps, "Unexpected end of file while parsing primary")
         return null
@@ -1099,13 +1099,21 @@ end
 
 // === FUNCTIONS ===
 
-@AST parse_func_def(ps: @Parser):
+func parse_func_def(ps: @Parser): @AST
+    if !parser_expect(ps, TOKEN_FUNC):
+        return null
+    end
+
     node: @AST = make_node(AST_FUNC_DEF)
-    node.data._func_def.return_type = @parse_type(ps)
-    
+
     name: @Token = parser_advance(ps)
+    if name.kind != TOKEN_IDENTIFIER:
+        parser_error(ps, "Expected function name")
+        return node
+    end
+
     node.data._func_def.name_start = name.start
-    node.data._func_def.name_length = name.length
+    node.data._func_def.name_length = name.length    
 
     // Set parameters of function
     if !parser_expect(ps, TOKEN_LPAREN):
@@ -1136,12 +1144,16 @@ end
     end
 
     parser_expect(ps, TOKEN_RPAREN)
+
     node.data._func_def.params = param_head
-    
-    // Function body
+
     if !parser_expect(ps, TOKEN_COLON):
         return node
     end
+
+    node.data._func_def.return_type = @parse_type(ps)
+
+    // Function body
 
     body_head: @AST = null
     body_tail: @AST = null
@@ -1175,7 +1187,7 @@ end
     return node
 end
 
-@AST parse_func_call(ps: @Parser):
+func parse_func_call(ps: @Parser): @AST
     node: @AST = make_node(AST_FUNC_CALL)
 
     name: @Token = parser_advance(ps)
@@ -1216,7 +1228,7 @@ end
     return node
 end
 
-@AST parse_alias_call(ps: @Parser):
+func parse_alias_call(ps: @Parser): @AST
     node: @AST = make_node(AST_ALIAS_CALL)
 
     alias: @Token = parser_advance(ps)
@@ -1227,9 +1239,9 @@ end
         return node
     end
 
-    func: @Token = parser_advance(ps)
-    node.data._alias_call.func_start = func.start
-    node.data._alias_call.func_length = func.length
+    fnc: @Token = parser_advance(ps)
+    node.data._alias_call.func_start = fnc.start
+    node.data._alias_call.func_length = fnc.length
 
     if !parser_expect(ps, TOKEN_LPAREN):
         return node
@@ -1264,7 +1276,7 @@ end
     return node
 end
 
-@AST parse_param(ps: @Parser):
+func parse_param(ps: @Parser): @AST
     node: @AST = make_node(AST_PARAM)
 
     name: @Token = parser_advance(ps)
@@ -1284,7 +1296,7 @@ end
 
 // === STRUCTS ===
 
-@AST parse_struct(ps: @Parser):
+func parse_struct(ps: @Parser): @AST
     if !parser_expect(ps, TOKEN_STRUCT):
         return null
     end
@@ -1355,7 +1367,7 @@ end
     return node
 end
 
-@AST parse_union(ps: @Parser):
+func parse_union(ps: @Parser): @AST
     if !parser_expect(ps, TOKEN_UNION):
         return null
     end
@@ -1429,7 +1441,7 @@ end
     return node
 end
 
-@AST parse_dot_ass(ps: @Parser):
+func parse_dot_ass(ps: @Parser): @AST
     expr: @AST = parse_expr(ps, 0)
     // printf("parse_dot_ass: expr kind=%d, next token=%s\n", expr.kind, token_kind_name(parser_peek(ps).kind))
     if parser_peek(ps).kind == TOKEN_ASSIGN:
@@ -1450,7 +1462,7 @@ end
 
 // === IMPORTS ===
 
-@AST parse_import(ps: @Parser):
+func parse_import(ps: @Parser): @AST
     parser_expect(ps, TOKEN_IMPORT)
     node: @AST = make_node(AST_IMPORT)
 
@@ -1502,7 +1514,7 @@ end
     return node
 end
 
-@AST parse_forward(ps: @Parser):
+func parse_forward(ps: @Parser): @AST
     parser_expect(ps, TOKEN_FORWARD)
     node: @AST = make_node(AST_FORWARD)
 
@@ -1512,13 +1524,13 @@ end
         node.data._forward.name_start = name.start
         node.data._forward.name_length = name.length
         node.data._forward.is_func = 0
-    else:
-        node.data._forward.is_func = 1
-        node.data._forward.return_type = @parse_type(ps)
+
+    else if parser_peek(ps).kind == TOKEN_FUNC:
+        parser_advance(ps)
         name: @Token = parser_advance(ps)
         node.data._forward.name_start = name.start
         node.data._forward.name_length = name.length
-
+            
         parser_expect(ps, TOKEN_LPAREN)
         param_head: @AST = null
         param_tail: @AST = null
@@ -1536,6 +1548,15 @@ end
         end
         parser_expect(ps, TOKEN_RPAREN)
         node.data._forward.params = param_head
+
+        parser_expect(ps, TOKEN_COLON)
+
+        node.data._forward.return_type = @parse_type(ps)
+
+        node.data._forward.is_func = 1
+    else:
+        parser_error(ps, "Expected either struct or function declaration")
+        return node
     end
     return node
 end
@@ -1544,7 +1565,7 @@ end
 
 // === MISC ===
 
-prop @AST parse(ps: @Parser):
+prop func parse(ps: @Parser): @AST
     head: @AST = null
     tail: @AST = null
 
@@ -1562,22 +1583,36 @@ prop @AST parse(ps: @Parser):
         node: @AST
         if parser_peek(ps).kind == TOKEN_IMPORT:
             node = parse_import(ps)
+
         else if parser_peek(ps).kind == TOKEN_STRUCT:
             node = parse_struct(ps)
+
         else if parser_peek(ps).kind == TOKEN_UNION:
             node = parse_union(ps)
+
         else if parser_peek(ps).kind == TOKEN_PROP:
             parser_advance(ps)
-            func: @AST = parse_func_def(ps)
-            prop_node: @AST = make_node(AST_PROP)
-            prop_node.data._prop.func = func
-            node = prop_node
+
+            if parser_peek(ps).kind == TOKEN_FUNC:
+                fnc: @AST = parse_func_def(ps)
+                prop_node: @AST = make_node(AST_PROP)
+                prop_node.data._prop.fnc = fnc
+                node = prop_node
+            else if parser_peek(ps).kind == TOKEN_STRUCT:
+                // prop struct support
+            else:
+                parser_error(ps, "Expected declaration after prop")
+                node = null
+            end
+
+        else if parser_peek(ps).kind == TOKEN_FUNC: 
+            node = parse_func_def(ps)
+        
         else if parser_peek(ps).kind == TOKEN_FORWARD:
             node = parse_forward(ps)
+
         else if parser_peek(ps).kind == TOKEN_IDENTIFIER and peek(ps.ts, ps.pos + 1).kind == TOKEN_COLON:
             node = parse_var_decl(ps)
-        else: 
-            node = parse_func_def(ps)
         end
 
         if head == null:

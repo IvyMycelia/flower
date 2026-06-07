@@ -1,10 +1,10 @@
 import <stdio>
-@char test(argv: @char):
+func test(argv: @char): @char
     argv[0] = 'a'
     return argv
 end
 
-int main():
+func main(): int
     buf: @char = new char
     buf = test(buf)
     printf("%c", buf[0])

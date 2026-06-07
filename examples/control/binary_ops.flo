@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     a: int = 5
     b: int = 3
     if a != b:

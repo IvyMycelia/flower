@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     i: int = 0
     while i < 5:
         i = i + 1

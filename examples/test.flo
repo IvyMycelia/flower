@@ -8,7 +8,7 @@ import "examples/io/io.flo" as io
 import "examples/misc/misc.flo" as misc
 import "examples/import/import.flo" as imports
 
-int main():
+func main(): int
     total: int = 0
     pass: int = 0
 

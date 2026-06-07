@@ -2,7 +2,7 @@
 
 Where Flower is going. Subject to change based on feedback, experiments, and progression.
 
-## v1.1.0 (Current - Stability)
+## v1.1.0 (Stability)
 
 Focus: Polish the working compiler.
 
@@ -10,22 +10,38 @@ Focus: Polish the working compiler.
 - [x] Better Error Messages         : Context, suggestions, etc
 - [x] Better Type-Tracking System   : Import handling / separation, proper type / pointer aware codegen
 
-## v1.2.0 (Strings & Bools)
+## v1.1.1 (Function Syntax)
+
+Focus: Clean up core language syntax before larger features.
+
+- [x] Replace old function syntax with `func name(...): type`
+- [x] Support `prop func name(...): type`
+- [ ] Update parser / examples / tests / EVERYTHING
+- [x] Remove legacy function syntax
+
+## v1.2.0 (Modules & Interfaces)
+
+Focus: Make imports and public APIs mean something semantically.
+
+- [ ] Top-level exports via `prop`
+- [ ] Imported module aliases act as real namespaces
+- [ ] Private-by-default top-level declarations
+- [ ] Field flags groundwork: `hidden`, `readonly`, `frozen`
+- [ ] Typecheck enforcement for external field access
+
+## v1.3.0 (Strings & Bools)
 
 Core feature: Proper String and Boolean support.
 
-- [ ] String operations
+- [ ] Real `string` type support
 - [ ] Boolean support distinct from `1` and `0`
+- [ ] String operations
 - [ ] Examples and tests
-- [ ] Standard Library Basics
-
-## v1.3.0 (Documentation)
-
-- [ ] Documentation : Complete language spec examples
+- [ ] Standard library basics
 
 **Why String Operations and Booleans first?** Many programs need them. Current work arounds are verbose.
 
-## v1.3.0 (Better Types)
+## v1.4.0 (Better Types)
 
 Improve the type system.
 
@@ -34,7 +50,11 @@ Improve the type system.
 - [ ] Better type inference in some contexts
 - [ ] Union types (experimental)
 
-## v1.4.0 (Standard Library)
+## v1.5.0 (Documentation)
+
+- [ ] Documentation: Complete language spec examples
+
+## v1.6.0 (Standard Library)
 
 Build out what is needed — stop relying on C backend.
 
@@ -43,7 +63,7 @@ Build out what is needed — stop relying on C backend.
 - [ ] Math functions (sqrt, sin, cos, etc)
 - [ ] String utilities (trim, split, replace)
 
-## v1.5.0+ (Experiments)
+## v1.7.0+ (Experiments)
 
 - **Generics**: `<T> T max(a: T, b: T)`
 - **Pattern Matching**: Better than `if` / `else`
@@ -69,7 +89,9 @@ Things Flower probably *won't* do:
 - **Object-Oriented**: No classes, inheritance, or virtual methods. Use Structs and Functions.
 - **Implicit Conversion**: Be explicit. `x: int = 5.0 as int`
 - **Macros**: Keep it simple. Generate C if you need metaprogramming.
-- **Module System Beyond Imports**: Current system works, no overengineering.
+- ~~**Module System Beyond Imports**: Current system works, no overengineering.~~
+- **Heavy OOP-Style Type Systems**: No classes or method-dispath model just to support data access or modules
+
 
 ## How to Help
 

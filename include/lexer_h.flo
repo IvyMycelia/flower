@@ -33,67 +33,68 @@ TOKEN_RETURN:       int = 17    // Return from block
 TOKEN_CONTINUE:     int = 18    // Skip a loop iteration
 TOKEN_BREAK:        int = 19    // Stop a loop
 TOKEN_WHILE:        int = 20    // While loop
-TOKEN_FOR:          int = 21    // For loop
-TOKEN_IN:           int = 22    // in
-TOKEN_END:          int = 23    // Close block
-TOKEN_IF:           int = 24    // If statement
-TOKEN_ELSE:         int = 25    // Else block
-TOKEN_NOT:          int = 26    // opposite of a value
-TOKEN_AND:          int = 27    // logical and
-TOKEN_OR:           int = 28    // logical or
+TOKEN_FUNC:         int = 21    // Functions
+TOKEN_FOR:          int = 22    // For loop
+TOKEN_IN:           int = 23    // in
+TOKEN_END:          int = 24    // Close block
+TOKEN_IF:           int = 25    // If statement
+TOKEN_ELSE:         int = 26    // Else block
+TOKEN_NOT:          int = 27    // opposite of a value
+TOKEN_AND:          int = 28    // logical and
+TOKEN_OR:           int = 29    // logical or
 
     // === Import System ===
 
-TOKEN_IMPORT:       int = 29    // .flo imports
-TOKEN_FORWARD:      int = 30    // forward declarations
-TOKEN_AS:           int = 31    // Alias for imports
-TOKEN_PROP:         int = 32    // Propagating functions (making them public)
+TOKEN_IMPORT:       int = 30    // .flo imports
+TOKEN_FORWARD:      int = 31    // forward declarations
+TOKEN_AS:           int = 32    // Alias for imports
+TOKEN_PROP:         int = 33    // Propagating functions (making them public)
 
     // === Memory Management ===
 
-TOKEN_NEW:          int = 33    // Automatically allocate memory
-TOKEN_PRUNE:        int = 34    // Free memory
-TOKEN_SIZEOF:       int = 35    // sizeof(x)
+TOKEN_NEW:          int = 34    // Automatically allocate memory
+TOKEN_PRUNE:        int = 35    // Free memory
+TOKEN_SIZEOF:       int = 36    // sizeof(x)
     
     // === stdio ===
 
-TOKEN_PRINT:        int = 36    // Prints out to console
+TOKEN_PRINT:        int = 37    // Prints out to console
 
     // === Operators ===
 
-TOKEN_DOT:          int = 37    // Dot access
-TOKEN_DOTDOT:       int = 38    // ..
-TOKEN_DOTDOTEQ:     int = 39    // ..=
-TOKEN_PLUS:         int = 40    // Addition
-TOKEN_MINUS:        int = 41    // Subtraction
-TOKEN_STAR:         int = 42    // Multiplication
-TOKEN_CARET:        int = 43    // ^ for exponents (eventually)
-TOKEN_SLASH:        int = 44    // Division
-TOKEN_AMPERSAND:    int = 45    // Memory address
-TOKEN_AT:           int = 46    // Pointer / deref, @
-TOKEN_ASSIGN:       int = 47    // Assign value
-TOKEN_LT:           int = 48    // Less than
-TOKEN_GT:           int = 49    // Greater than
-TOKEN_COMP:         int = 50    // Comparison `==`
-TOKEN_NEQ:          int = 51    // !=
-TOKEN_GEQ:          int = 52    // >=
-TOKEN_LEQ:          int = 53    // <=
+TOKEN_DOT:          int = 38    // Dot access
+TOKEN_DOTDOT:       int = 39    // ..
+TOKEN_DOTDOTEQ:     int = 40    // ..=
+TOKEN_PLUS:         int = 41    // Addition
+TOKEN_MINUS:        int = 42    // Subtraction
+TOKEN_STAR:         int = 43    // Multiplication
+TOKEN_CARET:        int = 44    // ^ for exponents (eventually)
+TOKEN_SLASH:        int = 45    // Division
+TOKEN_AMPERSAND:    int = 46    // Memory address
+TOKEN_AT:           int = 47    // Pointer / deref, @
+TOKEN_ASSIGN:       int = 48    // Assign value
+TOKEN_LT:           int = 49    // Less than
+TOKEN_GT:           int = 50    // Greater than
+TOKEN_COMP:         int = 51    // Comparison `==`
+TOKEN_NEQ:          int = 52    // !=
+TOKEN_GEQ:          int = 53    // >=
+TOKEN_LEQ:          int = 54    // <=
 
     // === Punctuation ===
 
-TOKEN_LPAREN:       int = 54    // Function handling
-TOKEN_RPAREN:       int = 55    // Function handling
-TOKEN_LBRACK:       int = 56    // Array handling
-TOKEN_RBRACK:       int = 57    // Array handling
-TOKEN_LBRACE:       int = 58    // Struct handling
-TOKEN_RBRACE:       int = 59    // Struct handling
-TOKEN_COLON:        int = 60    // Start block
-TOKEN_COMMA:        int = 61    // Separate parameters
-TOKEN_SEMI:         int = 62    // Semicolon for starting a new statement
+TOKEN_LPAREN:       int = 55    // Function handling
+TOKEN_RPAREN:       int = 56    // Function handling
+TOKEN_LBRACK:       int = 57    // Array handling
+TOKEN_RBRACK:       int = 58    // Array handling
+TOKEN_LBRACE:       int = 59    // Struct handling
+TOKEN_RBRACE:       int = 60    // Struct handling
+TOKEN_COLON:        int = 61    // Start block
+TOKEN_COMMA:        int = 62    // Separate parameters
+TOKEN_SEMI:         int = 63    // Semicolon for starting a new statement
 
-TOKEN_NEWLINE:      int = 63    // For determining next statement
+TOKEN_NEWLINE:      int = 64    // For determining next statement
 
-TOKEN_EOF:          int = 64    // End of File
+TOKEN_EOF:          int = 65    // End of File
 
 struct Token {
     kind: int,
@@ -107,7 +108,7 @@ struct TokenStream {
     capacity: int
 }
 
-prop int get_line(src: @char, pos: int):
+prop func get_line(src: @char, pos: int): int
     line: int = 1;
     for i in 0..pos:
         if src[i] == '\n':
@@ -117,7 +118,7 @@ prop int get_line(src: @char, pos: int):
     return line;
 end
 
-prop int get_col(src: @char, pos: int):
+prop func get_col(src: @char, pos: int): int
     col: int = 1
     while pos > 0 and src[pos - 1] != '\n':
         col = col + 1

@@ -17,16 +17,16 @@ struct ModuleSet {
     count: int
 }
 
-void init_modules(set: @ModuleSet):
+func init_modules(set: @ModuleSet): void
     set.count = 0
 end
 
-forward @Module find_module(set: @ModuleSet, path: @char)
-forward void load_imports(set: @ModuleSet, module: @Module)
-forward @Module load_module(set: @ModuleSet, path: @char)
+forward func find_module(set: @ModuleSet, path: @char): @Module
+forward func load_imports(set: @ModuleSet, module: @Module): void
+forward func load_module(set: @ModuleSet, path: @char): @Module
 
 
-@Module find_module(set: @ModuleSet, path: @char):
+func find_module(set: @ModuleSet, path: @char): @Module
     for i in 0..set.count:
         m: @Module = set.modules + i
         if not strcmp(m.path, path):
@@ -37,7 +37,7 @@ forward @Module load_module(set: @ModuleSet, path: @char)
 end
 
 
-@char import_path_from_ast(import_ast: @AST, src: @char, current_path: @char):
+func import_path_from_ast(import_ast: @AST, src: @char, current_path: @char): @char
     if import_ast.data._import.is_system:
         return null
     end
@@ -48,7 +48,7 @@ end
     return resolve_path(current_path, raw_path)
 end
 
-void load_imports(set: @ModuleSet, module: @Module):
+func load_imports(set: @ModuleSet, module: @Module): void
     curr: @AST = module.ast
 
     while curr != null:
@@ -64,7 +64,7 @@ void load_imports(set: @ModuleSet, module: @Module):
     end
 end
 
-@Module load_module(set: @ModuleSet, path: @char):
+func load_module(set: @ModuleSet, path: @char): @Module
     existing: @Module = find_module(set, path)
     if existing != null:
         return existing

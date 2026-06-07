@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     c: char = 'a'
     if c == 'a':
         return 1

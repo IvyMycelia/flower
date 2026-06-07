@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     x: double = 3.14159265358979
     if x > 3.0:
         return 1

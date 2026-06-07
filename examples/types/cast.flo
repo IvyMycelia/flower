@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     x: float = 3.14
     y: int = x as int
     if y == 3:

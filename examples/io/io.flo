@@ -2,7 +2,7 @@ import <stdio>
 
 import "examples/io/print.flo" as prints
 
-prop int test():
+prop func test(): int
     total: int = 0
     pass: int = 0
 

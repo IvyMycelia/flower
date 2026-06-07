@@ -20,19 +20,23 @@ struct EOFField {
 // Function definition errors
 // ========================
 
-void badFunc1(
+func badFunc1(
     
-void badFunc2(a: int, b: int
+func badFunc2(a: int, b: int
 
-void badFunc3():
+func badFunc3(): void
     x: int = 5
 
-void badFunc4():
+func badFunc4(): void
     x =
 end
 
-void badFunc5():
+func badFunc5(): void
     return 1 +
+end
+
+func badFunc6()
+    return
 end
 
 // ========================
@@ -147,11 +151,11 @@ x: @int = new @
 // Flow control errors
 // ========================
 
-void test():
+func test(): void
     return 1 +
 end
 
-void test2():
+func test2(): void
     break
     continue
     return (

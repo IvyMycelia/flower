@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     count: int = 0
     for i in 0..5:
         count = count + 1

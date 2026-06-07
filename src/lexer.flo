@@ -1,12 +1,12 @@
 import "include/lexer_h.flo"
 
-prop void init_token_stream(ts: @TokenStream):
+prop func init_token_stream(ts: @TokenStream): void
     ts.data = null
     ts.count = 0
     ts.capacity = 0
 end
 
-void add_token(ts: @TokenStream, kind: int, start: int, length: int):
+func add_token(ts: @TokenStream, kind: int, start: int, length: int): void
     if ts.count >= ts.capacity:
         if ts.capacity == 0:
             ts.capacity = 64
@@ -29,7 +29,7 @@ void add_token(ts: @TokenStream, kind: int, start: int, length: int):
     ts.count = ts.count + 1
 end
 
-prop void lex(ts: @TokenStream, src: @char):
+prop func lex(ts: @TokenStream, src: @char): void
     i: int = 0
     
     while src[i] != '\0':
@@ -157,6 +157,8 @@ prop void lex(ts: @TokenStream, src: @char):
                 add_token(ts, TOKEN_VOID, start, length)
             else if length == 4 and not strncmp(src + start, "prop", 4):
                 add_token(ts, TOKEN_PROP, start, length)
+            else if length == 4 and not strncmp(src + start, "func", 4):
+                add_token(ts, TOKEN_FUNC, start, length)
             else if length == 5 and not strncmp(src + start, "union", 5):
                 add_token(ts, TOKEN_UNION, start, length)
             else if length == 5 and not strncmp(src + start, "while", 5):
@@ -300,7 +302,7 @@ prop void lex(ts: @TokenStream, src: @char):
     add_token(ts, TOKEN_EOF, i, 0)
 end
 
-@char token_kind_name(kind: int):
+func token_kind_name(kind: int): @char
     if kind == TOKEN_INT:               return "TOKEN_INT"
     else if kind == TOKEN_FLOAT:        return "TOKEN_FLOAT"
     else if kind == TOKEN_DOUBLE:       return "TOKEN_DOUBLE"
@@ -324,6 +326,7 @@ end
     else if kind == TOKEN_CONTINUE:     return "TOKEN_CONTINUE"
     else if kind == TOKEN_BREAK:        return "TOKEN_BREAK"
     else if kind == TOKEN_WHILE:        return "TOKEN_WHILE"
+    else if kind == TOKEN_FUNC:         return "TOKEN_FUNC"
     else if kind == TOKEN_IF:           return "TOKEN_IF"
     else if kind == TOKEN_ELSE:         return "TOKEN_ELSE"
     else if kind == TOKEN_END:          return "TOKEN_END"
@@ -385,7 +388,7 @@ end
     end
 end
 
-void print_token(token: @Token, src: @char):
+func print_token(token: @Token, src: @char): void
     printf("%-18s\t", token_kind_name(token.kind))
 
     if token.kind == TOKEN_IDENTIFIER or token.kind == TOKEN_NUMBER:
@@ -395,20 +398,20 @@ void print_token(token: @Token, src: @char):
     print("\n")
 end
 
-prop void print_all_tokens(ts: @TokenStream, src: @char):
+prop func print_all_tokens(ts: @TokenStream, src: @char): void
     for i in 0..ts.count:
         print_token(&ts.data[i], src)
     end
 end
 
-@Token peek(ts: @TokenStream, index: int):
+func peek(ts: @TokenStream, index: int): @Token
     if index >= ts.count:
         return &ts.data[ts.count - 1] // EoF
     end
     return &ts.data[index]
 end
 
-void free_token_stream(ts: @TokenStream):
+func free_token_stream(ts: @TokenStream): void
     prune ts.data
     ts.data = null
     ts.count = 0

@@ -1,7 +1,7 @@
-prop int add(a: int, b: int):
+prop func add(a: int, b: int): int
     return a + b
 end
 
-int helper():
+func helper(): int
     return 0
 end

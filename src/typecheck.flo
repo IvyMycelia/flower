@@ -60,7 +60,7 @@ struct TypeEnv {
 
 // Helper Functions
 
-int same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int):
+func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): int
     if a_len != b_len:
         return 0
     end
@@ -68,7 +68,7 @@ int same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int
     return not strncmp(a_src + a_start, b_src + b_start, a_len)
 end
 
-void copy_type(dst: @TypeInfo, src_type: @TypeInfo):
+func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
     dst.base = src_type.base
     dst.pointer_depth = src_type.pointer_depth
     dst.array_size = src_type.array_size
@@ -80,33 +80,33 @@ end
 
 // Utility
 
-void type_error(env: @TypeEnv, ast: @AST, message: @char):
+func type_error(env: @TypeEnv, ast: @AST, message: @char): void
     printf("%serror:%s %s\n", RED, RESET, message)
     env.error_count = env.error_count + 1
 end
 
 // === PASSES ===
 
-forward void register_struct(env: @TypeEnv, ast: @AST, src: @char)
-forward void register_union(env: @TypeEnv, ast: @AST, src: @char)
-forward void register_func(env: @TypeEnv, ast: @AST, src: @char)
-forward void register_var(env: @TypeEnv, ast: @AST, src: @char)
-forward void register_params(env: @TypeEnv, ast: @AST, src: @char)
+forward func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
+forward func register_union(env: @TypeEnv, ast: @AST, src: @char): void
+forward func register_func(env: @TypeEnv, ast: @AST, src: @char): void
+forward func register_var(env: @TypeEnv, ast: @AST, src: @char): void
+forward func register_params(env: @TypeEnv, ast: @AST, src: @char): void
 
-forward void walk_statement_list(env: @TypeEnv, list: @AST, src: @char)
-forward void typecheck_statement(env: @TypeEnv, ast: @AST, src: @char)
+forward func walk_statement_list(env: @TypeEnv, list: @AST, src: @char): void
+forward func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
-forward @StructInfo lookup_struct(env: @TypeEnv, src: @char, start: int, length: int)
-forward @FieldInfo lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int)
+forward func lookup_struct(env: @TypeEnv, src: @char, start: int, length: int): @StructInfo
+forward func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int): @FieldInfo
 
-forward int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char)
-forward int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char)
+forward func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
-forward void type_error(env: @TypeEnv, ast: @AST, message: @char)
+forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
 // Collection Pass
 
-void typecheck_collect(env: @TypeEnv, ast: @AST, src: @char):
+func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
     curr: @AST = ast
     while curr != null:
         if curr.kind == AST_STRUCT_DEF:
@@ -119,7 +119,7 @@ void typecheck_collect(env: @TypeEnv, ast: @AST, src: @char):
             register_func(env, curr, src)
 
         else if curr.kind == AST_PROP:
-            register_func(env, curr.data._prop.func, src)
+            register_func(env, curr.data._prop.fnc, src)
 
         else if curr.kind == AST_VAR_DECL:
             register_var(env, curr, src)
@@ -130,7 +130,7 @@ end
 
 // Registrations
 
-void register_struct(env: @TypeEnv, ast: @AST, src: @char):
+func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
     if env.struct_count >= 1024:
         type_error(env, ast, "type environment struct table overflow")
         return
@@ -157,7 +157,7 @@ void register_struct(env: @TypeEnv, ast: @AST, src: @char):
     env.struct_count = env.struct_count + 1
 end
 
-void register_union(env: @TypeEnv, ast: @AST, src: @char):
+func register_union(env: @TypeEnv, ast: @AST, src: @char): void
     if env.struct_count >= 1024:
         type_error(env, ast, "type environment struct table overflow")
         return
@@ -184,7 +184,7 @@ void register_union(env: @TypeEnv, ast: @AST, src: @char):
     env.struct_count = env.struct_count + 1
 end
 
-void register_func(env: @TypeEnv, ast: @AST, src: @char):
+func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     if env.func_count >= 1024:
         type_error(env, ast, "type environment struct table overflow")
         return
@@ -199,7 +199,7 @@ void register_func(env: @TypeEnv, ast: @AST, src: @char):
     env.func_count = env.func_count + 1
 end
 
-void register_var(env: @TypeEnv, ast: @AST, src: @char):
+func register_var(env: @TypeEnv, ast: @AST, src: @char): void
     if ast == null:
         return
     end
@@ -218,12 +218,12 @@ void register_var(env: @TypeEnv, ast: @AST, src: @char):
     env.var_count = env.var_count + 1
 end
 
-void register_params(env: @TypeEnv, func: @AST, src: @char):
-    param: @AST = func.data._func_def.params
+func register_params(env: @TypeEnv, fnc: @AST, src: @char): void
+    param: @AST = fnc.data._func_def.params
 
     while param != null:
         if env.var_count >= 2048:
-            type_error(env, func, "type environment struct table overflow")
+            type_error(env, fnc, "type environment struct table overflow")
             return
         end
         info: @VarInfo = env.vars + env.var_count
@@ -241,10 +241,10 @@ end
 
 // Resolve Types
 
-forward int lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo)
-forward int lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo)
+forward func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
+forward func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 
-int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char):
+func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     if expr == null:
         return 0
     end
@@ -304,7 +304,7 @@ int resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char):
     return 0
 end
 
-int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char):
+func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     object_type: @TypeInfo = new TypeInfo
     
     if !resolve_expr(env, expr.data._dot_access.object, object_type, src):
@@ -352,7 +352,7 @@ int resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char):
     return 1
 end
 
-void typecheck_statement(env: @TypeEnv, ast: @AST, src: @char):
+func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast, src)
         if ast.data._var_decl.value != null:
@@ -390,7 +390,7 @@ void typecheck_statement(env: @TypeEnv, ast: @AST, src: @char):
     end
 end
 
-void typecheck_ast(env: @TypeEnv, ast: @AST, src: @char):
+func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
     curr: @AST = ast
     while curr != null:
         if curr.kind == AST_FUNC_DEF:
@@ -401,7 +401,7 @@ void typecheck_ast(env: @TypeEnv, ast: @AST, src: @char):
 
         else if curr.kind == AST_PROP:
             saved_var_count: int = env.var_count
-            _prop: @AST = curr.data._prop.func
+            _prop: @AST = curr.data._prop.fnc
             register_params(env, _prop, src)
             walk_statement_list(env, _prop.data._func_def.body, src)
             env.var_count = saved_var_count
@@ -420,7 +420,7 @@ end
 
 // Lookups
 
-@StructInfo lookup_struct(env: @TypeEnv, src: @char, start: int, length: int):
+func lookup_struct(env: @TypeEnv, src: @char, start: int, length: int): @StructInfo
     for i in 0..env.struct_count:
         info: @StructInfo = env.structs + i
         if same_name(info.src, info.name_start, info.name_length, src, start, length):
@@ -431,7 +431,7 @@ end
     return null
 end
 
-@FieldInfo lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int):
+func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int): @FieldInfo
     for i in 0..info.field_count:
         field: @FieldInfo = info.fields + i
         if same_name(field.src, field.name_start, field.name_length, src, start, length):
@@ -442,7 +442,7 @@ end
     return null
 end
 
-int lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo):
+func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
     i: int = env.var_count - 1
 
     while i >= 0:
@@ -459,7 +459,7 @@ int lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @Ty
     return 0
 end
 
-int lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo):
+func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
     for i in 0..env.func_count:
         info: @FuncInfo = env.funcs + i
 
@@ -474,7 +474,7 @@ end
 
 // Walk statement
 
-void walk_statement_list(env: @TypeEnv, list: @AST, src: @char):
+func walk_statement_list(env: @TypeEnv, list: @AST, src: @char): void
     curr: @AST = list
 
     while curr != null:
@@ -502,14 +502,14 @@ end
 //     return count
 // end
 
-void init_type_env(env: @TypeEnv):
+func init_type_env(env: @TypeEnv): void
     env.struct_count = 0
     env.var_count = 0
     env.func_count = 0
     env.error_count = 0
 end
 
-int check_modules(mods: @ModuleSet):
+func check_modules(mods: @ModuleSet): int
     env: @TypeEnv = new TypeEnv
     init_type_env(env)
 

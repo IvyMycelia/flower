@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     x: float = 3.14
     if x > 3.0:
         return 1

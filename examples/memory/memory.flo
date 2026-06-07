@@ -8,7 +8,7 @@ import "examples/memory/new_prune.flo" as new_prune
 import "examples/memory/sizeof.flo" as size_of
 import "examples/memory/realloc.flo" as realloc_test
 
-prop int test():
+prop func test(): int
     total: int = 0
     pass: int = 0
 
