@@ -1,14 +1,14 @@
 import <stdio>
 
-int add(a: int, b: int):
+func add(a: int, b: int): int
     return a + b
 end
 
-int multiply(a: int, b: int):
+func multiply(a: int, b: int): int
     return a * b
 end
 
-prop int test():
+prop func test(): int
     x: int = add(1, 2)
     if x == 3:
         y: int = multiply(3, 4)

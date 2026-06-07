@@ -1,7 +1,7 @@
 import <stdio>
 import <stdlib>
 
-prop int test():
+prop func test(): int
     arr: @int = new int
     arr = realloc(arr, 10 * sizeof(int))
     if arr != null:

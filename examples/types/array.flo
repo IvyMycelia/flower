@@ -1,7 +1,7 @@
 import <stdio>
 import <stdlib>
 
-prop int test():
+prop func test(): int
     arr: int[5]
     arr3: int[3] = [1, 2, 3]
     return 1

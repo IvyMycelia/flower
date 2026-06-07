@@ -1,7 +1,7 @@
 import <stdio>
 import <stdlib>
 
-prop int test():
+prop func test(): int
     arr: @int = new int
     x: @int = arr + 1
     prune arr

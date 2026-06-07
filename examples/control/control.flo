@@ -8,7 +8,7 @@ import "examples/control/unary_neg.flo" as unary_neg
 import "examples/control/binary_ops.flo" as binary_ops
 import "examples/control/functions.flo" as functions_test
 
-prop int test():
+prop func test(): int
     total: int = 0
     pass: int = 0
 

@@ -11,7 +11,7 @@ import "examples/types/cast.flo" as cast_test
 import "examples/types/array.flo" as array_test
 import "examples/types/struct.flo" as struct_test
 
-prop int test():
+prop func test(): int
     total: int = 0
     pass: int = 0
 

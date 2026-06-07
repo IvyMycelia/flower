@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     x: int = -5
     if x == -5:
         return 1

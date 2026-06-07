@@ -11,7 +11,7 @@ struct Vector3 {
     z: int
 }
 
-prop int test():
+prop func test(): int
     p: @Vector2 = new Vector2
     p.x = 5
     p.y = 10

@@ -1,4 +1,4 @@
-int fib(n: int):
+func fib(n: int): int
     a: int = 0
     b: int = 1
     i: int = 0
@@ -14,6 +14,6 @@ int fib(n: int):
     return a
 end
 
-prop int test():
+prop func test(): int
     return fib(10)    
 end

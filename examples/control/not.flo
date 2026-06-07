@@ -1,6 +1,6 @@
 import <stdio>
 
-prop int test():
+prop func test(): int
     pass: int = 0
     x: int = 0
     if not (x == 1):

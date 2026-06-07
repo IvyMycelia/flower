@@ -1,4 +1,4 @@
-prop int test():
+prop func test(): int
     print("Hello, World!")
     return 1
 end
