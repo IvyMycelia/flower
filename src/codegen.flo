@@ -604,9 +604,9 @@ func emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_ali
             gen_union(curr, out, mod.src)
         else if curr.kind == AST_PROP:
             if has_alias:
-                gen_func_def_aliased(curr.data._prop.func, out, mod.src, alias, strlen(alias))
+                gen_func_def_aliased(curr.data._prop.fnc, out, mod.src, alias, strlen(alias))
             else:
-                gen_func_def(curr.data._prop.func, out, mod.src)
+                gen_func_def(curr.data._prop.fnc, out, mod.src)
             end
         else if curr.kind == AST_FORWARD:
             gen_forward(curr, out, mod.src)

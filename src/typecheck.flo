@@ -60,7 +60,7 @@ struct TypeEnv {
 
 // Helper Functions
 
-func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): void
+func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): int
     if a_len != b_len:
         return 0
     end
@@ -106,7 +106,7 @@ forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
 // Collection Pass
 
-func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): int
+func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
     curr: @AST = ast
     while curr != null:
         if curr.kind == AST_STRUCT_DEF:
@@ -119,7 +119,7 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): int
             register_func(env, curr, src)
 
         else if curr.kind == AST_PROP:
-            register_func(env, curr.data._prop.func, src)
+            register_func(env, curr.data._prop.fnc, src)
 
         else if curr.kind == AST_VAR_DECL:
             register_var(env, curr, src)
@@ -218,12 +218,12 @@ func register_var(env: @TypeEnv, ast: @AST, src: @char): void
     env.var_count = env.var_count + 1
 end
 
-func register_params(env: @TypeEnv, func: @AST, src: @char): void
-    param: @AST = func.data._func_def.params
+func register_params(env: @TypeEnv, fnc: @AST, src: @char): void
+    param: @AST = fnc.data._func_def.params
 
     while param != null:
         if env.var_count >= 2048:
-            type_error(env, func, "type environment struct table overflow")
+            type_error(env, fnc, "type environment struct table overflow")
             return
         end
         info: @VarInfo = env.vars + env.var_count
@@ -401,7 +401,7 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
 
         else if curr.kind == AST_PROP:
             saved_var_count: int = env.var_count
-            _prop: @AST = curr.data._prop.func
+            _prop: @AST = curr.data._prop.fnc
             register_params(env, _prop, src)
             walk_statement_list(env, _prop.data._func_def.body, src)
             env.var_count = saved_var_count

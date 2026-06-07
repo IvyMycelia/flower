@@ -1239,9 +1239,9 @@ func parse_alias_call(ps: @Parser): @AST
         return node
     end
 
-    func: @Token = parser_advance(ps)
-    node.data._alias_call.func_start = func.start
-    node.data._alias_call.func_length = func.length
+    fnc: @Token = parser_advance(ps)
+    node.data._alias_call.func_start = fnc.start
+    node.data._alias_call.func_length = fnc.length
 
     if !parser_expect(ps, TOKEN_LPAREN):
         return node
@@ -1594,9 +1594,9 @@ prop func parse(ps: @Parser): @AST
             parser_advance(ps)
 
             if parser_peek(ps).kind == TOKEN_FUNC:
-                func: @AST = parse_func_def(ps)
+                fnc: @AST = parse_func_def(ps)
                 prop_node: @AST = make_node(AST_PROP)
-                prop_node.data._prop.func = func
+                prop_node.data._prop.fnc = fnc
                 node = prop_node
             else if parser_peek(ps).kind == TOKEN_STRUCT:
                 // prop struct support

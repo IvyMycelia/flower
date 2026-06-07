@@ -150,7 +150,7 @@ struct imprt {
 }
 
 struct prp {
-    func: @AST,
+    fnc: @AST,
 }
 
 struct forwrd {
