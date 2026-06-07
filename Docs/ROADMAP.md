@@ -16,7 +16,7 @@ Focus: Clean up core language syntax before larger features.
 
 - [x] Replace old function syntax with `func name(...): type`
 - [x] Support `prop func name(...): type`
-- [ ] Update parser / examples / tests / EVERYTHING
+- [x] Update parser / examples / tests / EVERYTHING
 - [x] Remove legacy function syntax
 
 ## v1.2.0 (Modules & Interfaces)
