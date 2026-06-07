@@ -13,7 +13,7 @@ import "src/module.flo" as module
 import "src/typecheck.flo" as typecheck
 import "src/codegen.flo" as codegen
 
-int main(argc: int, argv: @char[]):
+func main(argc: int, argv: @char[]): int
     getcwd(project_root, sizeof(project_root));
     if argc < 2:
         printf("%sMissing arguments! Use -help for usage instructions.%s\n", RED, RESET)

@@ -108,7 +108,7 @@ struct TokenStream {
     capacity: int
 }
 
-prop int get_line(src: @char, pos: int):
+prop func get_line(src: @char, pos: int): int
     line: int = 1;
     for i in 0..pos:
         if src[i] == '\n':
@@ -118,7 +118,7 @@ prop int get_line(src: @char, pos: int):
     return line;
 end
 
-prop int get_col(src: @char, pos: int):
+prop func get_col(src: @char, pos: int): int
     col: int = 1
     while pos > 0 and src[pos - 1] != '\n':
         col = col + 1

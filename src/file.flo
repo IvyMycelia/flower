@@ -1,4 +1,4 @@
-prop @char read_file(path: @char):
+prop func read_file(path: @char): @char
     f: @FILE = fopen(path, "r")
     if f == null:
         return null

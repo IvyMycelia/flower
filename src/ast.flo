@@ -34,7 +34,7 @@ AST_GET_ADDR:       int = 22    // &ptr
     //  === Import System ===
 
 AST_IMPORT:         int = 23    // import "custom.flo"
-AST_PROP:           int = 24    // prop int test():
+AST_PROP:           int = 24    // prop func test(): int
 AST_FORWARD:        int = 25    // forward <struct || func>
 AST_ALIAS_CALL:     int = 26    // Alias call: math.sqrt()
 
