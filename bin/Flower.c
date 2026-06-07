@@ -66,50 +66,51 @@ int TOKEN_RETURN = 17;
 int TOKEN_CONTINUE = 18;
 int TOKEN_BREAK = 19;
 int TOKEN_WHILE = 20;
-int TOKEN_FOR = 21;
-int TOKEN_IN = 22;
-int TOKEN_END = 23;
-int TOKEN_IF = 24;
-int TOKEN_ELSE = 25;
-int TOKEN_NOT = 26;
-int TOKEN_AND = 27;
-int TOKEN_OR = 28;
-int TOKEN_IMPORT = 29;
-int TOKEN_FORWARD = 30;
-int TOKEN_AS = 31;
-int TOKEN_PROP = 32;
-int TOKEN_NEW = 33;
-int TOKEN_PRUNE = 34;
-int TOKEN_SIZEOF = 35;
-int TOKEN_PRINT = 36;
-int TOKEN_DOT = 37;
-int TOKEN_DOTDOT = 38;
-int TOKEN_DOTDOTEQ = 39;
-int TOKEN_PLUS = 40;
-int TOKEN_MINUS = 41;
-int TOKEN_STAR = 42;
-int TOKEN_CARET = 43;
-int TOKEN_SLASH = 44;
-int TOKEN_AMPERSAND = 45;
-int TOKEN_AT = 46;
-int TOKEN_ASSIGN = 47;
-int TOKEN_LT = 48;
-int TOKEN_GT = 49;
-int TOKEN_COMP = 50;
-int TOKEN_NEQ = 51;
-int TOKEN_GEQ = 52;
-int TOKEN_LEQ = 53;
-int TOKEN_LPAREN = 54;
-int TOKEN_RPAREN = 55;
-int TOKEN_LBRACK = 56;
-int TOKEN_RBRACK = 57;
-int TOKEN_LBRACE = 58;
-int TOKEN_RBRACE = 59;
-int TOKEN_COLON = 60;
-int TOKEN_COMMA = 61;
-int TOKEN_SEMI = 62;
-int TOKEN_NEWLINE = 63;
-int TOKEN_EOF = 64;
+int TOKEN_FUNC = 21;
+int TOKEN_FOR = 22;
+int TOKEN_IN = 23;
+int TOKEN_END = 24;
+int TOKEN_IF = 25;
+int TOKEN_ELSE = 26;
+int TOKEN_NOT = 27;
+int TOKEN_AND = 28;
+int TOKEN_OR = 29;
+int TOKEN_IMPORT = 30;
+int TOKEN_FORWARD = 31;
+int TOKEN_AS = 32;
+int TOKEN_PROP = 33;
+int TOKEN_NEW = 34;
+int TOKEN_PRUNE = 35;
+int TOKEN_SIZEOF = 36;
+int TOKEN_PRINT = 37;
+int TOKEN_DOT = 38;
+int TOKEN_DOTDOT = 39;
+int TOKEN_DOTDOTEQ = 40;
+int TOKEN_PLUS = 41;
+int TOKEN_MINUS = 42;
+int TOKEN_STAR = 43;
+int TOKEN_CARET = 44;
+int TOKEN_SLASH = 45;
+int TOKEN_AMPERSAND = 46;
+int TOKEN_AT = 47;
+int TOKEN_ASSIGN = 48;
+int TOKEN_LT = 49;
+int TOKEN_GT = 50;
+int TOKEN_COMP = 51;
+int TOKEN_NEQ = 52;
+int TOKEN_GEQ = 53;
+int TOKEN_LEQ = 54;
+int TOKEN_LPAREN = 55;
+int TOKEN_RPAREN = 56;
+int TOKEN_LBRACK = 57;
+int TOKEN_RBRACK = 58;
+int TOKEN_LBRACE = 59;
+int TOKEN_RBRACE = 60;
+int TOKEN_COLON = 61;
+int TOKEN_COMMA = 62;
+int TOKEN_SEMI = 63;
+int TOKEN_NEWLINE = 64;
+int TOKEN_EOF = 65;
 
 
 typedef struct Token {
@@ -294,6 +295,9 @@ add_token(ts, TOKEN_VOID, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "prop", 4))) {
 add_token(ts, TOKEN_PROP, start, length);
+}
+else if (length == 4  &&  !(strncmp(src + start, "func", 4))) {
+add_token(ts, TOKEN_FUNC, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "union", 5))) {
 add_token(ts, TOKEN_UNION, start, length);
@@ -553,6 +557,9 @@ return "TOKEN_BREAK";
 }
 else if (kind == TOKEN_WHILE) {
 return "TOKEN_WHILE";
+}
+else if (kind == TOKEN_FUNC) {
+return "TOKEN_FUNC";
 }
 else if (kind == TOKEN_IF) {
 return "TOKEN_IF";
@@ -863,7 +870,7 @@ int has_alias;
 
 
 typedef struct prp {
-AST* func;
+AST* fnc;
 } prp;
 
 
@@ -1925,9 +1932,15 @@ return NULL;
 
 
 AST* parse_func_def(Parser* ps) {
+if (!(parser_expect(ps, TOKEN_FUNC))) {
+return NULL;
+}
 AST* node = make_node(AST_FUNC_DEF);
-node->data._func_def.return_type = *(parse_type(ps));
 Token* name = parser_advance(ps);
+if (name->kind != TOKEN_IDENTIFIER) {
+parser_error(ps, "Expected function name");
+return node;
+}
 node->data._func_def.name_start = name->start;
 node->data._func_def.name_length = name->length;
 if (!(parser_expect(ps, TOKEN_LPAREN))) {
@@ -1957,6 +1970,7 @@ node->data._func_def.params = param_head;
 if (!(parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
+node->data._func_def.return_type = *(parse_type(ps));
 AST* body_head = NULL;
 AST* body_tail = NULL;
 while (parser_peek(ps)->kind != TOKEN_END) {
@@ -2024,9 +2038,9 @@ node->data._alias_call.alias_length = alias->length;
 if (!(parser_expect(ps, TOKEN_DOT))) {
 return node;
 }
-Token* func = parser_advance(ps);
-node->data._alias_call.func_start = func->start;
-node->data._alias_call.func_length = func->length;
+Token* fnc = parser_advance(ps);
+node->data._alias_call.func_start = fnc->start;
+node->data._alias_call.func_length = fnc->length;
 if (!(parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
@@ -2255,9 +2269,8 @@ node->data._forward.name_start = name->start;
 node->data._forward.name_length = name->length;
 node->data._forward.is_func = 0;
 }
-else {
-node->data._forward.is_func = 1;
-node->data._forward.return_type = *(parse_type(ps));
+else if (parser_peek(ps)->kind == TOKEN_FUNC) {
+parser_advance(ps);
 Token* name = parser_advance(ps);
 node->data._forward.name_start = name->start;
 node->data._forward.name_length = name->length;
@@ -2279,6 +2292,13 @@ parser_advance(ps);
 }
 parser_expect(ps, TOKEN_RPAREN);
 node->data._forward.params = param_head;
+parser_expect(ps, TOKEN_COLON);
+node->data._forward.return_type = *(parse_type(ps));
+node->data._forward.is_func = 1;
+}
+else {
+parser_error(ps, "Expected either struct or function declaration");
+return node;
 }
 return node;
 }
@@ -2308,19 +2328,27 @@ node = parse_union(ps);
 }
 else if (parser_peek(ps)->kind == TOKEN_PROP) {
 parser_advance(ps);
-AST* func = parse_func_def(ps);
+if (parser_peek(ps)->kind == TOKEN_FUNC) {
+AST* fnc = parse_func_def(ps);
 AST* prop_node = make_node(AST_PROP);
-prop_node->data._prop.func = func;
+prop_node->data._prop.fnc = fnc;
 node = prop_node;
+}
+else if (parser_peek(ps)->kind == TOKEN_STRUCT) {
+}
+else {
+parser_error(ps, "Expected declaration after prop");
+node = NULL;
+}
+}
+else if (parser_peek(ps)->kind == TOKEN_FUNC) {
+node = parse_func_def(ps);
 }
 else if (parser_peek(ps)->kind == TOKEN_FORWARD) {
 node = parse_forward(ps);
 }
 else if (parser_peek(ps)->kind == TOKEN_IDENTIFIER  &&  peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
 node = parse_var_decl(ps);
-}
-else {
-node = parse_func_def(ps);
 }
 if (head == NULL) {
 head = node;
@@ -2533,7 +2561,7 @@ else if (curr->kind == AST_FUNC_DEF) {
 register_func(env, curr, src);
 }
 else if (curr->kind == AST_PROP) {
-register_func(env, curr->data._prop.func, src);
+register_func(env, curr->data._prop.fnc, src);
 }
 else if (curr->kind == AST_VAR_DECL) {
 register_var(env, curr, src);
@@ -2617,11 +2645,11 @@ env->var_count = env->var_count + 1;
 }
 
 
-void register_params(TypeEnv* env, AST* func, char* src) {
-AST* param = func->data._func_def.params;
+void register_params(TypeEnv* env, AST* fnc, char* src) {
+AST* param = fnc->data._func_def.params;
 while (param != NULL) {
 if (env->var_count >= 2048) {
-type_error(env, func, "type environment struct table overflow");
+type_error(env, fnc, "type environment struct table overflow");
 return;}
 VarInfo* info = env->vars + env->var_count;
 info->src = src;
@@ -2781,7 +2809,7 @@ env->var_count = saved_var_count;
 }
 else if (curr->kind == AST_PROP) {
 int saved_var_count = env->var_count;
-AST* _prop = curr->data._prop.func;
+AST* _prop = curr->data._prop.fnc;
 register_params(env, _prop, src);
 walk_statement_list(env, _prop->data._func_def.body, src);
 env->var_count = saved_var_count;
@@ -3430,10 +3458,10 @@ gen_union(curr, out, mod->src);
 }
 else if (curr->kind == AST_PROP) {
 if (has_alias) {
-gen_func_def_aliased(curr->data._prop.func, out, mod->src, alias, strlen(alias));
+gen_func_def_aliased(curr->data._prop.fnc, out, mod->src, alias, strlen(alias));
 }
 else {
-gen_func_def(curr->data._prop.func, out, mod->src);
+gen_func_def(curr->data._prop.fnc, out, mod->src);
 }
 }
 else if (curr->kind == AST_FORWARD) {
