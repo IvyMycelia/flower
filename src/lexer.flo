@@ -157,6 +157,8 @@ prop void lex(ts: @TokenStream, src: @char):
                 add_token(ts, TOKEN_VOID, start, length)
             else if length == 4 and not strncmp(src + start, "prop", 4):
                 add_token(ts, TOKEN_PROP, start, length)
+            else if length == 4 and not strncmp(src + start, "func", 4):
+                add_token(ts, TOKEN_FUNC, start, length)
             else if length == 5 and not strncmp(src + start, "union", 5):
                 add_token(ts, TOKEN_UNION, start, length)
             else if length == 5 and not strncmp(src + start, "while", 5):
@@ -324,6 +326,7 @@ end
     else if kind == TOKEN_CONTINUE:     return "TOKEN_CONTINUE"
     else if kind == TOKEN_BREAK:        return "TOKEN_BREAK"
     else if kind == TOKEN_WHILE:        return "TOKEN_WHILE"
+    else if kind == TOKEN_FUNC:         return "TOKEN_FUNC"
     else if kind == TOKEN_IF:           return "TOKEN_IF"
     else if kind == TOKEN_ELSE:         return "TOKEN_ELSE"
     else if kind == TOKEN_END:          return "TOKEN_END"
