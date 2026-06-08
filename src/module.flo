@@ -155,9 +155,8 @@ func module_defines_func(module: @Module, src: @char, start: int, length: int): 
             end
 
         else if curr.kind == AST_PROP and curr.data._prop.decl != null:
-            fnc: @AST = curr.data._prop.decl
-            if fnc.kind == AST_FUNC_DEF:
-                if fnc.data._func_def.name_length == length and not strncmp(module.src + fnc.data._func_def.name_start, src + start, length):
+            if curr.data._prop.decl.kind == AST_FUNC_DEF:
+                if curr.data._prop.decl.data._func_def.name_length == length and not strncmp(module.src + curr.data._prop.decl.data._func_def.name_start, src + start, length):
                     return 1
                 end
             end

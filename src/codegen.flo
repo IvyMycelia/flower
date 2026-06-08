@@ -846,8 +846,16 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
         else:
             obj_kind: int = object.kind
-            if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+            if obj_kind == AST_DOT_ACCESS:
+                if object.data._dot_access.resolved_type.pointer_depth > 0:
+                    fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                else:
+                    fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                end
+
+            else if obj_kind == AST_SUBSCRIPT:
                 fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+
             else:
                 fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
             end
@@ -971,8 +979,16 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
         else:
             obj_kind: int = object.kind
-            if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+            if obj_kind == AST_DOT_ACCESS:
+                if object.data._dot_access.resolved_type.pointer_depth > 0:
+                    fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                else:
+                    fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                end
+
+            else if obj_kind == AST_SUBSCRIPT:
                 fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+
             else:
                 fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
             end
