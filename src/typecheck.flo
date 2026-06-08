@@ -57,6 +57,8 @@ struct TypeEnv {
     error_count: int
 }
 
+active_type_modules: @ModuleSet
+current_type_module: @Module
 
 // Helper Functions
 
@@ -98,9 +100,11 @@ forward func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
 forward func lookup_struct(env: @TypeEnv, src: @char, start: int, length: int): @StructInfo
 forward func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int): @FieldInfo
+forward func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
 
 forward func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+forward func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
 forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
@@ -286,6 +290,9 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     else if expr.kind == AST_FUNC_CALL:
         return lookup_func_return_type(env, src, expr.data._func_call.name_start, expr.data._func_call.name_length, out)
 
+    else if expr.kind == AST_ALIAS_CALL:
+        return resolve_alias_call(env, expr, out, src)
+
     else if expr.kind == AST_SUBSCRIPT:
         if !resolve_expr(env, expr.data._subscript.array, out, src):
             return 0
@@ -349,6 +356,30 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     copy_type(out, &field.type)
     copy_type(&expr.data._dot_access.resolved_type, &field.type)
     prune object_type
+    return 1
+end
+
+func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+    if current_type_module == null:
+        return 0
+    end
+
+    imported: @Module = find_imported_module(active_type_modules, current_type_module, src, expr.data._alias_call.alias_start, expr.data._alias_call.alias_length)
+    if imported == null:
+        type_error(env, expr, "unknown module alias in function call")
+        return 0
+    end
+
+    if !module_defines_func(imported, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length):
+        type_error(env, expr, "unknown function on imported module alias")
+        return 0
+    end
+
+    if !lookup_func_return_type_in_module(env, imported.src, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length, out):
+        type_error(env, expr, "could not resolve imported function return type")
+        return 0
+    end
+
     return 1
 end
 
@@ -472,6 +503,19 @@ func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int,
     return 0
 end
 
+func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
+    for i in 0..env.func_count:
+        info: @FuncInfo = env.funcs + i
+
+        if info.src == module_src and same_name(info.src, info.name_start, info.name_length, call_src, start, length):
+            copy_type(out, &info.return_type)
+            return 1
+        end
+    end
+
+    return 0
+end
+
 // Walk statement
 
 func walk_statement_list(env: @TypeEnv, list: @AST, src: @char): void
@@ -513,15 +557,21 @@ func check_modules(mods: @ModuleSet): int
     env: @TypeEnv = new TypeEnv
     init_type_env(env)
 
+    active_type_modules = mods
+
     for i in 0..mods.count:
         m: @Module = mods.modules + i
+        current_type_module = m
         typecheck_collect(env, m.ast, m.src)
     end
 
     for i in 0..mods.count:
         m: @Module = mods.modules + i
+        current_type_module = m
         typecheck_ast(env, m.ast, m.src)
     end
+
+    current_type_module = null
 
     count: int = env.error_count
     prune env

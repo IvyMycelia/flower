@@ -46,6 +46,9 @@ forward func collect_exports(module: @Module): void
 forward func load_imports(set: @ModuleSet, module: @Module): void
 forward func load_module(set: @ModuleSet, path: @char): @Module
 forward func build_symbol_prefix(path: @char): @char
+forward func find_imported_module(set: @ModuleSet, module: @Module, src: @char, start: int, length: int): @Module
+forward func module_defines_func(module: @Module, src: @char, start: int, length: int): int
+forward func find_function_module(set: @ModuleSet, src: @char, start: int, length: int): @Module
 
 func find_module(set: @ModuleSet, path: @char): @Module
     for i in 0..set.count:
@@ -100,6 +103,65 @@ func build_symbol_prefix(path: @char): @char
     out[j] = '\0'
     return strdup(out)
 end
+
+func find_imported_module(set: @ModuleSet, module: @Module, src: @char, start: int, length: int): @Module
+    curr: @AST = module.ast
+
+    while curr != null:
+        if curr.kind == AST_IMPORT and curr.data._import.has_alias:
+            if curr.data._import.alias_length == length and not strncmp(module.src + curr.data._import.alias_start, src + start, length):
+                path: @char = import_path_from_ast(curr, module.src, module.path)
+                if path == null:
+                    return null
+                end
+
+                imported: @Module = find_module(set, path)
+                prune path
+                return imported
+            end
+        end
+
+        curr = curr.next
+    end
+
+    return null
+end
+
+func module_defines_func(module: @Module, src: @char, start: int, length: int): int
+    curr: @AST = module.ast
+
+    while curr != null:
+        if curr.kind == AST_FUNC_DEF:
+            if curr.data._func_def.name_length == length and not strncmp(module.src + curr.data._func_def.name_start, src + start, length):
+                return 1
+            end
+
+        else if curr.kind == AST_PROP and curr.data._prop.fnc != null:
+            fnc: @AST = curr.data._prop.fnc
+            if fnc.kind == AST_FUNC_DEF:
+                if fnc.data._func_def.name_length == length and not strncmp(module.src + fnc.data._func_def.name_start, src + start, length):
+                    return 1
+                end
+            end
+        end
+
+        curr = curr.next
+    end
+
+    return 0
+end
+
+func find_function_module(set: @ModuleSet, src: @char, start: int, length: int): @Module
+    for i in 0..set.count:
+        m: @Module = set.modules + i
+        if module_defines_func(m, src, start, length):
+            return m
+        end
+    end
+    
+    return null
+end
+
 
 func add_export(module: @Module, kind: int, name_start: int, name_length: int, name_src: @char): void
     if module.export_count >= 256:
@@ -193,7 +255,7 @@ func load_module(set: @ModuleSet, path: @char): @Module
     m.ast = parser.parse(&p)
     
     collect_exports(m)
-    
+
     set.count = set.count + 1
 
     load_imports(set, m)
