@@ -99,7 +99,7 @@ Flower generates C code, compiles it with Clang, and produces a binary. It will 
 - **Functions**: Named parameters, explicit types, no overloading (YET)
 - **Structs & Unions**: Group data, no methods (use functions instead)
 - **Memory**: `new` allocates, `prune` frees
-- **Imports**: Load other files, aliases, organize code into modules (TO BE IMPROVED)
+- **Imports**: Load other files, aliases, organize code into modules, exports via prop, private-by-default top-level declarations
 
 ## Experimentation & Contribution
 

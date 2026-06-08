@@ -23,11 +23,13 @@ Focus: Clean up core language syntax before larger features.
 
 Focus: Make imports and public APIs mean something semantically.
 
-- [ ] Top-level exports via `prop`
-- [ ] Imported module aliases act as real namespaces
-- [ ] Private-by-default top-level declarations
-- [ ] Field flags groundwork: `hidden`, `readonly`, `frozen`
-- [ ] Typecheck enforcement for external field access
+- [x] Top-level exports via `prop`
+- [x] Imported module aliases act as real namespaces
+- [x] Private-by-default top-level declarations
+- [x] Field flags groundwork: `hidden`, `readonly`, `frozen`
+- [x] Typecheck enforcement for external field access
+
+*`frozen` is not fully implemented yet, but it exists.*
 
 ## v1.3.0 (Strings & Bools)
 
