@@ -13,7 +13,10 @@ struct FieldInfo {
     src: @char,
     name_start: int,
     name_length: int,
-    type: TypeInfo
+    type: TypeInfo,
+    is_hidden: int,
+    is_frozen: int,
+    is_readonly: int
 }
 
 struct StructInfo {
@@ -164,6 +167,9 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
         copy_type(&finfo.type, &field.data._struct_field.type)
+        finfo.is_hidden = field.data._struct_field.is_hidden
+        finfo.is_frozen = field.data._struct_field.is_frozen
+        finfo.is_readonly = field.data._struct_field.is_readonly
 
         info.field_count = info.field_count + 1
         field = field.next
@@ -191,6 +197,9 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
         copy_type(&finfo.type, &field.data._struct_field.type)
+        finfo.is_hidden = field.data._struct_field.is_hidden
+        finfo.is_frozen = field.data._struct_field.is_frozen
+        finfo.is_readonly = field.data._struct_field.is_readonly
 
         info.field_count = info.field_count + 1
         field = field.next
@@ -463,6 +472,20 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 0
     end
 
+    expr.data._dot_access.is_hidden = field.is_hidden
+    expr.data._dot_access.is_frozen = field.is_frozen
+    expr.data._dot_access.is_readonly = field.is_readonly
+    expr.data._dot_access.owner_src = base_struct.src
+
+    if current_type_module != null and base_struct.src != current_type_module.src:
+        if field.is_hidden:
+            type_error(env, expr, "field does not exist in this scope")
+            expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+            prune object_type
+            return 0
+        end
+    end
+
     copy_type(out, &field.type)
     copy_type(&expr.data._dot_access.resolved_type, &field.type)
     prune object_type
@@ -512,6 +535,13 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         resolve_expr(env, ast, tmp, src)
         prune tmp
         if ast.data._dot_access.value != null:
+            if current_type_module != null and ast.data._dot_access.owner_src != null and ast.data._dot_access.owner_src != current_type_module.src:
+                if ast.data._dot_access.is_readonly:
+                    type_error(env, ast, "field is readonly from this scope")
+                    return
+                end
+            end
+
             value_type: @TypeInfo = new TypeInfo
             resolve_expr(env, ast.data._dot_access.value, value_type, src)
             prune value_type

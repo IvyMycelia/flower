@@ -52,7 +52,15 @@ AST_PARAM:          int = 35    // n: int in function signatures
     
 AST_PRINT:          int = 36    // print()
 
-    
+
+// FIELDS
+FIELD_FALSE: int = 0
+FIELD_TRUE:  int = 1
+
+// FIELD_HIDDEN:   int = 1
+// FIELD_READONLY: int = 2
+// FIELD_FROZEN:   int = 4
+
 forward struct AST
 
 
@@ -188,6 +196,9 @@ struct struct_field {
     name_start: int,
     name_length: int,
     type: TypeInfo,
+    is_hidden: int,
+    is_frozen: int,
+    is_readonly: int,
 }
 
 struct struct_lit {
@@ -211,6 +222,11 @@ struct dot_access {
 
     // Resulting type of this access
     resolved_type: TypeInfo
+
+    is_hidden: int,
+    is_frozen: int,
+    is_readonly: int,
+    owner_src: @char
 }
 
     // === Operations ===
