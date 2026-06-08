@@ -870,7 +870,7 @@ int has_alias;
 
 
 typedef struct prp {
-AST* fnc;
+AST* decl;
 } prp;
 
 
@@ -2328,16 +2328,25 @@ node = mod_src_parser_flo_parse_union(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PROP) {
 mod_src_parser_flo_parser_advance(ps);
+AST* decl = NULL;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
-AST* fnc = mod_src_parser_flo_parse_func_def(ps);
-AST* prop_node = mod_src_parser_flo_make_node(AST_PROP);
-prop_node->data._prop.fnc = fnc;
-node = prop_node;
+decl = mod_src_parser_flo_parse_func_def(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
+decl = mod_src_parser_flo_parse_struct(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_UNION) {
+decl = mod_src_parser_flo_parse_union(ps);
 }
 else {
 mod_src_parser_flo_parser_error(ps, "Expected declaration after prop");
+}
+if (decl != NULL) {
+AST* prop_node = mod_src_parser_flo_make_node(AST_PROP);
+prop_node->data._prop.decl = decl;
+node = prop_node;
+}
+else {
 node = NULL;
 }
 }
@@ -2420,6 +2429,7 @@ Module* mod_src_module_flo_load_module(ModuleSet* set, char* path);
 char* mod_src_module_flo_build_symbol_prefix(char* path);
 Module* mod_src_module_flo_find_imported_module(ModuleSet* set, Module* module, char* src, int start, int length);
 int mod_src_module_flo_module_defines_func(Module* module, char* src, int start, int length);
+int mod_src_module_flo_module_exports_func(Module* module, char* src, int start, int length);
 Module* mod_src_module_flo_find_function_module(ModuleSet* set, char* src, int start, int length);
 
 
@@ -2514,8 +2524,8 @@ if (curr->data._func_def.name_length == length  &&  !(strncmp(module->src + curr
 return 1;
 }
 }
-else if (curr->kind == AST_PROP  &&  curr->data._prop.fnc != NULL) {
-AST* fnc = curr->data._prop.fnc;
+else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
+AST* fnc = curr->data._prop.decl;
 if (fnc->kind == AST_FUNC_DEF) {
 if (fnc->data._func_def.name_length == length  &&  !(strncmp(module->src + fnc->data._func_def.name_start, src + start, length))) {
 return 1;
@@ -2525,6 +2535,11 @@ return 1;
 curr = curr->next;
 }
 return 0;
+}
+
+
+int mod_src_module_flo_module_exports_func(Module* module, char* src, int start, int length) {
+return mod_src_module_flo_find_export(module, src, start, length, EXPORT_FUNC) != NULL;
 }
 
 
@@ -2556,8 +2571,8 @@ void mod_src_module_flo_collect_exports(Module* module) {
 module->export_count = 0;
 AST* curr = module->ast;
 while (curr != NULL) {
-if (curr->kind == AST_PROP  &&  curr->data._prop.fnc != NULL) {
-AST* decl = curr->data._prop.fnc;
+if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
+AST* decl = curr->data._prop.decl;
 if (decl->kind == AST_FUNC_DEF) {
 mod_src_module_flo_add_export(module, EXPORT_FUNC, decl->data._func_def.name_start, decl->data._func_def.name_length, module->src);
 }
@@ -2728,8 +2743,17 @@ mod_src_typecheck_flo_register_union(env, curr, src);
 else if (curr->kind == AST_FUNC_DEF) {
 mod_src_typecheck_flo_register_func(env, curr, src);
 }
-else if (curr->kind == AST_PROP) {
-mod_src_typecheck_flo_register_func(env, curr->data._prop.fnc, src);
+else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
+AST* decl = curr->data._prop.decl;
+if (decl->kind == AST_FUNC_DEF) {
+mod_src_typecheck_flo_register_func(env, decl, src);
+}
+else if (decl->kind == AST_STRUCT_DEF) {
+mod_src_typecheck_flo_register_struct(env, decl, src);
+}
+else if (decl->kind == AST_UNION_DEF) {
+mod_src_typecheck_flo_register_struct(env, decl, src);
+}
 }
 else if (curr->kind == AST_VAR_DECL) {
 mod_src_typecheck_flo_register_var(env, curr, src);
@@ -2939,8 +2963,8 @@ if (imported == NULL) {
 mod_src_typecheck_flo_type_error(env, expr, "unknown module alias in function call");
 return 0;
 }
-if (!(mod_src_module_flo_module_defines_func(imported, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length))) {
-mod_src_typecheck_flo_type_error(env, expr, "unknown function on imported module alias");
+if (!(mod_src_module_flo_module_exports_func(imported, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length))) {
+mod_src_typecheck_flo_type_error(env, expr, "function is not exported by imported module");
 return 0;
 }
 if (!(mod_src_typecheck_flo_lookup_func_return_type_in_module(env, imported->src, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length, out))) {
@@ -2999,12 +3023,12 @@ mod_src_typecheck_flo_register_params(env, curr, src);
 mod_src_typecheck_flo_walk_statement_list(env, curr->data._func_def.body, src);
 env->var_count = saved_var_count;
 }
-else if (curr->kind == AST_PROP) {
-int saved_var_count = env->var_count;
-AST* _prop = curr->data._prop.fnc;
-mod_src_typecheck_flo_register_params(env, _prop, src);
-mod_src_typecheck_flo_walk_statement_list(env, _prop->data._func_def.body, src);
-env->var_count = saved_var_count;
+else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
+AST* decl = curr->data._prop.decl;
+if (decl->kind == AST_FUNC_DEF) {
+mod_src_typecheck_flo_register_params(env, decl, src);
+mod_src_typecheck_flo_walk_statement_list(env, decl->data._func_def.body, src);
+}
 }
 else if (curr->kind == AST_VAR_DECL) {
 if (curr->data._var_decl.value != NULL) {
@@ -3684,7 +3708,16 @@ else if (curr->kind == AST_UNION_DEF) {
 mod_src_codegen_flo_gen_union(curr, out, mod->src);
 }
 else if (curr->kind == AST_PROP) {
-mod_src_codegen_flo_gen_func_def(curr->data._prop.fnc, out, mod->src);
+AST* decl = curr->data._prop.decl;
+if (decl->kind == AST_FUNC_DEF) {
+mod_src_codegen_flo_gen_func_def(decl, out, mod->src);
+}
+else if (decl->kind == AST_STRUCT_DEF) {
+mod_src_codegen_flo_gen_struct(decl, out, mod->src);
+}
+else if (decl->kind == AST_UNION_DEF) {
+mod_src_codegen_flo_gen_union(decl, out, mod->src);
+}
 }
 else if (curr->kind == AST_FORWARD) {
 mod_src_codegen_flo_gen_forward(curr, out, mod->src);

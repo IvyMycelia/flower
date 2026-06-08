@@ -48,6 +48,7 @@ forward func load_module(set: @ModuleSet, path: @char): @Module
 forward func build_symbol_prefix(path: @char): @char
 forward func find_imported_module(set: @ModuleSet, module: @Module, src: @char, start: int, length: int): @Module
 forward func module_defines_func(module: @Module, src: @char, start: int, length: int): int
+forward func module_exports_func(module: @Module, src: @char, start: int, length: int): int
 forward func find_function_module(set: @ModuleSet, src: @char, start: int, length: int): @Module
 
 func find_module(set: @ModuleSet, path: @char): @Module
@@ -153,8 +154,8 @@ func module_defines_func(module: @Module, src: @char, start: int, length: int): 
                 return 1
             end
 
-        else if curr.kind == AST_PROP and curr.data._prop.fnc != null:
-            fnc: @AST = curr.data._prop.fnc
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            fnc: @AST = curr.data._prop.decl
             if fnc.kind == AST_FUNC_DEF:
                 if fnc.data._func_def.name_length == length and not strncmp(module.src + fnc.data._func_def.name_start, src + start, length):
                     return 1
@@ -166,6 +167,10 @@ func module_defines_func(module: @Module, src: @char, start: int, length: int): 
     end
 
     return 0
+end
+
+func module_exports_func(module: @Module, src: @char, start: int, length: int): int
+    return find_export(module, src, start, length, EXPORT_FUNC) != null
 end
 
 func find_function_module(set: @ModuleSet, src: @char, start: int, length: int): @Module
@@ -200,8 +205,8 @@ func collect_exports(module: @Module): void
 
     curr: @AST = module.ast
     while curr != null:
-        if curr.kind == AST_PROP and curr.data._prop.fnc != null:
-            decl: @AST = curr.data._prop.fnc
+        if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            decl: @AST = curr.data._prop.decl
 
             if decl.kind == AST_FUNC_DEF:
                 add_export(module, EXPORT_FUNC, decl.data._func_def.name_start, decl.data._func_def.name_length, module.src)

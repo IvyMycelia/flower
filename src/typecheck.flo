@@ -122,8 +122,18 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
         else if curr.kind == AST_FUNC_DEF:
             register_func(env, curr, src)
 
-        else if curr.kind == AST_PROP:
-            register_func(env, curr.data._prop.fnc, src)
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_FUNC_DEF:
+                register_func(env, decl, src)
+
+            else if decl.kind == AST_STRUCT_DEF:
+                register_struct(env, decl, src)
+
+            else if decl.kind == AST_UNION_DEF:
+                register_struct(env, decl, src)
+            end
 
         else if curr.kind == AST_VAR_DECL:
             register_var(env, curr, src)
@@ -370,8 +380,8 @@ func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): 
         return 0
     end
 
-    if !module_defines_func(imported, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length):
-        type_error(env, expr, "unknown function on imported module alias")
+    if !module_exports_func(imported, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length):
+        type_error(env, expr, "function is not exported by imported module")
         return 0
     end
 
@@ -430,12 +440,13 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
             walk_statement_list(env, curr.data._func_def.body, src)
             env.var_count = saved_var_count
 
-        else if curr.kind == AST_PROP:
-            saved_var_count: int = env.var_count
-            _prop: @AST = curr.data._prop.fnc
-            register_params(env, _prop, src)
-            walk_statement_list(env, _prop.data._func_def.body, src)
-            env.var_count = saved_var_count
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_FUNC_DEF:
+                register_params(env, decl, src)
+                walk_statement_list(env, decl.data._func_def.body, src)
+            end
         
         else if curr.kind == AST_VAR_DECL:
             if curr.data._var_decl.value != null:

@@ -624,7 +624,18 @@ func emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_ali
         else if curr.kind == AST_UNION_DEF:
             gen_union(curr, out, mod.src)
         else if curr.kind == AST_PROP:
-            gen_func_def(curr.data._prop.fnc, out, mod.src)
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_FUNC_DEF:
+                gen_func_def(decl, out, mod.src)
+
+            else if decl.kind == AST_STRUCT_DEF:
+                gen_struct(decl, out, mod.src)
+
+            else if decl.kind == AST_UNION_DEF:
+                gen_union(decl, out, mod.src)
+            end
+
         else if curr.kind == AST_FORWARD:
             gen_forward(curr, out, mod.src)
         else if curr.kind == AST_FUNC_DEF:
