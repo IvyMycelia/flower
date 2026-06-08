@@ -2525,9 +2525,8 @@ return 1;
 }
 }
 else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
-AST* fnc = curr->data._prop.decl;
-if (fnc->kind == AST_FUNC_DEF) {
-if (fnc->data._func_def.name_length == length  &&  !(strncmp(module->src + fnc->data._func_def.name_start, src + start, length))) {
+if (curr->data._prop.decl->kind == AST_FUNC_DEF) {
+if (curr->data._prop.decl->data._func_def.name_length == length  &&  !(strncmp(module->src + curr->data._prop.decl->data._func_def.name_start, src + start, length))) {
 return 1;
 }
 }
@@ -2725,6 +2724,7 @@ void mod_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src
 StructInfo* mod_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int start, int length);
 FieldInfo* mod_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length);
 int mod_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length, TypeInfo* out);
+void mod_src_typecheck_flo_resolve_expr_list(TypeEnv* env, AST* list, char* src);
 int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
 int mod_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
 int mod_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
@@ -2856,6 +2856,17 @@ int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, in
 int mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
 
 
+void mod_src_typecheck_flo_resolve_expr_list(TypeEnv* env, AST* list, char* src) {
+AST* curr = list;
+while (curr != NULL) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, curr, tmp, src);
+free(tmp);
+curr = curr->next;
+}
+}
+
+
 int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
 if (expr == NULL) {
 return 0;
@@ -2870,7 +2881,7 @@ return 1;
 }
 else if (expr->kind == AST_DEREF) {
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._deref.operand, out, src))) {
-expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve object type for field access");
 return 0;
 }
 if (out->pointer_depth <= 0) {
@@ -2890,15 +2901,67 @@ else if (expr->kind == AST_DOT_ACCESS) {
 return mod_src_typecheck_flo_resolve_dot(env, expr, out, src);
 }
 else if (expr->kind == AST_FUNC_CALL) {
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._func_call.args, src);
 return mod_src_typecheck_flo_lookup_func_return_type(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length, out);
 }
 else if (expr->kind == AST_ALIAS_CALL) {
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._alias_call.args, src);
 return mod_src_typecheck_flo_resolve_alias_call(env, expr, out, src);
 }
 else if (expr->kind == AST_SUBSCRIPT) {
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
 return 0;
 }
+TypeInfo* idx_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.index, idx_type, src);
+free(idx_type);
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_BINARY_OP) {
+TypeInfo* left_type = malloc(sizeof(TypeInfo));
+TypeInfo* right_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.left, left_type, src);
+mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.right, right_type, src);
+out->base = TOKEN_INT;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+free(left_type);
+free(right_type);
+return 1;
+}
+else if (expr->kind == AST_UNARY_NOT) {
+TypeInfo* operand_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand_type, src);
+free(operand_type);
+out->base = TOKEN_BOOL;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_UNARY_NEG) {
+TypeInfo* operand_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand_type, src))) {
+free(operand_type);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(out, operand_type);
+free(operand_type);
+return 1;
+}
+else if (expr->kind == AST_CAST) {
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, expr->data._cast.value, value_type, src);
+free(value_type);
+mod_src_typecheck_flo_copy_type(out, &(expr->data._cast.type));
+return 1;
+}
+else if (expr->kind == AST_SIZEOF) {
+out->base = TOKEN_INT;
+out->pointer_depth = 0;
 out->array_size = 0;
 out->arr_size_expr = NULL;
 return 1;
@@ -2906,6 +2969,36 @@ return 1;
 else if (expr->kind == AST_LITERAL) {
 out->base = TOKEN_INT;
 out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_FLOAT_LIT) {
+out->base = TOKEN_FLOAT;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_CHAR_LIT) {
+out->base = TOKEN_CHAR;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_STRING_LIT) {
+out->base = TOKEN_STRING;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_NULL) {
+out->base = TOKEN_VOID;
+out->pointer_depth = 1;
+out->array_size = 0;
+out->arr_size_expr = NULL;
 return 1;
 }
 return 0;
@@ -3006,9 +3099,34 @@ mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
 free(tmp);
 }
+else if (ast->kind == AST_WHILE) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, ast->data._while_loop.condition, tmp, src);
+mod_src_typecheck_flo_walk_statement_list(env, ast->data._while_loop.body, src);
+free(tmp);
+}
+else if (ast->kind == AST_FOR) {
+TypeInfo* from_type = malloc(sizeof(TypeInfo));
+TypeInfo* to_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, ast->data._for_loop.from, from_type, src);
+mod_src_typecheck_flo_resolve_expr(env, ast->data._for_loop.to, to_type, src);
+mod_src_typecheck_flo_walk_statement_list(env, ast->data._for_loop.body, src);
+free(from_type);
+free(to_type);
+}
 else if (ast->kind == AST_FLOW_CONTROL) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src);
+free(tmp);
+}
+else if (ast->kind == AST_PRINT) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, ast->data._print.value, tmp, src);
+free(tmp);
+}
+else if (ast->kind == AST_FUNC_CALL  ||  ast->kind == AST_ALIAS_CALL) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
 free(tmp);
 }
 }
@@ -3026,8 +3144,10 @@ env->var_count = saved_var_count;
 else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
 AST* decl = curr->data._prop.decl;
 if (decl->kind == AST_FUNC_DEF) {
+int saved_var_count = env->var_count;
 mod_src_typecheck_flo_register_params(env, decl, src);
 mod_src_typecheck_flo_walk_statement_list(env, decl->data._func_def.body, src);
+env->var_count = saved_var_count;
 }
 }
 else if (curr->kind == AST_VAR_DECL) {
@@ -3830,7 +3950,15 @@ fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_a
 }
 else {
 int obj_kind = object->kind;
-if (obj_kind == AST_DOT_ACCESS  ||  obj_kind == AST_SUBSCRIPT) {
+if (obj_kind == AST_DOT_ACCESS) {
+if (object->data._dot_access.resolved_type.pointer_depth > 0) {
+fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+else {
+fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+}
+else if (obj_kind == AST_SUBSCRIPT) {
 fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
 }
 else {
@@ -3960,7 +4088,15 @@ fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_a
 }
 else {
 int obj_kind = object->kind;
-if (obj_kind == AST_DOT_ACCESS  ||  obj_kind == AST_SUBSCRIPT) {
+if (obj_kind == AST_DOT_ACCESS) {
+if (object->data._dot_access.resolved_type.pointer_depth > 0) {
+fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+else {
+fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
+}
+}
+else if (obj_kind == AST_SUBSCRIPT) {
 fprintf(out, ".%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
 }
 else {
