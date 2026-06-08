@@ -159,6 +159,7 @@ prop func lex(ts: @TokenStream, src: @char): void
                 add_token(ts, TOKEN_PROP, start, length)
             else if length == 4 and not strncmp(src + start, "func", 4):
                 add_token(ts, TOKEN_FUNC, start, length)
+
             else if length == 5 and not strncmp(src + start, "union", 5):
                 add_token(ts, TOKEN_UNION, start, length)
             else if length == 5 and not strncmp(src + start, "while", 5):
@@ -171,6 +172,7 @@ prop func lex(ts: @TokenStream, src: @char): void
                 add_token(ts, TOKEN_FLOAT, start, length)
             else if length == 5 and not strncmp(src + start, "break", 5):
                 add_token(ts, TOKEN_BREAK, start, length)
+
             else if length == 6 and not strncmp(src + start, "return", 6):
                 add_token(ts, TOKEN_RETURN, start, length)
             else if length == 6 and not strncmp(src + start, "string", 6):
@@ -183,10 +185,18 @@ prop func lex(ts: @TokenStream, src: @char): void
                 add_token(ts, TOKEN_IMPORT, start, length)
             else if length == 6 and not strncmp(src + start, "double", 6):
                 add_token(ts, TOKEN_DOUBLE, start, length)
+            else if length == 6 and not strncmp(src + start, "hidden", 6):
+                add_token(ts, TOKEN_HIDDEN, start, length)
+            else if length == 6 and not strncmp(src + start, "frozen", 6):
+                add_token(ts, TOKEN_FROZEN, start, length)
+
             else if length == 7 and not strncmp(src + start, "forward", 7):
                 add_token(ts, TOKEN_FORWARD, start, length)
+
             else if length == 8 and not strncmp(src + start, "continue", 8):
                 add_token(ts, TOKEN_CONTINUE, start, length)
+            else if length == 8 and not strncmp(src + start, "readonly", 8):
+                add_token(ts, TOKEN_READONLY, start, length)
 
             else:
                 add_token(ts, TOKEN_IDENTIFIER, start, length)
@@ -339,6 +349,9 @@ func token_kind_name(kind: int): @char
         // Import System 
     else if kind == TOKEN_IMPORT:       return "TOKEN_IMPORT"
     else if kind == TOKEN_PROP:         return "TOKEN_PROP"
+    else if kind == TOKEN_HIDDEN:       return "TOKEN_HIDDEN"
+    else if kind == TOKEN_FROZEN:       return "TOKEN_FROZEN"
+    else if kind == TOKEN_READONLY:     return "TOKEN_READONLY"
 
         // Memory Management 
     else if kind == TOKEN_AS:           return "TOKEN_AS"

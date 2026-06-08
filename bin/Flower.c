@@ -79,38 +79,41 @@ int TOKEN_IMPORT = 30;
 int TOKEN_FORWARD = 31;
 int TOKEN_AS = 32;
 int TOKEN_PROP = 33;
-int TOKEN_NEW = 34;
-int TOKEN_PRUNE = 35;
-int TOKEN_SIZEOF = 36;
-int TOKEN_PRINT = 37;
-int TOKEN_DOT = 38;
-int TOKEN_DOTDOT = 39;
-int TOKEN_DOTDOTEQ = 40;
-int TOKEN_PLUS = 41;
-int TOKEN_MINUS = 42;
-int TOKEN_STAR = 43;
-int TOKEN_CARET = 44;
-int TOKEN_SLASH = 45;
-int TOKEN_AMPERSAND = 46;
-int TOKEN_AT = 47;
-int TOKEN_ASSIGN = 48;
-int TOKEN_LT = 49;
-int TOKEN_GT = 50;
-int TOKEN_COMP = 51;
-int TOKEN_NEQ = 52;
-int TOKEN_GEQ = 53;
-int TOKEN_LEQ = 54;
-int TOKEN_LPAREN = 55;
-int TOKEN_RPAREN = 56;
-int TOKEN_LBRACK = 57;
-int TOKEN_RBRACK = 58;
-int TOKEN_LBRACE = 59;
-int TOKEN_RBRACE = 60;
-int TOKEN_COLON = 61;
-int TOKEN_COMMA = 62;
-int TOKEN_SEMI = 63;
-int TOKEN_NEWLINE = 64;
-int TOKEN_EOF = 65;
+int TOKEN_HIDDEN = 34;
+int TOKEN_READONLY = 35;
+int TOKEN_FROZEN = 36;
+int TOKEN_NEW = 37;
+int TOKEN_PRUNE = 38;
+int TOKEN_SIZEOF = 39;
+int TOKEN_PRINT = 40;
+int TOKEN_DOT = 41;
+int TOKEN_DOTDOT = 42;
+int TOKEN_DOTDOTEQ = 43;
+int TOKEN_PLUS = 44;
+int TOKEN_MINUS = 45;
+int TOKEN_STAR = 46;
+int TOKEN_CARET = 47;
+int TOKEN_SLASH = 48;
+int TOKEN_AMPERSAND = 49;
+int TOKEN_AT = 50;
+int TOKEN_ASSIGN = 51;
+int TOKEN_LT = 52;
+int TOKEN_GT = 53;
+int TOKEN_COMP = 54;
+int TOKEN_NEQ = 55;
+int TOKEN_GEQ = 56;
+int TOKEN_LEQ = 57;
+int TOKEN_LPAREN = 58;
+int TOKEN_RPAREN = 59;
+int TOKEN_LBRACK = 60;
+int TOKEN_RBRACK = 61;
+int TOKEN_LBRACE = 62;
+int TOKEN_RBRACE = 63;
+int TOKEN_COLON = 64;
+int TOKEN_COMMA = 65;
+int TOKEN_SEMI = 66;
+int TOKEN_NEWLINE = 67;
+int TOKEN_EOF = 68;
 
 
 typedef struct Token {
@@ -335,11 +338,20 @@ mod_src_lexer_flo_add_token(ts, TOKEN_IMPORT, start, length);
 else if (length == 6  &&  !(strncmp(src + start, "double", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_DOUBLE, start, length);
 }
+else if (length == 6  &&  !(strncmp(src + start, "hidden", 6))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_HIDDEN, start, length);
+}
+else if (length == 6  &&  !(strncmp(src + start, "frozen", 6))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_FROZEN, start, length);
+}
 else if (length == 7  &&  !(strncmp(src + start, "forward", 7))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FORWARD, start, length);
 }
 else if (length == 8  &&  !(strncmp(src + start, "continue", 8))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_CONTINUE, start, length);
+}
+else if (length == 8  &&  !(strncmp(src + start, "readonly", 8))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_READONLY, start, length);
 }
 else {
 mod_src_lexer_flo_add_token(ts, TOKEN_IDENTIFIER, start, length);
@@ -591,6 +603,15 @@ return "TOKEN_IMPORT";
 else if (kind == TOKEN_PROP) {
 return "TOKEN_PROP";
 }
+else if (kind == TOKEN_HIDDEN) {
+return "TOKEN_HIDDEN";
+}
+else if (kind == TOKEN_FROZEN) {
+return "TOKEN_FROZEN";
+}
+else if (kind == TOKEN_READONLY) {
+return "TOKEN_READONLY";
+}
 else if (kind == TOKEN_AS) {
 return "TOKEN_AS";
 }
@@ -766,6 +787,8 @@ int AST_FOR = 33;
 int AST_IF = 34;
 int AST_PARAM = 35;
 int AST_PRINT = 36;
+int FIELD_FALSE = 0;
+int FIELD_TRUE = 1;
 typedef struct AST AST;
 
 
@@ -910,6 +933,9 @@ typedef struct struct_field {
 int name_start;
 int name_length;
 TypeInfo type;
+int is_hidden;
+int is_frozen;
+int is_readonly;
 } struct_field;
 
 
@@ -928,6 +954,10 @@ int field_length;
 AST* value;
 int access_kind;
 TypeInfo resolved_type;
+int is_hidden;
+int is_frozen;
+int is_readonly;
+char* owner_src;
 } dot_access;
 
 
@@ -1106,6 +1136,8 @@ AST* mod_src_parser_flo_parse_struct(Parser* ps);
 AST* mod_src_parser_flo_parse_dot_ass(Parser* ps);
 AST* mod_src_parser_flo_parse_forward(Parser* ps);
 AST* mod_src_parser_flo_parse_import(Parser* ps);
+int mod_src_parser_flo_is_field_flag(int kind);
+void mod_src_parser_flo_parse_field_flags(Parser* ps, AST* field);
 
 
 Token* mod_src_parser_flo_parser_peek(Parser* ps) {
@@ -1240,6 +1272,30 @@ int line = mod_include_lexer_h_flo_get_line(ps->src, token->start);
 int col = mod_include_lexer_h_flo_get_col(ps->src, token->start);
 printf("%s%s:%d:%d: error:%s %s\n", RED, ps->filename, line, col, RESET, message);
 ps->error_count = ps->error_count + 1;
+}
+
+
+int mod_src_parser_flo_is_field_flag(int kind) {
+return kind == TOKEN_HIDDEN  ||  kind == TOKEN_READONLY  ||  kind == TOKEN_FROZEN;
+}
+
+
+void mod_src_parser_flo_parse_field_flags(Parser* ps, AST* field) {
+field->data._struct_field.is_hidden = 0;
+field->data._struct_field.is_frozen = 0;
+field->data._struct_field.is_readonly = 0;
+while (mod_src_parser_flo_is_field_flag(mod_src_parser_flo_parser_peek(ps)->kind)) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_HIDDEN) {
+field->data._struct_field.is_hidden = 1;
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FROZEN) {
+field->data._struct_field.is_frozen = 1;
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_READONLY) {
+field->data._struct_field.is_readonly = 1;
+}
+mod_src_parser_flo_parser_advance(ps);
+}
 }
 
 
@@ -2111,6 +2167,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in struct body");
 return node;
 }
 AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+mod_src_parser_flo_parse_field_flags(ps, field);
 Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected field name");
@@ -2146,8 +2203,8 @@ if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected union name");
 return NULL;
 }
-node->data._struct_def.name_start = name->start;
-node->data._struct_def.name_length = name->length;
+node->data._union_def.name_start = name->start;
+node->data._union_def.name_length = name->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LBRACE))) {
 return NULL;
 }
@@ -2168,6 +2225,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in union body");
 return node;
 }
 AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+mod_src_parser_flo_parse_field_flags(ps, field);
 Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected field name");
@@ -2649,6 +2707,9 @@ char* src;
 int name_start;
 int name_length;
 TypeInfo type;
+int is_hidden;
+int is_frozen;
+int is_readonly;
 } FieldInfo;
 
 
@@ -2779,6 +2840,9 @@ finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
 mod_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
+finfo->is_hidden = field->data._struct_field.is_hidden;
+finfo->is_frozen = field->data._struct_field.is_frozen;
+finfo->is_readonly = field->data._struct_field.is_readonly;
 info->field_count = info->field_count + 1;
 field = field->next;
 }
@@ -2802,6 +2866,9 @@ finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
 mod_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
+finfo->is_hidden = field->data._struct_field.is_hidden;
+finfo->is_frozen = field->data._struct_field.is_frozen;
+finfo->is_readonly = field->data._struct_field.is_readonly;
 info->field_count = info->field_count + 1;
 field = field->next;
 }
@@ -3040,6 +3107,18 @@ expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
 }
+expr->data._dot_access.is_hidden = field->is_hidden;
+expr->data._dot_access.is_frozen = field->is_frozen;
+expr->data._dot_access.is_readonly = field->is_readonly;
+expr->data._dot_access.owner_src = base_struct->src;
+if (current_type_module != NULL  &&  base_struct->src != current_type_module->src) {
+if (field->is_hidden) {
+mod_src_typecheck_flo_type_error(env, expr, "field does not exist in this scope");
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+free(object_type);
+return 0;
+}
+}
 mod_src_typecheck_flo_copy_type(out, &(field->type));
 mod_src_typecheck_flo_copy_type(&(expr->data._dot_access.resolved_type), &(field->type));
 free(object_type);
@@ -3087,6 +3166,11 @@ TypeInfo* tmp = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
 free(tmp);
 if (ast->data._dot_access.value != NULL) {
+if (current_type_module != NULL  &&  ast->data._dot_access.owner_src != NULL  &&  ast->data._dot_access.owner_src != current_type_module->src) {
+if (ast->data._dot_access.is_readonly) {
+mod_src_typecheck_flo_type_error(env, ast, "field is readonly from this scope");
+return;}
+}
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src);
 free(value_type);
