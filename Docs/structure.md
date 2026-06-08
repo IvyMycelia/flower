@@ -21,7 +21,7 @@ end
 
 ```rust
 /* custom.flo */
-let x: int = 0
+x: int = 0
 
 prop func mone(): void
     // Code
