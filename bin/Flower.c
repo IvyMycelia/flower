@@ -2454,7 +2454,7 @@ i = 2;
 }
 int j = 4;
 while (path[i] != '\0'  &&  j < sizeof(out) - 1) {
-int c = path[1];
+int c = path[i];
 if (isalnum(c)) {
 out[j] = c;
 }
@@ -2495,7 +2495,7 @@ else if (decl->kind == AST_STRUCT_DEF) {
 add_export(module, EXPORT_STRUCT, decl->data._struct_def.name_start, decl->data._struct_def.name_length, module->src);
 }
 else if (decl->kind == AST_UNION_DEF) {
-add_export(module, EXPORT_UNION, decl->data._union_def.name_start, decl->data._struct_def.name_length, module->src);
+add_export(module, EXPORT_UNION, decl->data._union_def.name_start, decl->data._union_def.name_length, module->src);
 }
 }
 curr = curr->next;
@@ -2541,12 +2541,15 @@ return NULL;
 Module* m = set->modules + set->count;
 m->path = strdup(path);
 m->src = src;
+m->symbol_prefix = build_symbol_prefix(path);
+m->export_count = 0;
 m->tokens = malloc(sizeof(TokenStream));
 lexer_init_token_stream(m->tokens);
 lexer_lex(m->tokens, src);
 Parser p;
 parser_init_parser(&(p), m->tokens, src, path);
 m->ast = parser_parse(&(p));
+collect_exports(m);
 set->count = set->count + 1;
 load_imports(set, m);
 return m;
