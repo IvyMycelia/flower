@@ -2377,6 +2377,17 @@ fclose(f);
 return buffer;
 }
 typedef struct Module Module;
+int EXPORT_FUNC = 1;
+int EXPORT_STRUCT = 2;
+int EXPORT_UNION = 3;
+
+
+typedef struct ExportInfo {
+int kind;
+int name_start;
+int name_length;
+char* name_src;
+} ExportInfo;
 
 
 typedef struct Module {
@@ -2384,6 +2395,9 @@ char* path;
 char* src;
 TokenStream* tokens;
 AST* ast;
+char* symbol_prefix;
+ExportInfo exports[256];
+int export_count;
 } Module;
 
 
@@ -2397,8 +2411,13 @@ void init_modules(ModuleSet* set) {
 set->count = 0;
 }
 Module* find_module(ModuleSet* set, char* path);
+ExportInfo* find_export(Module* module, char* src, int start, int length, int kind);
+char* import_path_from_ast(AST* import_ast, char* src, char* current_path);
+void add_export(Module* module, int kind, int name_start, int name_length, char* name_src);
+void collect_exports(Module* module);
 void load_imports(ModuleSet* set, Module* module);
 Module* load_module(ModuleSet* set, char* path);
+char* build_symbol_prefix(char* path);
 
 
 Module* find_module(ModuleSet* set, char* path) {
@@ -2409,6 +2428,78 @@ return m;
 }
 }
 return NULL;
+}
+
+
+ExportInfo* find_export(Module* module, char* src, int start, int length, int kind) {
+for (int i = 0; ((0) > (module->export_count)) ? i > (module->export_count) : i < (module->export_count); ((0) > (module->export_count)) ? i-- : i++) {
+ExportInfo* info = module->exports + i;
+if (kind != 0  &&  info->kind != kind) {
+continue;
+}
+if (info->name_length == length  &&  !(strncmp(info->name_src + info->name_start, src + start, length))) {
+return info;
+}
+}
+return NULL;
+}
+
+
+char* build_symbol_prefix(char* path) {
+char out[512];
+strcpy(out, "mod_");
+int i = 0;
+if (path[0] == '.'  &&  path[1] == '/') {
+i = 2;
+}
+int j = 4;
+while (path[i] != '\0'  &&  j < sizeof(out) - 1) {
+int c = path[1];
+if (isalnum(c)) {
+out[j] = c;
+}
+else {
+out[j] = '_';
+}
+i = i + 1;
+j = j + 1;
+}
+out[j] = '\0';
+return strdup(out);
+}
+
+
+void add_export(Module* module, int kind, int name_start, int name_length, char* name_src) {
+if (module->export_count >= 256) {
+printf("%sToo many exports in module: %s%s", RED, RESET, module->path);
+return;}
+ExportInfo* info = module->exports + module->export_count;
+info->kind = kind;
+info->name_start = name_start;
+info->name_length = name_length;
+info->name_src = name_src;
+module->export_count = module->export_count + 1;
+}
+
+
+void collect_exports(Module* module) {
+module->export_count = 0;
+AST* curr = module->ast;
+while (curr != NULL) {
+if (curr->kind == AST_PROP  &&  curr->data._prop.fnc != NULL) {
+AST* decl = curr->data._prop.fnc;
+if (decl->kind == AST_FUNC_DEF) {
+add_export(module, EXPORT_FUNC, decl->data._func_def.name_start, decl->data._func_def.name_length, module->src);
+}
+else if (decl->kind == AST_STRUCT_DEF) {
+add_export(module, EXPORT_STRUCT, decl->data._struct_def.name_start, decl->data._struct_def.name_length, module->src);
+}
+else if (decl->kind == AST_UNION_DEF) {
+add_export(module, EXPORT_UNION, decl->data._union_def.name_start, decl->data._struct_def.name_length, module->src);
+}
+}
+curr = curr->next;
+}
 }
 
 

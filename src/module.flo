@@ -5,11 +5,28 @@ import "src/file.flo" as file
 // Modules
 forward struct Module
 
+EXPORT_FUNC:    int = 1
+EXPORT_STRUCT:  int = 2
+EXPORT_UNION:   int = 3
+
+struct ExportInfo {
+    kind: int,
+    name_start: int,
+    name_length: int,
+    name_src: @char
+}
+
 struct Module {
     path: @char,
     src: @char,
+
     tokens: @TokenStream,
-    ast: @AST
+    ast: @AST,
+
+    symbol_prefix: @char,
+
+    exports: ExportInfo[256],
+    export_count: int
 }
 
 struct ModuleSet {
@@ -22,9 +39,13 @@ func init_modules(set: @ModuleSet): void
 end
 
 forward func find_module(set: @ModuleSet, path: @char): @Module
+forward func find_export(module: @Module, src: @char, start: int, length: int, kind: int): @ExportInfo
+forward func import_path_from_ast(import_ast: @AST, src: @char, current_path: @char): @char
+forward func add_export(module: @Module, kind: int, name_start: int, name_length: int, name_src: @char): void
+forward func collect_exports(module: @Module): void
 forward func load_imports(set: @ModuleSet, module: @Module): void
 forward func load_module(set: @ModuleSet, path: @char): @Module
-
+forward func build_symbol_prefix(path: @char): @char
 
 func find_module(set: @ModuleSet, path: @char): @Module
     for i in 0..set.count:
@@ -36,6 +57,87 @@ func find_module(set: @ModuleSet, path: @char): @Module
     return null
 end
 
+func find_export(module: @Module, src: @char, start: int, length: int, kind: int): @ExportInfo
+    for i in 0..module.export_count:
+        info: @ExportInfo = module.exports + i
+
+        if kind != 0 and info.kind != kind:
+            continue
+        end
+
+        if info.name_length == length and not strncmp(info.name_src + info.name_start, src + start, length):
+            return info
+        end
+    end
+
+    return null
+end
+
+
+func build_symbol_prefix(path: @char): @char
+    out: char[512]
+    strcpy(out, "mod_")
+
+    i: int = 0
+    if path[0] == '.' and path [1] == '/':
+        i = 2
+    end
+
+    j: int = 4
+    while path[i] != '\0' and j < sizeof(out) - 1:
+        c: int = path[1]
+
+        if isalnum(c): 
+            out[j] = c
+        else: 
+            out[j] = '_'
+        end
+
+        i = i + 1
+        j = j + 1
+    end
+
+    out[j] = '\0'
+    return strdup(out)
+end
+
+func add_export(module: @Module, kind: int, name_start: int, name_length: int, name_src: @char): void
+    if module.export_count >= 256:
+        printf("%sToo many exports in module: %s%s", RED, RESET, module.path)
+        return
+    end
+
+    info: @ExportInfo = module.exports + module.export_count
+    info.kind = kind
+    info.name_start = name_start
+    info.name_length = name_length
+    info.name_src = name_src
+
+    module.export_count = module.export_count + 1
+end
+
+func collect_exports(module: @Module): void
+    module.export_count = 0
+
+    curr: @AST = module.ast
+    while curr != null:
+        if curr.kind == AST_PROP and curr.data._prop.fnc != null:
+            decl: @AST = curr.data._prop.fnc
+
+            if decl.kind == AST_FUNC_DEF:
+                add_export(module, EXPORT_FUNC, decl.data._func_def.name_start, decl.data._func_def.name_length, module.src)
+            
+            else if decl.kind == AST_STRUCT_DEF:
+                add_export(module, EXPORT_STRUCT, decl.data._struct_def.name_start, decl.data._struct_def.name_length, module.src)
+
+            else if decl.kind == AST_UNION_DEF:
+                add_export(module, EXPORT_UNION, decl.data._union_def.name_start, decl.data._struct_def.name_length, module.src)
+            end
+        end
+
+        curr = curr.next
+    end
+end
 
 func import_path_from_ast(import_ast: @AST, src: @char, current_path: @char): @char
     if import_ast.data._import.is_system:
