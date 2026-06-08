@@ -78,19 +78,36 @@ end
 
 
 func build_symbol_prefix(path: @char): @char
+    rel: @char = path
+
+    root_len: int = strlen(project_root)
+    if root_len > 0 and not strncmp(path, project_root, root_len):
+        rel = path + root_len
+        if rel[0] == '/':
+            rel = rel + 1
+        end
+
+    else if path[0] == '.' and path[1] == '/':
+        rel = path + 2
+
+    else:
+        // Fallback for paths outside the project root:
+        // use basename only rather than leaking full absolute paths...
+        slash: @char = strrchr(path, '/')
+        if slash != null:
+            rel = slash + 1
+        end
+    end
+
     out: char[512]
     strcpy(out, "mod_")
 
     i: int = 0
-    if path[0] == '.' and path[1] == '/':
-        i = 2
-    end
-
     j: int = 4
-    while path[i] != '\0' and j < sizeof(out) - 1:
-        c: int = path[i]
+    while rel[i] != '\0' and j < sizeof(out) - 1:
+        c: int = rel[i]
 
-        if isalnum(c): 
+        if isalnum(c):
             out[j] = c
         else: 
             out[j] = '_'

@@ -7,7 +7,7 @@ char project_root[512];
 char* current_file;
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_globals_flo_set_current_file(char* f) {
+void mod_src_globals_flo_set_current_file(char* f) {
 current_file = f;
 }
 char* RED = "\033[0;31m";
@@ -18,7 +18,7 @@ char* BLUE = "\033[0;34m";
 char* BOLD = "\033[1m";
 
 
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_globals_flo_resolve_path(char* importing_file, char* import_path) {
+char* mod_src_globals_flo_resolve_path(char* importing_file, char* import_path) {
 if (import_path[0] == '<') {
 return NULL;
 }
@@ -127,7 +127,7 @@ int capacity;
 } TokenStream;
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_line(char* src, int pos) {
+int mod_include_lexer_h_flo_get_line(char* src, int pos) {
 int line = 1;
 for (int i = 0; ((0) > (pos)) ? i > (pos) : i < (pos); ((0) > (pos)) ? i-- : i++) {
 if (src[i] == '\n') {
@@ -138,7 +138,7 @@ return line;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_col(char* src, int pos) {
+int mod_include_lexer_h_flo_get_col(char* src, int pos) {
 int col = 1;
 while (pos > 0  &&  src[pos - 1] != '\n') {
 col = col + 1;
@@ -148,14 +148,14 @@ return col;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_init_token_stream(TokenStream* ts) {
+void mod_src_lexer_flo_init_token_stream(TokenStream* ts) {
 ts->data = NULL;
 ts->count = 0;
 ts->capacity = 0;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(TokenStream* ts, int kind, int start, int length) {
+void mod_src_lexer_flo_add_token(TokenStream* ts, int kind, int start, int length) {
 if (ts->count >= ts->capacity) {
 if (ts->capacity == 0) {
 ts->capacity = 64;
@@ -176,7 +176,7 @@ ts->count = ts->count + 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_lex(TokenStream* ts, char* src) {
+void mod_src_lexer_flo_lex(TokenStream* ts, char* src) {
 int i = 0;
 while (src[i] != '\0') {
 if (src[i] == ' '  ||  src[i] == '\r') {
@@ -190,7 +190,7 @@ i = i + 1;
 continue;
 }
 if (src[i] == '\n') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NEWLINE, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_NEWLINE, i, 1);
 i = i + 1;
 continue;
 }
@@ -204,7 +204,7 @@ i = i + 1;
 i = i + 1;
 }
 i = i + 1;
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_STRING_LIT, start, i - start);
+mod_src_lexer_flo_add_token(ts, TOKEN_STRING_LIT, start, i - start);
 continue;
 }
 if (src[i] == '\'') {
@@ -217,11 +217,11 @@ i = i + 1;
 i = i + 1;
 }
 i = i + 1;
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_CHAR_LIT, start, i - start);
+mod_src_lexer_flo_add_token(ts, TOKEN_CHAR_LIT, start, i - start);
 continue;
 }
 if (src[i] == ';') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_SEMI, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_SEMI, i, 1);
 i = i + 1;
 continue;
 }
@@ -235,10 +235,10 @@ i = i + 1;
 while (isdigit(src[i])) {
 i = i + 1;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_FLOAT_LIT, start, i - start);
+mod_src_lexer_flo_add_token(ts, TOKEN_FLOAT_LIT, start, i - start);
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NUMBER, start, i - start);
+mod_src_lexer_flo_add_token(ts, TOKEN_NUMBER, start, i - start);
 }
 continue;
 }
@@ -249,261 +249,261 @@ i = i + 1;
 }
 int length = i - start;
 if (length == 2  &&  !(strncmp(src + start, "if", 2))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_IF, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_IF, start, length);
 }
 else if (length == 2  &&  !(strncmp(src + start, "as", 2))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_AS, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_AS, start, length);
 }
 else if (length == 2  &&  !(strncmp(src + start, "in", 2))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_IN, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_IN, start, length);
 }
 else if (length == 2  &&  !(strncmp(src + start, "or", 2))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_OR, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_OR, start, length);
 }
 else if (length == 3  &&  !(strncmp(src + start, "int", 3))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_INT, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_INT, start, length);
 }
 else if (length == 3  &&  !(strncmp(src + start, "end", 3))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_END, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_END, start, length);
 }
 else if (length == 3  &&  !(strncmp(src + start, "new", 3))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NEW, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_NEW, start, length);
 }
 else if (length == 3  &&  !(strncmp(src + start, "not", 3))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NOT, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_NOT, start, length);
 }
 else if (length == 3  &&  !(strncmp(src + start, "and", 3))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_AND, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_AND, start, length);
 }
 else if (length == 3  &&  !(strncmp(src + start, "for", 3))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_FOR, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_FOR, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "null", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NULL, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_NULL, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "char", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_CHAR, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_CHAR, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "bool", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_BOOL, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_BOOL, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "else", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_ELSE, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_ELSE, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "void", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_VOID, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_VOID, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "prop", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_PROP, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_PROP, start, length);
 }
 else if (length == 4  &&  !(strncmp(src + start, "func", 4))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_FUNC, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_FUNC, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "union", 5))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_UNION, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_UNION, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "while", 5))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_WHILE, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_WHILE, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "prune", 5))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_PRUNE, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_PRUNE, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "print", 5))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_PRINT, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_PRINT, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "float", 5))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_FLOAT, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_FLOAT, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "break", 5))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_BREAK, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_BREAK, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "return", 6))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_RETURN, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_RETURN, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "string", 6))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_STRING, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_STRING, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "sizeof", 6))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_SIZEOF, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_SIZEOF, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "struct", 6))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_STRUCT, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_STRUCT, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "import", 6))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_IMPORT, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_IMPORT, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "double", 6))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_DOUBLE, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_DOUBLE, start, length);
 }
 else if (length == 7  &&  !(strncmp(src + start, "forward", 7))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_FORWARD, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_FORWARD, start, length);
 }
 else if (length == 8  &&  !(strncmp(src + start, "continue", 8))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_CONTINUE, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_CONTINUE, start, length);
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_IDENTIFIER, start, length);
+mod_src_lexer_flo_add_token(ts, TOKEN_IDENTIFIER, start, length);
 }
 continue;
 }
 if (src[i] == '.') {
 if (src[i + 1] == '.') {
 if (src[i + 2] == '=') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_DOTDOTEQ, i, 3);
+mod_src_lexer_flo_add_token(ts, TOKEN_DOTDOTEQ, i, 3);
 i = i + 3;
 continue;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_DOTDOT, i, 2);
+mod_src_lexer_flo_add_token(ts, TOKEN_DOTDOT, i, 2);
 i = i + 2;
 continue;
 }
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_DOT, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_DOT, i, 1);
 i = i + 1;
 continue;
 }
 }
 else if (src[i] == '+') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_PLUS, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_PLUS, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '-') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_MINUS, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_MINUS, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '~') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_TILDE, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_TILDE, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '*') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_STAR, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_STAR, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '/') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_SLASH, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_SLASH, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '^') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_CARET, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_CARET, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '&') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_AMPERSAND, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_AMPERSAND, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '@') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_AT, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_AT, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '=') {
 if (src[i + 1] == '=') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_COMP, i, 2);
+mod_src_lexer_flo_add_token(ts, TOKEN_COMP, i, 2);
 i = i + 2;
 continue;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_ASSIGN, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_ASSIGN, i, 1);
 i = i + 1;
 continue;
 }
 }
 else if (src[i] == '<') {
 if (src[i + 1] == '=') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_LEQ, i, 2);
+mod_src_lexer_flo_add_token(ts, TOKEN_LEQ, i, 2);
 i = i + 2;
 continue;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_LT, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_LT, i, 1);
 i = i + 1;
 continue;
 }
 }
 else if (src[i] == '>') {
 if (src[i + 1] == '=') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_GEQ, i, 2);
+mod_src_lexer_flo_add_token(ts, TOKEN_GEQ, i, 2);
 i = i + 2;
 continue;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_GT, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_GT, i, 1);
 i = i + 1;
 continue;
 }
 }
 else if (src[i] == '!') {
 if (src[i + 1] == '=') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NEQ, i, 2);
+mod_src_lexer_flo_add_token(ts, TOKEN_NEQ, i, 2);
 i = i + 2;
 continue;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_NOT, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_NOT, i, 1);
 i = i + 1;
 continue;
 }
 }
 else if (src[i] == '(') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_LPAREN, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_LPAREN, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == ')') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_RPAREN, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_RPAREN, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '[') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_LBRACK, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_LBRACK, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == ']') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_RBRACK, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_RBRACK, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '{') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_LBRACE, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_LBRACE, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == '}') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_RBRACE, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_RBRACE, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == ':') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_COLON, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_COLON, i, 1);
 i = i + 1;
 continue;
 }
 else if (src[i] == ',') {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_COMMA, i, 1);
+mod_src_lexer_flo_add_token(ts, TOKEN_COMMA, i, 1);
 i = i + 1;
 continue;
 }
 else {
-printf("%s%s:%d:%d: error:%s Unknown char '%c' (%d)\n", RED, current_file, mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_line(src, i), mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_col(src, i), RESET, src[i], src[i]);
+printf("%s%s:%d:%d: error:%s Unknown char '%c' (%d)\n", RED, current_file, mod_include_lexer_h_flo_get_line(src, i), mod_include_lexer_h_flo_get_col(src, i), RESET, src[i], src[i]);
 exit(1);
 }
 i = i + 1;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_add_token(ts, TOKEN_EOF, i, 0);
+mod_src_lexer_flo_add_token(ts, TOKEN_EOF, i, 0);
 }
 
 
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(int kind) {
+char* mod_src_lexer_flo_token_kind_name(int kind) {
 if (kind == TOKEN_INT) {
 return "TOKEN_INT";
 }
@@ -699,8 +699,8 @@ return "UNKNOWN";
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_print_token(Token* token, char* src) {
-printf("%-18s\t", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(token->kind));
+void mod_src_lexer_flo_print_token(Token* token, char* src) {
+printf("%-18s\t", mod_src_lexer_flo_token_kind_name(token->kind));
 if (token->kind == TOKEN_IDENTIFIER  ||  token->kind == TOKEN_NUMBER) {
 printf("\"%.*s\"", token->length, src + token->start);
 }
@@ -708,14 +708,14 @@ printf("\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_print_all_tokens(TokenStream* ts, char* src) {
+void mod_src_lexer_flo_print_all_tokens(TokenStream* ts, char* src) {
 for (int i = 0; ((0) > (ts->count)) ? i > (ts->count) : i < (ts->count); ((0) > (ts->count)) ? i-- : i++) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_print_token(&(ts->data[i]), src);
+mod_src_lexer_flo_print_token(&(ts->data[i]), src);
 }
 }
 
 
-Token* mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(TokenStream* ts, int index) {
+Token* mod_src_lexer_flo_peek(TokenStream* ts, int index) {
 if (index >= ts->count) {
 return &(ts->data[ts->count - 1]);
 }
@@ -723,7 +723,7 @@ return &(ts->data[index]);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_free_token_stream(TokenStream* ts) {
+void mod_src_lexer_flo_free_token_stream(TokenStream* ts) {
 free(ts->data);
 ts->data = NULL;
 ts->count = 0;
@@ -1069,7 +1069,7 @@ int error_count;
 } Parser;
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(int kind) {
+AST* mod_src_parser_flo_make_node(int kind) {
 AST* node = calloc(1, sizeof(AST));
 node->kind = kind;
 node->value = 0;
@@ -1077,7 +1077,7 @@ return node;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_init_parser(Parser* ps, TokenStream* ts, char* src, char* filename) {
+void mod_src_parser_flo_init_parser(Parser* ps, TokenStream* ts, char* src, char* filename) {
 ps->ts = ts;
 ps->src = src;
 ps->pos = 0;
@@ -1085,36 +1085,36 @@ ps->alias_count = 0;
 ps->filename = filename;
 ps->error_count = 0;
 }
-void mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(Parser* ps, char* message);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_decl(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_ass(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_subscript_ass(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_return(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_continue(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_break(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_while(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_if(Parser* ps, int is_elf_if);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_for(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(Parser* ps, int min_prec);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_def(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_call(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_alias_call(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_param(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_struct(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_dot_ass(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_forward(Parser* ps);
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_import(Parser* ps);
+void mod_src_parser_flo_parser_error(Parser* ps, char* message);
+AST* mod_src_parser_flo_parse_var_decl(Parser* ps);
+AST* mod_src_parser_flo_parse_var_ass(Parser* ps);
+AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps);
+AST* mod_src_parser_flo_parse_return(Parser* ps);
+AST* mod_src_parser_flo_parse_continue(Parser* ps);
+AST* mod_src_parser_flo_parse_break(Parser* ps);
+AST* mod_src_parser_flo_parse_while(Parser* ps);
+AST* mod_src_parser_flo_parse_if(Parser* ps, int is_elf_if);
+AST* mod_src_parser_flo_parse_for(Parser* ps);
+AST* mod_src_parser_flo_parse_expr(Parser* ps, int min_prec);
+AST* mod_src_parser_flo_parse_statement(Parser* ps);
+AST* mod_src_parser_flo_parse_primary(Parser* ps);
+AST* mod_src_parser_flo_parse_func_def(Parser* ps);
+AST* mod_src_parser_flo_parse_func_call(Parser* ps);
+AST* mod_src_parser_flo_parse_alias_call(Parser* ps);
+AST* mod_src_parser_flo_parse_param(Parser* ps);
+AST* mod_src_parser_flo_parse_struct(Parser* ps);
+AST* mod_src_parser_flo_parse_dot_ass(Parser* ps);
+AST* mod_src_parser_flo_parse_forward(Parser* ps);
+AST* mod_src_parser_flo_parse_import(Parser* ps);
 
 
-Token* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(Parser* ps) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos);
+Token* mod_src_parser_flo_parser_peek(Parser* ps) {
+return mod_src_lexer_flo_peek(ps->ts, ps->pos);
 }
 
 
-Token* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(Parser* ps) {
-Token* token = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
+Token* mod_src_parser_flo_parser_advance(Parser* ps) {
+Token* token = mod_src_parser_flo_parser_peek(ps);
 if (token->kind != TOKEN_EOF) {
 ps->pos = ps->pos + 1;
 }
@@ -1122,68 +1122,68 @@ return token;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(Parser* ps) {
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+void mod_src_parser_flo_parser_skip_newline(Parser* ps) {
+while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(Parser* ps, int kind) {
-Token* curr_tok = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
+int mod_src_parser_flo_parser_expect(Parser* ps, int kind) {
+Token* curr_tok = mod_src_parser_flo_parser_peek(ps);
 if (curr_tok->kind != kind) {
 char message[128];
-snprintf(message, sizeof(message), "Expected token: %s but got %s", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(kind), mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(curr_tok->kind));
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, message);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+snprintf(message, sizeof(message), "Expected token: %s but got %s", mod_src_lexer_flo_token_kind_name(kind), mod_src_lexer_flo_token_kind_name(curr_tok->kind));
+mod_src_parser_flo_parser_error(ps, message);
+mod_src_parser_flo_parser_advance(ps);
 return 0;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+mod_src_parser_flo_parser_advance(ps);
 return 1;
 }
 
 
-TypeInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(Parser* ps) {
+TypeInfo* mod_src_parser_flo_parse_type(Parser* ps) {
 TypeInfo* type = malloc(sizeof(TypeInfo));
 type->pointer_depth = 0;
 type->array_size = 0;
 type->arr_size_expr = NULL;
 type->name_src = ps->src;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
+while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
 type->pointer_depth = type->pointer_depth + 1;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in type");
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in type");
 return type;
 }
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing type");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing type");
 return type;
 }
-Token* base = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* base = mod_src_parser_flo_parser_advance(ps);
 type->base = base->kind;
 if (base->kind == TOKEN_IDENTIFIER) {
 type->name_start = base->start;
 type->name_length = base->length;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in array type");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in array type");
 return type;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACK) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACK) {
 type->array_size = -1;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
-type->array_size = atoi(ps->src + mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->start);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
+type->array_size = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
+mod_src_parser_flo_parser_advance(ps);
 }
 else {
-type->arr_size_expr = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+type->arr_size_expr = mod_src_parser_flo_parse_expr(ps, 0);
 }
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
 return type;
 }
 }
@@ -1191,7 +1191,7 @@ return type;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_get_precedence(int kind) {
+int mod_src_parser_flo_get_precedence(int kind) {
 if (kind == TOKEN_STAR  ||  kind == TOKEN_SLASH) {
 return 3;
 }
@@ -1213,7 +1213,7 @@ return 0;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_token_stream_contains(TokenStream* ts, int kind) {
+int mod_src_parser_flo_token_stream_contains(TokenStream* ts, int kind) {
 for (int i = 0; ((0) > (ts->count)) ? i > (ts->count) : i < (ts->count); ((0) > (ts->count)) ? i-- : i++) {
 Token* t = ts->data + i;
 if (t->kind == kind) {
@@ -1224,7 +1224,7 @@ return 0;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_is_alias(Parser* ps, Token* tok) {
+int mod_src_parser_flo_is_alias(Parser* ps, Token* tok) {
 for (int i = 0; ((0) > (ps->alias_count)) ? i > (ps->alias_count) : i < (ps->alias_count); ((0) > (ps->alias_count)) ? i-- : i++) {
 if (ps->alias_lengths[i] == tok->length  &&  !(strncmp(ps->src + ps->alias_start[i], ps->src + tok->start, tok->length))) {
 return 1;
@@ -1234,90 +1234,90 @@ return 0;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(Parser* ps, char* message) {
-Token* token = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
-int line = mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_line(ps->src, token->start);
-int col = mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_col(ps->src, token->start);
+void mod_src_parser_flo_parser_error(Parser* ps, char* message) {
+Token* token = mod_src_parser_flo_parser_peek(ps);
+int line = mod_include_lexer_h_flo_get_line(ps->src, token->start);
+int col = mod_include_lexer_h_flo_get_col(ps->src, token->start);
 printf("%s%s:%d:%d: error:%s %s\n", RED, ps->filename, line, col, RESET, message);
 ps->error_count = ps->error_count + 1;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_decl(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_VAR_DECL);
-Token* tok = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_var_decl(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_VAR_DECL);
+Token* tok = mod_src_parser_flo_parser_advance(ps);
 if (tok->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected variable name");
+mod_src_parser_flo_parser_error(ps, "Expected variable name");
 return node;
 }
 node->data._var_decl.name_start = tok->start;
 node->data._var_decl.name_length = tok->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in variable declaration");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in variable declaration");
 return node;
 }
-node->data._var_decl.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in variable initializer");
+node->data._var_decl.type = *(mod_src_parser_flo_parse_type(ps));
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in variable initializer");
 return node;
 }
-node->data._var_decl.value = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+node->data._var_decl.value = mod_src_parser_flo_parse_expr(ps, 0);
 }
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_ass(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_VAR_ASS);
-Token* tok = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_var_ass(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_VAR_ASS);
+Token* tok = mod_src_parser_flo_parser_advance(ps);
 if (tok->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected variable name");
+mod_src_parser_flo_parser_error(ps, "Expected variable name");
 return node;
 }
 node->data._var_ass.name_start = tok->start;
 node->data._var_ass.name_length = tok->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
 return node;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in variable assignment");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in variable assignment");
 return node;
 }
-node->data._var_ass.value = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+node->data._var_ass.value = mod_src_parser_flo_parse_expr(ps, 0);
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_subscript_ass(Parser* ps) {
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* arr_ref = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_VAR_REF);
+AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps) {
+Token* name = mod_src_parser_flo_parser_advance(ps);
+AST* arr_ref = mod_src_parser_flo_make_node(AST_VAR_REF);
 arr_ref->data._var_ref.name_start = name->start;
 arr_ref->data._var_ref.name_length = name->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LBRACK))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LBRACK))) {
 return arr_ref;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript expression");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript expression");
 return arr_ref;
 }
-AST* idx = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
+AST* idx = mod_src_parser_flo_parse_expr(ps, 0);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
 return arr_ref;
 }
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
 return arr_ref;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript expression");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript expression");
 return arr_ref;
 }
-AST* val = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-AST* sub = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_SUBSCRIPT);
+AST* val = mod_src_parser_flo_parse_expr(ps, 0);
+AST* sub = mod_src_parser_flo_make_node(AST_SUBSCRIPT);
 sub->data._subscript.array = arr_ref;
 sub->data._subscript.index = idx;
 sub->data._subscript.value = val;
@@ -1325,64 +1325,64 @@ return sub;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_return(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FLOW_CONTROL);
-node->data._flow_ctrl.base = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+AST* mod_src_parser_flo_parse_return(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 node->data._flow_ctrl.value = NULL;
 return node;
 }
-node->data._flow_ctrl.value = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+node->data._flow_ctrl.value = mod_src_parser_flo_parse_expr(ps, 0);
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_continue(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* mod_src_parser_flo_parse_continue(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
 node->data._flow_ctrl.value = NULL;
-node->data._flow_ctrl.base = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after continue");
+node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after continue");
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+mod_src_parser_flo_parser_advance(ps);
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_break(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* mod_src_parser_flo_parse_break(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
 node->data._flow_ctrl.value = NULL;
-node->data._flow_ctrl.base = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after break");
+node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after break");
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+mod_src_parser_flo_parser_advance(ps);
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_while(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_WHILE);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_WHILE))) {
+AST* mod_src_parser_flo_parse_while(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_WHILE);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_WHILE))) {
 return node;
 }
-node->data._while_loop.condition = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+node->data._while_loop.condition = mod_src_parser_flo_parse_expr(ps, 0);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
 AST* body_head = NULL;
 AST* body_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in if statement body");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in if statement body");
 return node;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_END) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_END) {
 break;
 }
-AST* statement = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(ps);
+AST* statement = mod_src_parser_flo_parse_statement(ps);
 if (body_head == NULL) {
 body_head = statement;
 }
@@ -1391,33 +1391,33 @@ body_tail->next = statement;
 }
 body_tail = statement;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_END);
+mod_src_parser_flo_parser_expect(ps, TOKEN_END);
 node->data._while_loop.body = body_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_if(Parser* ps, int is_elf_if) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_IF);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_IF))) {
+AST* mod_src_parser_flo_parse_if(Parser* ps, int is_elf_if) {
+AST* node = mod_src_parser_flo_make_node(AST_IF);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_IF))) {
 return node;
 }
-node->data._if_condition.condition = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+node->data._if_condition.condition = mod_src_parser_flo_parse_expr(ps, 0);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
 AST* body_head = NULL;
 AST* body_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_END  &&  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_ELSE) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in if statement body");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_END  &&  mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_ELSE) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in if statement body");
 return node;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_END  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_ELSE) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_END  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ELSE) {
 break;
 }
-AST* statement = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(ps);
+AST* statement = mod_src_parser_flo_parse_statement(ps);
 if (body_head == NULL) {
 body_head = statement;
 }
@@ -1427,29 +1427,29 @@ body_tail->next = statement;
 body_tail = statement;
 }
 node->data._if_condition.body = body_head;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_ELSE) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_IF) {
-node->data._if_condition.else_branch = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_if(ps, 1);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ELSE) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IF) {
+node->data._if_condition.else_branch = mod_src_parser_flo_parse_if(ps, 1);
 }
 else {
-AST* else_node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_IF);
+AST* else_node = mod_src_parser_flo_make_node(AST_IF);
 else_node->data._if_condition.condition = NULL;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
 AST* else_body_head = NULL;
 AST* else_body_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_END  &&  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_ELSE) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in if statement body");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_END  &&  mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_ELSE) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in if statement body");
 return node;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_END  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_ELSE) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_END  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ELSE) {
 break;
 }
-AST* statement = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(ps);
+AST* statement = mod_src_parser_flo_parse_statement(ps);
 if (else_body_head == NULL) {
 else_body_head = statement;
 }
@@ -1463,7 +1463,7 @@ node->data._if_condition.else_branch = else_node;
 }
 }
 if (!(is_elf_if)) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_END))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_END))) {
 return node;
 }
 }
@@ -1471,49 +1471,49 @@ return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_for(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FOR);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_FOR))) {
+AST* mod_src_parser_flo_parse_for(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_FOR);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_FOR))) {
 return node;
 }
-Token* var = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* var = mod_src_parser_flo_parser_advance(ps);
 if (var->kind != TOKEN_IDENTIFIER) {
 char message[128];
-snprintf(message, sizeof(message), "Expected loop variable after for, got %s\n", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(var->kind));
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, message);
+snprintf(message, sizeof(message), "Expected loop variable after for, got %s\n", mod_src_lexer_flo_token_kind_name(var->kind));
+mod_src_parser_flo_parser_error(ps, message);
 return node;
 }
 node->data._for_loop.var_start = var->start;
 node->data._for_loop.var_length = var->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_IN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_IN))) {
 return node;
 }
-AST* from = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* from = mod_src_parser_flo_parse_expr(ps, 0);
 node->data._for_loop.from = from;
-Token* op_range = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* op_range = mod_src_parser_flo_parser_advance(ps);
 if (op_range->kind != TOKEN_DOTDOT  &&  op_range->kind != TOKEN_DOTDOTEQ) {
 char message[128];
-snprintf(message, sizeof(message), "Expected range operator `..` OR `..=`, got %s\n", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(op_range->kind));
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, message);
+snprintf(message, sizeof(message), "Expected range operator `..` OR `..=`, got %s\n", mod_src_lexer_flo_token_kind_name(op_range->kind));
+mod_src_parser_flo_parser_error(ps, message);
 return node;
 }
 node->data._for_loop.inclusive = op_range->kind == TOKEN_DOTDOTEQ;
-AST* to = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* to = mod_src_parser_flo_parse_expr(ps, 0);
 node->data._for_loop.to = to;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
 AST* body_head = NULL;
 AST* body_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in for loop body");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in for loop body");
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_END) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_END) {
 break;
 }
-AST* statement = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(ps);
+AST* statement = mod_src_parser_flo_parse_statement(ps);
 if (body_head == NULL) {
 body_head = statement;
 }
@@ -1522,46 +1522,46 @@ body_tail->next = statement;
 }
 body_tail = statement;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_END);
+mod_src_parser_flo_parser_expect(ps, TOKEN_END);
 node->data._for_loop.body = body_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(Parser* ps, int min_prec) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in expression");
+AST* mod_src_parser_flo_parse_expr(Parser* ps, int min_prec) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in expression");
 return NULL;
 }
-AST* left = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(ps);
+AST* left = mod_src_parser_flo_parse_primary(ps);
 if (left == NULL) {
 return NULL;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AS) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in cast expression");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AS) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in cast expression");
 return NULL;
 }
-AST* cast = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_CAST);
+AST* cast = mod_src_parser_flo_make_node(AST_CAST);
 cast->data._cast.value = left;
-cast->data._cast.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+cast->data._cast.type = *(mod_src_parser_flo_parse_type(ps));
 left = cast;
 }
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_get_precedence(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind) > min_prec) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+while (mod_src_parser_flo_get_precedence(mod_src_parser_flo_parser_peek(ps)->kind) > min_prec) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 break;
 }
-Token* op = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after binary operator");
+Token* op = mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after binary operator");
 return left;
 }
-AST* right = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_get_precedence(op->kind));
+AST* right = mod_src_parser_flo_parse_expr(ps, mod_src_parser_flo_get_precedence(op->kind));
 if (right == NULL) {
 return left;
 }
-AST* bin = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_BINARY_OP);
+AST* bin = mod_src_parser_flo_make_node(AST_BINARY_OP);
 bin->data._binary.left = left;
 bin->data._binary.right = right;
 bin->data._binary.op = op->kind;
@@ -1571,135 +1571,135 @@ return left;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(Parser* ps) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing statement");
+AST* mod_src_parser_flo_parse_statement(Parser* ps) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing statement");
 return NULL;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_decl(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER) {
+if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
+return mod_src_parser_flo_parse_var_decl(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_ASSIGN) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_ass(ps);
+else if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_ASSIGN) {
+return mod_src_parser_flo_parse_var_ass(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_LPAREN) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_call(ps);
+else if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_LPAREN) {
+return mod_src_parser_flo_parse_func_call(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_LBRACK) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_dot_ass(ps);
+else if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_LBRACK) {
+return mod_src_parser_flo_parse_dot_ass(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_DOT) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_is_alias(ps, mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps))) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_alias_call(ps);
+else if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_DOT) {
+if (mod_src_parser_flo_is_alias(ps, mod_src_parser_flo_parser_peek(ps))) {
+return mod_src_parser_flo_parse_alias_call(ps);
 }
 else {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_dot_ass(ps);
+return mod_src_parser_flo_parse_dot_ass(ps);
 }
 }
 else {
 char message[128];
-snprintf(message, sizeof(message), "Unexpected token while parsing statement after identifier: %s", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind));
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, message);
+snprintf(message, sizeof(message), "Unexpected token while parsing statement after identifier: %s", mod_src_lexer_flo_token_kind_name(mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind));
+mod_src_parser_flo_parser_error(ps, message);
 return NULL;
 }
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_WHILE) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_while(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_WHILE) {
+return mod_src_parser_flo_parse_while(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_RETURN) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_return(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RETURN) {
+return mod_src_parser_flo_parse_return(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_BREAK) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_break(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_BREAK) {
+return mod_src_parser_flo_parse_break(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_CONTINUE) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_continue(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_CONTINUE) {
+return mod_src_parser_flo_parse_continue(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_IF) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_if(ps, 0);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IF) {
+return mod_src_parser_flo_parse_if(ps, 0);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_FOR) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_for(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FOR) {
+return mod_src_parser_flo_parse_for(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRINT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_PRINT);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRINT) {
+mod_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_PRINT);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in print statement");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in print statement");
 return node;
 }
-node->data._print.value = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+node->data._print.value = mod_src_parser_flo_parse_expr(ps, 0);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return node;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRUNE) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_PRUNE);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in prune statement");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRUNE) {
+mod_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_PRUNE);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in prune statement");
 return node;
 }
-node->data._prune_free.ptr = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+node->data._prune_free.ptr = mod_src_parser_flo_parse_expr(ps, 0);
 return node;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_DEREF_ASS);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in dereference statement");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
+mod_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_DEREF_ASS);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in dereference statement");
 return node;
 }
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected identifier after '@'");
+mod_src_parser_flo_parser_error(ps, "Expected identifier after '@'");
 return node;
 }
 node->data._deref_ass.name_length = name->length;
 node->data._deref_ass.name_start = name->start;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
 return node;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in dereference assignment");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in dereference assignment");
 return node;
 }
-node->data._deref_ass.value = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+node->data._deref_ass.value = mod_src_parser_flo_parse_expr(ps, 0);
 return node;
 }
 else {
 char message[128];
-snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind));
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, message);
+snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
+mod_src_parser_flo_parser_error(ps, message);
 return NULL;
 }
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(Parser* ps) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing primary");
+AST* mod_src_parser_flo_parse_primary(Parser* ps) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing primary");
 return NULL;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_LPAREN) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_call(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after '.'");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER) {
+if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_LPAREN) {
+AST* node = mod_src_parser_flo_parse_func_call(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '.'");
 return NULL;
 }
-Token* field = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* field = mod_src_parser_flo_parser_advance(ps);
 if (field->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
+mod_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
 return node;
 }
-AST* dot = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_DOT_ACCESS);
+AST* dot = mod_src_parser_flo_make_node(AST_DOT_ACCESS);
 dot->data._dot_access.object = node;
 dot->data._dot_access.field_length = field->length;
 dot->data._dot_access.field_start = field->start;
@@ -1707,54 +1707,54 @@ return dot;
 }
 return node;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_DOT  &&  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_is_alias(ps, mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps))) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_alias_call(ps);
+if (mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_DOT  &&  mod_src_parser_flo_is_alias(ps, mod_src_parser_flo_parser_peek(ps))) {
+return mod_src_parser_flo_parse_alias_call(ps);
 }
-Token* tok = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_VAR_REF);
+Token* tok = mod_src_parser_flo_parser_peek(ps);
+mod_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_VAR_REF);
 node->data._var_ref.name_start = tok->start;
 node->data._var_ref.name_length = tok->length;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
 return node;
 }
-AST* operand = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(ps);
-AST* drf = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_DEREF);
+AST* operand = mod_src_parser_flo_parse_primary(ps);
+AST* drf = mod_src_parser_flo_make_node(AST_DEREF);
 drf->data._unary.operand = operand;
 return drf;
 }
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after '.'");
+while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '.'");
 return node;
 }
-Token* field = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* field = mod_src_parser_flo_parser_advance(ps);
 if (field->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
+mod_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
 return node;
 }
-AST* dot = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_DOT_ACCESS);
+AST* dot = mod_src_parser_flo_make_node(AST_DOT_ACCESS);
 dot->data._dot_access.object = node;
 dot->data._dot_access.field_start = field->start;
 dot->data._dot_access.field_length = field->length;
 node = dot;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript");
 return node;
 }
-AST* idx = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
+AST* idx = mod_src_parser_flo_parse_expr(ps, 0);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
 return node;
 }
-AST* sub = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_SUBSCRIPT);
+AST* sub = mod_src_parser_flo_make_node(AST_SUBSCRIPT);
 sub->data._subscript.array = node;
 sub->data._subscript.index = idx;
 node = sub;
@@ -1765,42 +1765,42 @@ break;
 }
 return node;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
-AST* lit = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_LITERAL);
-lit->value = atoi(ps->src + mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->start);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
+AST* lit = mod_src_parser_flo_make_node(AST_LITERAL);
+lit->value = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
+mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_FLOAT_LIT) {
-AST* lit = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FLOAT_LIT);
-lit->data._float_lit.start = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->start;
-lit->data._float_lit.length = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FLOAT_LIT) {
+AST* lit = mod_src_parser_flo_make_node(AST_FLOAT_LIT);
+lit->data._float_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
+lit->data._float_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
+mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NULL) {
-AST* nll = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_NULL);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NULL) {
+AST* nll = mod_src_parser_flo_make_node(AST_NULL);
+mod_src_parser_flo_parser_advance(ps);
 return nll;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRING_LIT) {
-AST* str = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_STRING_LIT);
-str->data._string.str_start = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->start;
-str->data._string.str_length = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRING_LIT) {
+AST* str = mod_src_parser_flo_make_node(AST_STRING_LIT);
+str->data._string.str_start = mod_src_parser_flo_parser_peek(ps)->start;
+str->data._string.str_length = mod_src_parser_flo_parser_peek(ps)->length;
+mod_src_parser_flo_parser_advance(ps);
 return str;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* arr = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_ARRAY_LIT);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
+mod_src_parser_flo_parser_advance(ps);
+AST* arr = mod_src_parser_flo_make_node(AST_ARRAY_LIT);
 AST* elem_head = NULL;
 AST* elem_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACK) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in array literal");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACK) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in array literal");
 return arr;
 }
-AST* elem = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* elem = mod_src_parser_flo_parse_expr(ps, 0);
 if (elem_head == NULL) {
 elem_head = elem;
 }
@@ -1808,25 +1808,25 @@ else {
 elem_tail->next = elem;
 }
 elem_tail = elem;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACK);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK);
 arr->data._array.elements = elem_head;
 return arr;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACE) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* strct_lit = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_STRUCT_LIT);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACE) {
+mod_src_parser_flo_parser_advance(ps);
+AST* strct_lit = mod_src_parser_flo_make_node(AST_STRUCT_LIT);
 AST* struct_head = NULL;
 AST* struct_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in struct literal");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in struct literal");
 return strct_lit;
 }
-AST* elem = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* elem = mod_src_parser_flo_parse_expr(ps, 0);
 if (struct_head == NULL) {
 struct_head = elem;
 }
@@ -1834,126 +1834,126 @@ else {
 struct_tail->next = elem;
 }
 struct_tail = elem;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACE);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACE);
 strct_lit->data._struct_lit.elements = struct_head;
 return strct_lit;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LPAREN) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in parenthesized expression");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LPAREN) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in parenthesized expression");
 return NULL;
 }
-AST* expr = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+AST* expr = mod_src_parser_flo_parse_expr(ps, 0);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return expr;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEW) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after 'new'");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEW) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'new'");
 return NULL;
 }
-AST* new_node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_NEW);
-new_node->data._new_alloc.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+AST* new_node = mod_src_parser_flo_make_node(AST_NEW);
+new_node->data._new_alloc.type = *(mod_src_parser_flo_parse_type(ps));
 return new_node;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NOT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after 'not'");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NOT) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'not'");
 return NULL;
 }
-AST* operand = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(ps);
-AST* unry = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_UNARY_NOT);
+AST* operand = mod_src_parser_flo_parse_primary(ps);
+AST* unry = mod_src_parser_flo_make_node(AST_UNARY_NOT);
 unry->data._unary.operand = operand;
 return unry;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_MINUS) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after unary '-' operator");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_MINUS) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after unary '-' operator");
 return NULL;
 }
-AST* operand = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(ps);
-AST* unry = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_UNARY_NEG);
+AST* operand = mod_src_parser_flo_parse_primary(ps);
+AST* unry = mod_src_parser_flo_make_node(AST_UNARY_NEG);
 unry->data._unary.operand = operand;
 return unry;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
 return NULL;
 }
-AST* operand = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(ps);
-AST* deref = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_DEREF);
+AST* operand = mod_src_parser_flo_parse_primary(ps);
+AST* deref = mod_src_parser_flo_make_node(AST_DEREF);
 deref->data._deref.operand = operand;
 return deref;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AMPERSAND) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file after '&'");
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AMPERSAND) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '&'");
 return NULL;
 }
-AST* operand = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_primary(ps);
-AST* get = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_GET_ADDR);
+AST* operand = mod_src_parser_flo_parse_primary(ps);
+AST* get = mod_src_parser_flo_make_node(AST_GET_ADDR);
 get->data._get_addr.operand = operand;
 return get;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_SIZEOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SIZEOF) {
+mod_src_parser_flo_parser_advance(ps);
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return NULL;
 }
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_SIZEOF);
-node->data._size_of.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+AST* node = mod_src_parser_flo_make_node(AST_SIZEOF);
+node->data._size_of.type = *(mod_src_parser_flo_parse_type(ps));
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return node;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_CHAR_LIT) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_CHAR_LIT);
-node->data._char_lit.start = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->start;
-node->data._char_lit.length = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_CHAR_LIT) {
+AST* node = mod_src_parser_flo_make_node(AST_CHAR_LIT);
+node->data._char_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
+node->data._char_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
+mod_src_parser_flo_parser_advance(ps);
 return node;
 }
 else {
 char message[128];
-snprintf(message, sizeof(message), "parse_primary: unexpected token kind: %s", mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind));
+snprintf(message, sizeof(message), "parse_primary: unexpected token kind: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
 return NULL;
 }
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_def(Parser* ps) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_FUNC))) {
+AST* mod_src_parser_flo_parse_func_def(Parser* ps) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_FUNC))) {
 return NULL;
 }
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FUNC_DEF);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_FUNC_DEF);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected function name");
+mod_src_parser_flo_parser_error(ps, "Expected function name");
 return node;
 }
 node->data._func_def.name_start = name->start;
 node->data._func_def.name_length = name->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
 AST* param_head = NULL;
 AST* param_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in function definition parameters");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function definition parameters");
 break;
 }
-AST* param = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_param(ps);
+AST* param = mod_src_parser_flo_parse_param(ps);
 if (param_head == NULL) {
 param_head = param;
 }
@@ -1961,28 +1961,28 @@ else {
 param_tail->next = param;
 }
 param_tail = param;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 node->data._func_def.params = param_head;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
-node->data._func_def.return_type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+node->data._func_def.return_type = *(mod_src_parser_flo_parse_type(ps));
 AST* body_head = NULL;
 AST* body_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in function body");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function body");
 break;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_END) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_END) {
 break;
 }
-AST* statement = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_statement(ps);
+AST* statement = mod_src_parser_flo_parse_statement(ps);
 if (body_head == NULL) {
 body_head = statement;
 }
@@ -1991,28 +1991,28 @@ body_tail->next = statement;
 }
 body_tail = statement;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_END);
+mod_src_parser_flo_parser_expect(ps, TOKEN_END);
 node->data._func_def.body = body_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_call(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FUNC_CALL);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_func_call(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_FUNC_CALL);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._func_call.name_start = name->start;
 node->data._func_call.name_length = name->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
 AST* arg_head = NULL;
 AST* arg_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in function call arguments");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function call arguments");
 return node;
 }
-AST* param = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* param = mod_src_parser_flo_parse_expr(ps, 0);
 if (arg_head == NULL) {
 arg_head = param;
 }
@@ -2020,38 +2020,38 @@ else {
 arg_tail->next = param;
 }
 arg_tail = param;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 node->data._func_call.args = arg_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_alias_call(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_ALIAS_CALL);
-Token* alias = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_alias_call(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_ALIAS_CALL);
+Token* alias = mod_src_parser_flo_parser_advance(ps);
 node->data._alias_call.alias_start = alias->start;
 node->data._alias_call.alias_length = alias->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_DOT))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_DOT))) {
 return node;
 }
-Token* fnc = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* fnc = mod_src_parser_flo_parser_advance(ps);
 node->data._alias_call.func_start = fnc->start;
 node->data._alias_call.func_length = fnc->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
 AST* arg_head = NULL;
 AST* arg_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in function alias arguments");
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function alias arguments");
 return node;
 }
-AST* arg = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* arg = mod_src_parser_flo_parse_expr(ps, 0);
 if (arg_head == NULL) {
 arg_head = arg;
 }
@@ -2059,69 +2059,69 @@ else {
 arg_tail->next = arg;
 }
 arg_tail = arg;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 node->data._alias_call.args = arg_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_param(Parser* ps) {
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_PARAM);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_param(Parser* ps) {
+AST* node = mod_src_parser_flo_make_node(AST_PARAM);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._func_params.name_start = name->start;
 node->data._func_params.name_length = name->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
-node->data._func_params.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+node->data._func_params.type = *(mod_src_parser_flo_parse_type(ps));
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_struct(Parser* ps) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_STRUCT))) {
+AST* mod_src_parser_flo_parse_struct(Parser* ps) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_STRUCT))) {
 return NULL;
 }
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_STRUCT_DEF);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_STRUCT_DEF);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected struct name");
+mod_src_parser_flo_parser_error(ps, "Expected struct name");
 return NULL;
 }
 node->data._struct_def.name_start = name->start;
 node->data._struct_def.name_length = name->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LBRACE))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LBRACE))) {
 return NULL;
 }
 AST* field_head = NULL;
 AST* field_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
+while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI) {
+mod_src_parser_flo_parser_advance(ps);
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACE) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACE) {
 break;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in struct body");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in struct body");
 return node;
 }
-AST* field = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_STRUCT_FIELD);
-Token* fname = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected field name");
+mod_src_parser_flo_parser_error(ps, "Expected field name");
 continue;
 }
 field->data._struct_field.name_start = fname->start;
 field->data._struct_field.name_length = fname->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+field->data._struct_field.type = *(mod_src_parser_flo_parse_type(ps));
 if (field_head == NULL) {
 field_head = field;
 }
@@ -2130,55 +2130,55 @@ field_tail->next = field;
 }
 field_tail = field;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACE);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACE);
 node->data._struct_def.fields = field_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_union(Parser* ps) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_UNION))) {
+AST* mod_src_parser_flo_parse_union(Parser* ps) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_UNION))) {
 return NULL;
 }
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_UNION_DEF);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* node = mod_src_parser_flo_make_node(AST_UNION_DEF);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected union name");
+mod_src_parser_flo_parser_error(ps, "Expected union name");
 return NULL;
 }
 node->data._struct_def.name_start = name->start;
 node->data._struct_def.name_length = name->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LBRACE))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LBRACE))) {
 return NULL;
 }
 AST* field_head = NULL;
 AST* field_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
+while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI) {
+mod_src_parser_flo_parser_advance(ps);
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACE) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACE) {
 break;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACE) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACE) {
 break;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Unexpected end of file in union body");
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in union body");
 return node;
 }
-AST* field = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_STRUCT_FIELD);
-Token* fname = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected field name");
+mod_src_parser_flo_parser_error(ps, "Expected field name");
 continue;
 }
 field->data._struct_field.name_start = fname->start;
 field->data._struct_field.name_length = fname->length;
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+field->data._struct_field.type = *(mod_src_parser_flo_parse_type(ps));
 if (field_head == NULL) {
 field_head = field;
 }
@@ -2187,17 +2187,17 @@ field_tail->next = field;
 }
 field_tail = field;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RBRACE);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACE);
 node->data._struct_def.fields = field_head;
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_dot_ass(Parser* ps) {
-AST* expr = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-AST* val = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_expr(ps, 0);
+AST* mod_src_parser_flo_parse_dot_ass(Parser* ps) {
+AST* expr = mod_src_parser_flo_parse_expr(ps, 0);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN) {
+mod_src_parser_flo_parser_advance(ps);
+AST* val = mod_src_parser_flo_parse_expr(ps, 0);
 if (expr->kind == AST_DOT_ACCESS) {
 expr->data._dot_access.value = val;
 }
@@ -2205,26 +2205,26 @@ else if (expr->kind == AST_SUBSCRIPT) {
 expr->data._subscript.value = val;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Invalid assignment target");
+mod_src_parser_flo_parser_error(ps, "Invalid assignment target");
 }
 }
 return expr;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_import(Parser* ps) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_IMPORT);
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_IMPORT);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_LT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-Token* path = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_import(Parser* ps) {
+mod_src_parser_flo_parser_expect(ps, TOKEN_IMPORT);
+AST* node = mod_src_parser_flo_make_node(AST_IMPORT);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LT) {
+mod_src_parser_flo_parser_advance(ps);
+Token* path = mod_src_parser_flo_parser_advance(ps);
 node->data._import.path_start = path->start;
 node->data._import.path_length = path->length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_GT);
+mod_src_parser_flo_parser_expect(ps, TOKEN_GT);
 node->data._import.is_system = 1;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AS) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-Token* alias = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AS) {
+mod_src_parser_flo_parser_advance(ps);
+Token* alias = mod_src_parser_flo_parser_advance(ps);
 node->data._import.alias_start = alias->start;
 node->data._import.alias_length = alias->length;
 node->data._import.has_alias = 1;
@@ -2237,13 +2237,13 @@ node->data._import.has_alias = 0;
 }
 }
 else {
-Token* path = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+Token* path = mod_src_parser_flo_parser_advance(ps);
 node->data._import.path_start = path->start;
 node->data._import.path_length = path->length;
 node->data._import.is_system = 0;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_AS) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-Token* alias = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AS) {
+mod_src_parser_flo_parser_advance(ps);
+Token* alias = mod_src_parser_flo_parser_advance(ps);
 node->data._import.alias_start = alias->start;
 node->data._import.alias_length = alias->length;
 node->data._import.has_alias = 1;
@@ -2259,26 +2259,26 @@ return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_forward(Parser* ps) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_FORWARD);
-AST* node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_FORWARD);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+AST* mod_src_parser_flo_parse_forward(Parser* ps) {
+mod_src_parser_flo_parser_expect(ps, TOKEN_FORWARD);
+AST* node = mod_src_parser_flo_make_node(AST_FORWARD);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
+mod_src_parser_flo_parser_advance(ps);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._forward.name_start = name->start;
 node->data._forward.name_length = name->length;
 node->data._forward.is_func = 0;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-Token* name = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
+mod_src_parser_flo_parser_advance(ps);
+Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._forward.name_start = name->start;
 node->data._forward.name_length = name->length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_LPAREN);
+mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN);
 AST* param_head = NULL;
 AST* param_tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
-AST* param = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_param(ps);
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+AST* param = mod_src_parser_flo_parse_param(ps);
 if (param_head == NULL) {
 param_head = param;
 }
@@ -2286,69 +2286,69 @@ else {
 param_tail->next = param;
 }
 param_tail = param;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 node->data._forward.params = param_head;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_expect(ps, TOKEN_COLON);
-node->data._forward.return_type = *(mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_type(ps));
+mod_src_parser_flo_parser_expect(ps, TOKEN_COLON);
+node->data._forward.return_type = *(mod_src_parser_flo_parse_type(ps));
 node->data._forward.is_func = 1;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected either struct or function declaration");
+mod_src_parser_flo_parser_error(ps, "Expected either struct or function declaration");
 return node;
 }
 return node;
 }
 
 
-AST* mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse(Parser* ps) {
+AST* mod_src_parser_flo_parse(Parser* ps) {
 AST* head = NULL;
 AST* tail = NULL;
-while (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind != TOKEN_EOF) {
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_EOF) {
 if (ps->error_count >= 10) {
 printf("%sToo many errors, exiting.%s\n", RED, RESET);
 break;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_skip_newline(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_skip_newline(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 break;
 }
 AST* node;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_IMPORT) {
-node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_import(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IMPORT) {
+node = mod_src_parser_flo_parse_import(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
-node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_struct(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
+node = mod_src_parser_flo_parse_struct(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_UNION) {
-node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_union(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_UNION) {
+node = mod_src_parser_flo_parse_union(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_PROP) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_advance(ps);
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
-AST* fnc = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_def(ps);
-AST* prop_node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_make_node(AST_PROP);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PROP) {
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
+AST* fnc = mod_src_parser_flo_parse_func_def(ps);
+AST* prop_node = mod_src_parser_flo_make_node(AST_PROP);
 prop_node->data._prop.fnc = fnc;
 node = prop_node;
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_error(ps, "Expected declaration after prop");
+mod_src_parser_flo_parser_error(ps, "Expected declaration after prop");
 node = NULL;
 }
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
-node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_func_def(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FUNC) {
+node = mod_src_parser_flo_parse_func_def(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_FORWARD) {
-node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_forward(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FORWARD) {
+node = mod_src_parser_flo_parse_forward(ps);
 }
-else if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER  &&  mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
-node = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse_var_decl(ps);
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER  &&  mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
+node = mod_src_parser_flo_parse_var_decl(ps);
 }
 if (head == NULL) {
 head = node;
@@ -2362,7 +2362,7 @@ return head;
 }
 
 
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_file_flo_read_file(char* path) {
+char* mod_src_file_flo_read_file(char* path) {
 FILE* f = fopen(path, "r");
 if (f == NULL) {
 return NULL;
@@ -2407,23 +2407,23 @@ int count;
 } ModuleSet;
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_init_modules(ModuleSet* set) {
+void mod_src_module_flo_init_modules(ModuleSet* set) {
 set->count = 0;
 }
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_module(ModuleSet* set, char* path);
-ExportInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_export(Module* module, char* src, int start, int length, int kind);
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_import_path_from_ast(AST* import_ast, char* src, char* current_path);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_add_export(Module* module, int kind, int name_start, int name_length, char* name_src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_collect_exports(Module* module);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_imports(ModuleSet* set, Module* module);
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_module(ModuleSet* set, char* path);
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_build_symbol_prefix(char* path);
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_imported_module(ModuleSet* set, Module* module, char* src, int start, int length);
-int mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_module_defines_func(Module* module, char* src, int start, int length);
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_function_module(ModuleSet* set, char* src, int start, int length);
+Module* mod_src_module_flo_find_module(ModuleSet* set, char* path);
+ExportInfo* mod_src_module_flo_find_export(Module* module, char* src, int start, int length, int kind);
+char* mod_src_module_flo_import_path_from_ast(AST* import_ast, char* src, char* current_path);
+void mod_src_module_flo_add_export(Module* module, int kind, int name_start, int name_length, char* name_src);
+void mod_src_module_flo_collect_exports(Module* module);
+void mod_src_module_flo_load_imports(ModuleSet* set, Module* module);
+Module* mod_src_module_flo_load_module(ModuleSet* set, char* path);
+char* mod_src_module_flo_build_symbol_prefix(char* path);
+Module* mod_src_module_flo_find_imported_module(ModuleSet* set, Module* module, char* src, int start, int length);
+int mod_src_module_flo_module_defines_func(Module* module, char* src, int start, int length);
+Module* mod_src_module_flo_find_function_module(ModuleSet* set, char* src, int start, int length);
 
 
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_module(ModuleSet* set, char* path) {
+Module* mod_src_module_flo_find_module(ModuleSet* set, char* path) {
 for (int i = 0; ((0) > (set->count)) ? i > (set->count) : i < (set->count); ((0) > (set->count)) ? i-- : i++) {
 Module* m = set->modules + i;
 if (!(strcmp(m->path, path))) {
@@ -2434,7 +2434,7 @@ return NULL;
 }
 
 
-ExportInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_export(Module* module, char* src, int start, int length, int kind) {
+ExportInfo* mod_src_module_flo_find_export(Module* module, char* src, int start, int length, int kind) {
 for (int i = 0; ((0) > (module->export_count)) ? i > (module->export_count) : i < (module->export_count); ((0) > (module->export_count)) ? i-- : i++) {
 ExportInfo* info = module->exports + i;
 if (kind != 0  &&  info->kind != kind) {
@@ -2448,16 +2448,30 @@ return NULL;
 }
 
 
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_build_symbol_prefix(char* path) {
+char* mod_src_module_flo_build_symbol_prefix(char* path) {
+char* rel = path;
+int root_len = strlen(project_root);
+if (root_len > 0  &&  !(strncmp(path, project_root, root_len))) {
+rel = path + root_len;
+if (rel[0] == '/') {
+rel = rel + 1;
+}
+}
+else if (path[0] == '.'  &&  path[1] == '/') {
+rel = path + 2;
+}
+else {
+char* slash = strrchr(path, '/');
+if (slash != NULL) {
+rel = slash + 1;
+}
+}
 char out[512];
 strcpy(out, "mod_");
 int i = 0;
-if (path[0] == '.'  &&  path[1] == '/') {
-i = 2;
-}
 int j = 4;
-while (path[i] != '\0'  &&  j < sizeof(out) - 1) {
-int c = path[i];
+while (rel[i] != '\0'  &&  j < sizeof(out) - 1) {
+int c = rel[i];
 if (isalnum(c)) {
 out[j] = c;
 }
@@ -2472,16 +2486,16 @@ return strdup(out);
 }
 
 
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_imported_module(ModuleSet* set, Module* module, char* src, int start, int length) {
+Module* mod_src_module_flo_find_imported_module(ModuleSet* set, Module* module, char* src, int start, int length) {
 AST* curr = module->ast;
 while (curr != NULL) {
 if (curr->kind == AST_IMPORT  &&  curr->data._import.has_alias) {
 if (curr->data._import.alias_length == length  &&  !(strncmp(module->src + curr->data._import.alias_start, src + start, length))) {
-char* path = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_import_path_from_ast(curr, module->src, module->path);
+char* path = mod_src_module_flo_import_path_from_ast(curr, module->src, module->path);
 if (path == NULL) {
 return NULL;
 }
-Module* imported = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_module(set, path);
+Module* imported = mod_src_module_flo_find_module(set, path);
 free(path);
 return imported;
 }
@@ -2492,7 +2506,7 @@ return NULL;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_module_defines_func(Module* module, char* src, int start, int length) {
+int mod_src_module_flo_module_defines_func(Module* module, char* src, int start, int length) {
 AST* curr = module->ast;
 while (curr != NULL) {
 if (curr->kind == AST_FUNC_DEF) {
@@ -2514,10 +2528,10 @@ return 0;
 }
 
 
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_function_module(ModuleSet* set, char* src, int start, int length) {
+Module* mod_src_module_flo_find_function_module(ModuleSet* set, char* src, int start, int length) {
 for (int i = 0; ((0) > (set->count)) ? i > (set->count) : i < (set->count); ((0) > (set->count)) ? i-- : i++) {
 Module* m = set->modules + i;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_module_defines_func(m, src, start, length)) {
+if (mod_src_module_flo_module_defines_func(m, src, start, length)) {
 return m;
 }
 }
@@ -2525,7 +2539,7 @@ return NULL;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_add_export(Module* module, int kind, int name_start, int name_length, char* name_src) {
+void mod_src_module_flo_add_export(Module* module, int kind, int name_start, int name_length, char* name_src) {
 if (module->export_count >= 256) {
 printf("%sToo many exports in module: %s%s", RED, RESET, module->path);
 return;}
@@ -2538,20 +2552,20 @@ module->export_count = module->export_count + 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_collect_exports(Module* module) {
+void mod_src_module_flo_collect_exports(Module* module) {
 module->export_count = 0;
 AST* curr = module->ast;
 while (curr != NULL) {
 if (curr->kind == AST_PROP  &&  curr->data._prop.fnc != NULL) {
 AST* decl = curr->data._prop.fnc;
 if (decl->kind == AST_FUNC_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_add_export(module, EXPORT_FUNC, decl->data._func_def.name_start, decl->data._func_def.name_length, module->src);
+mod_src_module_flo_add_export(module, EXPORT_FUNC, decl->data._func_def.name_start, decl->data._func_def.name_length, module->src);
 }
 else if (decl->kind == AST_STRUCT_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_add_export(module, EXPORT_STRUCT, decl->data._struct_def.name_start, decl->data._struct_def.name_length, module->src);
+mod_src_module_flo_add_export(module, EXPORT_STRUCT, decl->data._struct_def.name_start, decl->data._struct_def.name_length, module->src);
 }
 else if (decl->kind == AST_UNION_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_add_export(module, EXPORT_UNION, decl->data._union_def.name_start, decl->data._union_def.name_length, module->src);
+mod_src_module_flo_add_export(module, EXPORT_UNION, decl->data._union_def.name_start, decl->data._union_def.name_length, module->src);
 }
 }
 curr = curr->next;
@@ -2559,23 +2573,23 @@ curr = curr->next;
 }
 
 
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_import_path_from_ast(AST* import_ast, char* src, char* current_path) {
+char* mod_src_module_flo_import_path_from_ast(AST* import_ast, char* src, char* current_path) {
 if (import_ast->data._import.is_system) {
 return NULL;
 }
 char raw_path[256];
 snprintf(raw_path, sizeof(raw_path), "%.*s", import_ast->data._import.path_length - 2, src + import_ast->data._import.path_start + 1);
-return mod__Users_Ivy_Documents_GitHub_FloC_src_globals_flo_resolve_path(current_path, raw_path);
+return mod_src_globals_flo_resolve_path(current_path, raw_path);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_imports(ModuleSet* set, Module* module) {
+void mod_src_module_flo_load_imports(ModuleSet* set, Module* module) {
 AST* curr = module->ast;
 while (curr != NULL) {
 if (curr->kind == AST_IMPORT  &&  !(curr->data._import.is_system)) {
-char* path = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_import_path_from_ast(curr, module->src, module->path);
+char* path = mod_src_module_flo_import_path_from_ast(curr, module->src, module->path);
 if (path != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_module(set, path);
+mod_src_module_flo_load_module(set, path);
 free(path);
 }
 }
@@ -2584,12 +2598,12 @@ curr = curr->next;
 }
 
 
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_module(ModuleSet* set, char* path) {
-Module* existing = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_module(set, path);
+Module* mod_src_module_flo_load_module(ModuleSet* set, char* path) {
+Module* existing = mod_src_module_flo_find_module(set, path);
 if (existing != NULL) {
 return existing;
 }
-char* src = mod__Users_Ivy_Documents_GitHub_FloC_src_file_flo_read_file(path);
+char* src = mod_src_file_flo_read_file(path);
 if (src == NULL) {
 printf("%sCould not import file: %s%s\n", RED, path, RESET);
 return NULL;
@@ -2597,17 +2611,17 @@ return NULL;
 Module* m = set->modules + set->count;
 m->path = strdup(path);
 m->src = src;
-m->symbol_prefix = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_build_symbol_prefix(path);
+m->symbol_prefix = mod_src_module_flo_build_symbol_prefix(path);
 m->export_count = 0;
 m->tokens = malloc(sizeof(TokenStream));
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_init_token_stream(m->tokens);
-mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_lex(m->tokens, src);
+mod_src_lexer_flo_init_token_stream(m->tokens);
+mod_src_lexer_flo_lex(m->tokens, src);
 Parser p;
-mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_init_parser(&(p), m->tokens, src, path);
-m->ast = mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_parse(&(p));
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_collect_exports(m);
+mod_src_parser_flo_init_parser(&(p), m->tokens, src, path);
+m->ast = mod_src_parser_flo_parse(&(p));
+mod_src_module_flo_collect_exports(m);
 set->count = set->count + 1;
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_imports(set, m);
+mod_src_module_flo_load_imports(set, m);
 return m;
 }
 typedef struct StructInfo StructInfo;
@@ -2663,7 +2677,7 @@ ModuleSet* active_type_modules;
 Module* current_type_module;
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_same_name(char* a_src, int a_start, int a_len, char* b_src, int b_start, int b_len) {
+int mod_src_typecheck_flo_same_name(char* a_src, int a_start, int a_len, char* b_src, int b_start, int b_len) {
 if (a_len != b_len) {
 return 0;
 }
@@ -2671,7 +2685,7 @@ return !(strncmp(a_src + a_start, b_src + b_start, a_len));
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(TypeInfo* dst, TypeInfo* src_type) {
+void mod_src_typecheck_flo_copy_type(TypeInfo* dst, TypeInfo* src_type) {
 dst->base = src_type->base;
 dst->pointer_depth = src_type->pointer_depth;
 dst->array_size = src_type->array_size;
@@ -2682,52 +2696,52 @@ dst->name_src = src_type->name_src;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message) {
+void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message) {
 printf("%serror:%s %s\n", RED, RESET, message);
 env->error_count = env->error_count + 1;
 }
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_var(TypeEnv* env, AST* ast, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_params(TypeEnv* env, AST* ast, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_walk_statement_list(TypeEnv* env, AST* list, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src);
-StructInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int start, int length);
-FieldInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length);
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length, TypeInfo* out);
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
+void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src);
+void mod_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src);
+void mod_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src);
+void mod_src_typecheck_flo_register_var(TypeEnv* env, AST* ast, char* src);
+void mod_src_typecheck_flo_register_params(TypeEnv* env, AST* ast, char* src);
+void mod_src_typecheck_flo_walk_statement_list(TypeEnv* env, AST* list, char* src);
+void mod_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src);
+StructInfo* mod_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int start, int length);
+FieldInfo* mod_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length);
+int mod_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length, TypeInfo* out);
+int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
+int mod_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
+int mod_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
+void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_collect(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_typecheck_collect(TypeEnv* env, AST* ast, char* src) {
 AST* curr = ast;
 while (curr != NULL) {
 if (curr->kind == AST_STRUCT_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_struct(env, curr, src);
+mod_src_typecheck_flo_register_struct(env, curr, src);
 }
 else if (curr->kind == AST_UNION_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_union(env, curr, src);
+mod_src_typecheck_flo_register_union(env, curr, src);
 }
 else if (curr->kind == AST_FUNC_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_func(env, curr, src);
+mod_src_typecheck_flo_register_func(env, curr, src);
 }
 else if (curr->kind == AST_PROP) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_func(env, curr->data._prop.fnc, src);
+mod_src_typecheck_flo_register_func(env, curr->data._prop.fnc, src);
 }
 else if (curr->kind == AST_VAR_DECL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_var(env, curr, src);
+mod_src_typecheck_flo_register_var(env, curr, src);
 }
 curr = curr->next;
 }
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src) {
 if (env->struct_count >= 1024) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
 return;}
 StructInfo* info = env->structs + env->struct_count;
 info->src = src;
@@ -2740,7 +2754,7 @@ FieldInfo* finfo = info->fields + info->field_count;
 finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
+mod_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
 info->field_count = info->field_count + 1;
 field = field->next;
 }
@@ -2748,9 +2762,9 @@ env->struct_count = env->struct_count + 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src) {
 if (env->struct_count >= 1024) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
 return;}
 StructInfo* info = env->structs + env->struct_count;
 info->src = src;
@@ -2763,7 +2777,7 @@ FieldInfo* finfo = info->fields + info->field_count;
 finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
+mod_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
 info->field_count = info->field_count + 1;
 field = field->next;
 }
@@ -2771,67 +2785,67 @@ env->struct_count = env->struct_count + 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src) {
 if (env->func_count >= 1024) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
 return;}
 FuncInfo* info = env->funcs + env->func_count;
 info->src = src;
 info->name_start = ast->data._func_def.name_start;
 info->name_length = ast->data._func_def.name_length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(&(info->return_type), &(ast->data._func_def.return_type));
+mod_src_typecheck_flo_copy_type(&(info->return_type), &(ast->data._func_def.return_type));
 env->func_count = env->func_count + 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_var(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_register_var(TypeEnv* env, AST* ast, char* src) {
 if (ast == NULL) {
 return;}
 if (env->var_count >= 2048) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
 return;}
 VarInfo* info = env->vars + env->var_count;
 info->src = src;
 info->name_start = ast->data._var_decl.name_start;
 info->name_length = ast->data._var_decl.name_length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(&(info->type), &(ast->data._var_decl.type));
+mod_src_typecheck_flo_copy_type(&(info->type), &(ast->data._var_decl.type));
 env->var_count = env->var_count + 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_params(TypeEnv* env, AST* fnc, char* src) {
+void mod_src_typecheck_flo_register_params(TypeEnv* env, AST* fnc, char* src) {
 AST* param = fnc->data._func_def.params;
 while (param != NULL) {
 if (env->var_count >= 2048) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, fnc, "type environment struct table overflow");
+mod_src_typecheck_flo_type_error(env, fnc, "type environment struct table overflow");
 return;}
 VarInfo* info = env->vars + env->var_count;
 info->src = src;
 info->name_start = param->data._func_params.name_start;
 info->name_length = param->data._func_params.name_length;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(&(info->type), &(param->data._func_params.type));
+mod_src_typecheck_flo_copy_type(&(info->type), &(param->data._func_params.type));
 env->var_count = env->var_count + 1;
 param = param->next;
 }
 }
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
+int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
+int mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
 if (expr == NULL) {
 return 0;
 }
 if (expr->kind == AST_VAR_REF) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_var_type(env, src, expr->data._var_ref.name_start, expr->data._var_ref.name_length, out);
+return mod_src_typecheck_flo_lookup_var_type(env, src, expr->data._var_ref.name_start, expr->data._var_ref.name_length, out);
 }
 else if (expr->kind == AST_NEW) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(out, &(expr->data._new_alloc.type));
+mod_src_typecheck_flo_copy_type(out, &(expr->data._new_alloc.type));
 out->pointer_depth = out->pointer_depth + 1;
 return 1;
 }
 else if (expr->kind == AST_DEREF) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, expr->data._deref.operand, out, src))) {
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._deref.operand, out, src))) {
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 return 0;
 }
@@ -2842,23 +2856,23 @@ out->pointer_depth = out->pointer_depth - 1;
 return 1;
 }
 else if (expr->kind == AST_GET_ADDR) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, expr->data._get_addr.operand, out, src))) {
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._get_addr.operand, out, src))) {
 return 0;
 }
 out->pointer_depth = out->pointer_depth + 1;
 return 1;
 }
 else if (expr->kind == AST_DOT_ACCESS) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_dot(env, expr, out, src);
+return mod_src_typecheck_flo_resolve_dot(env, expr, out, src);
 }
 else if (expr->kind == AST_FUNC_CALL) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_func_return_type(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length, out);
+return mod_src_typecheck_flo_lookup_func_return_type(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length, out);
 }
 else if (expr->kind == AST_ALIAS_CALL) {
-return mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_alias_call(env, expr, out, src);
+return mod_src_typecheck_flo_resolve_alias_call(env, expr, out, src);
 }
 else if (expr->kind == AST_SUBSCRIPT) {
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
 return 0;
 }
 out->array_size = 0;
@@ -2874,10 +2888,10 @@ return 0;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+int mod_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
 TypeInfo* object_type = malloc(sizeof(TypeInfo));
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, expr->data._dot_access.object, object_type, src))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, expr, "could not resolve object type for field access");
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._dot_access.object, object_type, src))) {
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve object type for field access");
 free(object_type);
 return 0;
 }
@@ -2893,109 +2907,109 @@ else if (object_type->pointer_depth == 1) {
 expr->data._dot_access.access_kind = ACCESS_ARROW;
 }
 else {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, expr, "cannot directly access field through multi-pointer type");
+mod_src_typecheck_flo_type_error(env, expr, "cannot directly access field through multi-pointer type");
 free(object_type);
 return 0;
 }
-StructInfo* base_struct = mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_struct(env, object_type->name_src, object_type->name_start, object_type->name_length);
+StructInfo* base_struct = mod_src_typecheck_flo_lookup_struct(env, object_type->name_src, object_type->name_start, object_type->name_length);
 if (base_struct == NULL) {
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
 }
-FieldInfo* field = mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_field(env, base_struct, src, expr->data._dot_access.field_start, expr->data._dot_access.field_length);
+FieldInfo* field = mod_src_typecheck_flo_lookup_field(env, base_struct, src, expr->data._dot_access.field_start, expr->data._dot_access.field_length);
 if (field == NULL) {
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
 }
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(out, &(field->type));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(&(expr->data._dot_access.resolved_type), &(field->type));
+mod_src_typecheck_flo_copy_type(out, &(field->type));
+mod_src_typecheck_flo_copy_type(&(expr->data._dot_access.resolved_type), &(field->type));
 free(object_type);
 return 1;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+int mod_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
 if (current_type_module == NULL) {
 return 0;
 }
-Module* imported = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_imported_module(active_type_modules, current_type_module, src, expr->data._alias_call.alias_start, expr->data._alias_call.alias_length);
+Module* imported = mod_src_module_flo_find_imported_module(active_type_modules, current_type_module, src, expr->data._alias_call.alias_start, expr->data._alias_call.alias_length);
 if (imported == NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, expr, "unknown module alias in function call");
+mod_src_typecheck_flo_type_error(env, expr, "unknown module alias in function call");
 return 0;
 }
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_module_defines_func(imported, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, expr, "unknown function on imported module alias");
+if (!(mod_src_module_flo_module_defines_func(imported, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length))) {
+mod_src_typecheck_flo_type_error(env, expr, "unknown function on imported module alias");
 return 0;
 }
-if (!(mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_func_return_type_in_module(env, imported->src, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length, out))) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_type_error(env, expr, "could not resolve imported function return type");
+if (!(mod_src_typecheck_flo_lookup_func_return_type_in_module(env, imported->src, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length, out))) {
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve imported function return type");
 return 0;
 }
 return 1;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src) {
 if (ast->kind == AST_VAR_DECL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_var(env, ast, src);
+mod_src_typecheck_flo_register_var(env, ast, src);
 if (ast->data._var_decl.value != NULL) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, ast->data._var_decl.value, tmp, src);
+mod_src_typecheck_flo_resolve_expr(env, ast->data._var_decl.value, tmp, src);
 free(tmp);
 }
 }
 else if (ast->kind == AST_VAR_ASS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, ast->data._var_ass.value, tmp, src);
+mod_src_typecheck_flo_resolve_expr(env, ast->data._var_ass.value, tmp, src);
 free(tmp);
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
+mod_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
 free(tmp);
 if (ast->data._dot_access.value != NULL) {
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src);
+mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src);
 free(value_type);
 }
 }
 else if (ast->kind == AST_IF) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, ast->data._if_condition.condition, tmp, src);
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src);
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
+mod_src_typecheck_flo_resolve_expr(env, ast->data._if_condition.condition, tmp, src);
+mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src);
+mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
 free(tmp);
 }
 else if (ast->kind == AST_FLOW_CONTROL) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src);
+mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src);
 free(tmp);
 }
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_ast(TypeEnv* env, AST* ast, char* src) {
+void mod_src_typecheck_flo_typecheck_ast(TypeEnv* env, AST* ast, char* src) {
 AST* curr = ast;
 while (curr != NULL) {
 if (curr->kind == AST_FUNC_DEF) {
 int saved_var_count = env->var_count;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_params(env, curr, src);
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_walk_statement_list(env, curr->data._func_def.body, src);
+mod_src_typecheck_flo_register_params(env, curr, src);
+mod_src_typecheck_flo_walk_statement_list(env, curr->data._func_def.body, src);
 env->var_count = saved_var_count;
 }
 else if (curr->kind == AST_PROP) {
 int saved_var_count = env->var_count;
 AST* _prop = curr->data._prop.fnc;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_register_params(env, _prop, src);
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_walk_statement_list(env, _prop->data._func_def.body, src);
+mod_src_typecheck_flo_register_params(env, _prop, src);
+mod_src_typecheck_flo_walk_statement_list(env, _prop->data._func_def.body, src);
 env->var_count = saved_var_count;
 }
 else if (curr->kind == AST_VAR_DECL) {
 if (curr->data._var_decl.value != NULL) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, tmp, src);
+mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, tmp, src);
 free(tmp);
 }
 }
@@ -3004,10 +3018,10 @@ curr = curr->next;
 }
 
 
-StructInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int start, int length) {
+StructInfo* mod_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int start, int length) {
 for (int i = 0; ((0) > (env->struct_count)) ? i > (env->struct_count) : i < (env->struct_count); ((0) > (env->struct_count)) ? i-- : i++) {
 StructInfo* info = env->structs + i;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
 return info;
 }
 }
@@ -3015,10 +3029,10 @@ return NULL;
 }
 
 
-FieldInfo* mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length) {
+FieldInfo* mod_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length) {
 for (int i = 0; ((0) > (info->field_count)) ? i > (info->field_count) : i < (info->field_count); ((0) > (info->field_count)) ? i-- : i++) {
 FieldInfo* field = info->fields + i;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_same_name(field->src, field->name_start, field->name_length, src, start, length)) {
+if (mod_src_typecheck_flo_same_name(field->src, field->name_start, field->name_length, src, start, length)) {
 return field;
 }
 }
@@ -3026,12 +3040,12 @@ return NULL;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
+int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
 int i = env->var_count - 1;
 while (i >= 0) {
 VarInfo* info = env->vars + i;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(out, &(info->type));
+if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+mod_src_typecheck_flo_copy_type(out, &(info->type));
 return 1;
 }
 i = i - 1;
@@ -3040,11 +3054,11 @@ return 0;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
+int mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
 for (int i = 0; ((0) > (env->func_count)) ? i > (env->func_count) : i < (env->func_count); ((0) > (env->func_count)) ? i-- : i++) {
 FuncInfo* info = env->funcs + i;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(out, &(info->return_type));
+if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+mod_src_typecheck_flo_copy_type(out, &(info->return_type));
 return 1;
 }
 }
@@ -3052,11 +3066,11 @@ return 0;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length, TypeInfo* out) {
+int mod_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length, TypeInfo* out) {
 for (int i = 0; ((0) > (env->func_count)) ? i > (env->func_count) : i < (env->func_count); ((0) > (env->func_count)) ? i-- : i++) {
 FuncInfo* info = env->funcs + i;
-if (info->src == module_src  &&  mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, call_src, start, length)) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_copy_type(out, &(info->return_type));
+if (info->src == module_src  &&  mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, call_src, start, length)) {
+mod_src_typecheck_flo_copy_type(out, &(info->return_type));
 return 1;
 }
 }
@@ -3064,16 +3078,16 @@ return 0;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_walk_statement_list(TypeEnv* env, AST* list, char* src) {
+void mod_src_typecheck_flo_walk_statement_list(TypeEnv* env, AST* list, char* src) {
 AST* curr = list;
 while (curr != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_statement(env, curr, src);
+mod_src_typecheck_flo_typecheck_statement(env, curr, src);
 curr = curr->next;
 }
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_init_type_env(TypeEnv* env) {
+void mod_src_typecheck_flo_init_type_env(TypeEnv* env) {
 env->struct_count = 0;
 env->var_count = 0;
 env->func_count = 0;
@@ -3081,19 +3095,19 @@ env->error_count = 0;
 }
 
 
-int mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_check_modules(ModuleSet* mods) {
+int mod_src_typecheck_flo_check_modules(ModuleSet* mods) {
 TypeEnv* env = malloc(sizeof(TypeEnv));
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_init_type_env(env);
+mod_src_typecheck_flo_init_type_env(env);
 active_type_modules = mods;
 for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
 Module* m = mods->modules + i;
 current_type_module = m;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_collect(env, m->ast, m->src);
+mod_src_typecheck_flo_typecheck_collect(env, m->ast, m->src);
 }
 for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
 Module* m = mods->modules + i;
 current_type_module = m;
-mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_typecheck_ast(env, m->ast, m->src);
+mod_src_typecheck_flo_typecheck_ast(env, m->ast, m->src);
 }
 current_type_module = NULL;
 int count = env->error_count;
@@ -3104,7 +3118,7 @@ int has_stdlib = 0;
 int has_stdio = 0;
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_includes(ModuleSet* mods, FILE* out) {
+void mod_src_codegen_flo_emit_includes(ModuleSet* mods, FILE* out) {
 int need_stdlib = 0;
 int need_stdio = 0;
 int need_string = 0;
@@ -3112,10 +3126,10 @@ int need_ctype = 0;
 int need_unistd = 0;
 for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
 Module* m = mods->modules + i;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NULL)  ||  mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NEW)) {
+if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NULL)  ||  mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NEW)) {
 has_stdlib = 1;
 }
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
+if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_stdio = 1;
 }
 AST* curr = m->ast;
@@ -3160,7 +3174,7 @@ fprintf(out, "#include <unistd.h>\n");
 }
 
 
-char* mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_token_to_string(int kind) {
+char* mod_src_codegen_flo_token_to_string(int kind) {
 if (kind == TOKEN_INT) {
 return "int";
 }
@@ -3278,12 +3292,12 @@ return "ERROR";
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(TypeInfo* type, FILE* out, char* src) {
+void mod_src_codegen_flo_typeinfo_to_string(TypeInfo* type, FILE* out, char* src) {
 if (type->base == TOKEN_IDENTIFIER) {
 fprintf(out, "%.*s", type->name_length, src + type->name_start);
 }
 else {
-fprintf(out, "%s", mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_token_to_string(type->base));
+fprintf(out, "%s", mod_src_codegen_flo_token_to_string(type->base));
 }
 int i = 0;
 while (i < type->pointer_depth) {
@@ -3291,52 +3305,52 @@ i = i + 1;
 fprintf(out, "*");
 }
 }
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(AST* ast, FILE* out, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_statement(AST* ast, FILE* out, char* src);
+void mod_src_codegen_flo_gen_expr(AST* ast, FILE* out, char* src);
+void mod_src_codegen_flo_gen_statement(AST* ast, FILE* out, char* src);
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_if(AST* ast, FILE* out, char* src, int is_else_if) {
+void mod_src_codegen_flo_gen_if(AST* ast, FILE* out, char* src, int is_else_if) {
 if (is_else_if) {
 if (ast->data._if_condition.condition == NULL) {
 fprintf(out, "else {\n");
 }
 else {
 fprintf(out, "else if (");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._if_condition.condition, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._if_condition.condition, out, src);
 fprintf(out, ") {\n");
 }
 }
 else {
 fprintf(out, "if (");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._if_condition.condition, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._if_condition.condition, out, src);
 fprintf(out, ") {\n");
 }
 AST* statement = ast->data._if_condition.body;
 while (statement != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_statement(statement, out, src);
+mod_src_codegen_flo_gen_statement(statement, out, src);
 statement = statement->next;
 }
 fprintf(out, "}\n");
 if (ast->data._if_condition.else_branch != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_if(ast->data._if_condition.else_branch, out, src, 1);
+mod_src_codegen_flo_gen_if(ast->data._if_condition.else_branch, out, src, 1);
 }
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_while(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_while(AST* ast, FILE* out, char* src) {
 fprintf(out, "while (");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._while_loop.condition, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._while_loop.condition, out, src);
 fprintf(out, ") {\n");
 AST* statement = ast->data._while_loop.body;
 while (statement != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_statement(statement, out, src);
+mod_src_codegen_flo_gen_statement(statement, out, src);
 statement = statement->next;
 }
 fprintf(out, "}\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_for(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_for(AST* ast, FILE* out, char* src) {
 char* desc_op;
 char* asc_op;
 if (ast->data._for_loop.inclusive) {
@@ -3370,55 +3384,55 @@ op = asc_op;
 math_op = add_op;
 }
 fprintf(out, "for (int %.*s = ", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
 fprintf(out, "; %.*s %s ", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start, op);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
 fprintf(out, "; %.*s%s) {\n", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start, math_op);
 }
 else {
 fprintf(out, "for (int %.*s = ", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
 fprintf(out, "; ((");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
 fprintf(out, ") > (");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
 fprintf(out, ")) ? %.*s %s (", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start, desc_op);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
 fprintf(out, ") : %.*s %s (", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start, asc_op);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
 fprintf(out, "); ((");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.from, out, src);
 fprintf(out, ") > (");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._for_loop.to, out, src);
 fprintf(out, ")) ? %.*s-- : %.*s++) {\n", ast->data._for_loop.var_length, src + ast->data._for_loop.var_start, ast->data._for_loop.var_length, src + ast->data._for_loop.var_start);
 }
 AST* statement = ast->data._for_loop.body;
 while (statement != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_statement(statement, out, src);
+mod_src_codegen_flo_gen_statement(statement, out, src);
 statement = statement->next;
 }
 fprintf(out, "}\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_return(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_return(AST* ast, FILE* out, char* src) {
 if (ast->data._flow_ctrl.value == NULL) {
 fprintf(out, "return;");
 }
 else {
 fprintf(out, "return ");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._flow_ctrl.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._flow_ctrl.value, out, src);
 fprintf(out, ";\n");
 }
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_continue(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_continue(AST* ast, FILE* out, char* src) {
 fprintf(out, "continue;\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_break(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_break(AST* ast, FILE* out, char* src) {
 fprintf(out, "break;\n");
 }
 
@@ -3431,7 +3445,7 @@ defined_struct defined_structs[256];
 int defined_count = 0;
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_struct(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_struct(AST* ast, FILE* out, char* src) {
 for (int i = 0; ((0) > (defined_count)) ? i > (defined_count) : i < (defined_count); ((0) > (defined_count)) ? i-- : i++) {
 if (defined_structs[i].length == ast->data._struct_def.name_length  &&  !(strncmp(defined_structs[i].name, ast->data._struct_def.name_start + src, ast->data._struct_def.name_length))) {
 return;}
@@ -3439,7 +3453,7 @@ return;}
 fprintf(out, "\n\ntypedef struct %.*s {\n", ast->data._struct_def.name_length, src + ast->data._struct_def.name_start);
 AST* field = ast->data._struct_def.fields;
 while (field != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.type), out, src);
 fprintf(out, " %.*s", field->data._struct_field.name_length, src + field->data._struct_field.name_start);
 if (field->data._struct_field.type.array_size == -1) {
 fprintf(out, "[]");
@@ -3449,7 +3463,7 @@ fprintf(out, "[%d]", field->data._struct_field.type.array_size);
 }
 else if (field->data._struct_field.type.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(field->data._struct_field.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(field->data._struct_field.type.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 fprintf(out, ";\n");
@@ -3470,7 +3484,7 @@ defined_union defined_unions[256];
 int defined_union_count = 0;
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_union(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_union(AST* ast, FILE* out, char* src) {
 for (int i = 0; ((0) > (defined_union_count)) ? i > (defined_union_count) : i < (defined_union_count); ((0) > (defined_union_count)) ? i-- : i++) {
 if (defined_unions[i].length == ast->data._union_def.name_length  &&  !(strncmp(defined_unions[i].name, ast->data._union_def.name_start + src, ast->data._union_def.name_length))) {
 return;}
@@ -3478,7 +3492,7 @@ return;}
 fprintf(out, "\n\ntypedef union %.*s {\n", ast->data._union_def.name_length, src + ast->data._union_def.name_start);
 AST* field = ast->data._union_def.fields;
 while (field != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.type), out, src);
 fprintf(out, " %.*s", field->data._union_def.name_length, src + field->data._union_def.name_start);
 if (field->data._struct_field.type.array_size == -1) {
 fprintf(out, "[]");
@@ -3488,7 +3502,7 @@ fprintf(out, "[%d]", ast->data._struct_field.type.array_size);
 }
 else if (field->data._struct_field.type.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(field->data._struct_field.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(field->data._struct_field.type.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 fprintf(out, ";\n");
@@ -3509,12 +3523,12 @@ EmittedImport emitted_imports[256];
 int emitted_count = 0;
 ModuleSet* active_modules;
 Module* current_codegen_module;
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_lowered_func_name(Module* mod, FILE* out, char* src, int start, int length);
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_resolve_called_function_module(char* src, int start, int length);
+void mod_src_codegen_flo_emit_lowered_func_name(Module* mod, FILE* out, char* src, int start, int length);
+Module* mod_src_codegen_flo_resolve_called_function_module(char* src, int start, int length);
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_param(AST* param, FILE* out, char* src) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(param->data._func_params.type), out, src);
+void mod_src_codegen_flo_gen_param(AST* param, FILE* out, char* src) {
+mod_src_codegen_flo_typeinfo_to_string(&(param->data._func_params.type), out, src);
 fprintf(out, " %.*s", param->data._func_params.name_length, src + param->data._func_params.name_start);
 if (param->data._func_params.type.array_size == -1) {
 fprintf(out, "[]");
@@ -3524,21 +3538,21 @@ fprintf(out, "[%d]", param->data._func_params.type.array_size);
 }
 else if (param->data._func_params.type.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(param->data._func_params.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(param->data._func_params.type.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_def(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_func_def(AST* ast, FILE* out, char* src) {
 fprintf(out, "\n\n");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(ast->data._func_def.return_type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._func_def.return_type), out, src);
 fprintf(out, " ");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_lowered_func_name(current_codegen_module, out, src, ast->data._func_def.name_start, ast->data._func_def.name_length);
+mod_src_codegen_flo_emit_lowered_func_name(current_codegen_module, out, src, ast->data._func_def.name_start, ast->data._func_def.name_length);
 fprintf(out, "(");
 AST* param = ast->data._func_def.params;
 while (param != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_param(param, out, src);
+mod_src_codegen_flo_gen_param(param, out, src);
 if (param->next != NULL) {
 fprintf(out, ", ");
 }
@@ -3547,14 +3561,14 @@ param = param->next;
 fprintf(out, ") {\n");
 AST* statement = ast->data._func_def.body;
 while (statement != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_statement(statement, out, src);
+mod_src_codegen_flo_gen_statement(statement, out, src);
 statement = statement->next;
 }
 fprintf(out, "}\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_lowered_func_name(Module* mod, FILE* out, char* src, int start, int length) {
+void mod_src_codegen_flo_emit_lowered_func_name(Module* mod, FILE* out, char* src, int start, int length) {
 if (mod != NULL) {
 Module* root = active_modules->modules + 0;
 if (!(strcmp(mod->path, root->path))  &&  length == 4  &&  !(strncmp(src + start, "main", 4))) {
@@ -3566,23 +3580,23 @@ fprintf(out, "%.*s", length, src + start);
 }
 
 
-Module* mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_resolve_called_function_module(char* src, int start, int length) {
-if (current_codegen_module != NULL  &&  mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_module_defines_func(current_codegen_module, src, start, length)) {
+Module* mod_src_codegen_flo_resolve_called_function_module(char* src, int start, int length) {
+if (current_codegen_module != NULL  &&  mod_src_module_flo_module_defines_func(current_codegen_module, src, start, length)) {
 return current_codegen_module;
 }
-return mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_function_module(active_modules, src, start, length);
+return mod_src_module_flo_find_function_module(active_modules, src, start, length);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_def_aliased(AST* ast, FILE* out, char* src, char* alias, int alias_len) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_def(ast, out, src);
+void mod_src_codegen_flo_gen_func_def_aliased(AST* ast, FILE* out, char* src, char* alias, int alias_len) {
+mod_src_codegen_flo_gen_func_def(ast, out, src);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_call(AST* ast, FILE* out, char* src) {
-Module* target_mod = mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_resolve_called_function_module(src, ast->data._func_call.name_start, ast->data._func_call.name_length);
+void mod_src_codegen_flo_gen_func_call(AST* ast, FILE* out, char* src) {
+Module* target_mod = mod_src_codegen_flo_resolve_called_function_module(src, ast->data._func_call.name_start, ast->data._func_call.name_length);
 if (target_mod != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_lowered_func_name(target_mod, out, src, ast->data._func_call.name_start, ast->data._func_call.name_length);
+mod_src_codegen_flo_emit_lowered_func_name(target_mod, out, src, ast->data._func_call.name_start, ast->data._func_call.name_length);
 }
 else {
 fprintf(out, "%.*s", ast->data._func_call.name_length, src + ast->data._func_call.name_start);
@@ -3590,7 +3604,7 @@ fprintf(out, "%.*s", ast->data._func_call.name_length, src + ast->data._func_cal
 fprintf(out, "(");
 AST* arg = ast->data._func_call.args;
 while (arg != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(arg, out, src);
+mod_src_codegen_flo_gen_expr(arg, out, src);
 if (arg->next != NULL) {
 fprintf(out, ", ");
 }
@@ -3600,8 +3614,8 @@ fprintf(out, ")");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_var_decl(AST* ast, FILE* out, char* src) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(ast->data._var_decl.type), out, src);
+void mod_src_codegen_flo_gen_var_decl(AST* ast, FILE* out, char* src) {
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._var_decl.type), out, src);
 fprintf(out, " %.*s", ast->data._var_decl.name_length, src + ast->data._var_decl.name_start);
 if (ast->data._var_decl.type.array_size == -1) {
 fprintf(out, "[]");
@@ -3611,33 +3625,33 @@ fprintf(out, "[%d]", ast->data._var_decl.type.array_size);
 }
 else if (ast->data._var_decl.type.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._var_decl.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._var_decl.type.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 if (ast->data._var_decl.value != NULL) {
 fprintf(out, " = ");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._var_decl.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._var_decl.value, out, src);
 }
 fprintf(out, ";\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_var_ass(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_var_ass(AST* ast, FILE* out, char* src) {
 fprintf(out, "%.*s = ", ast->data._var_ass.name_length, src + ast->data._var_ass.name_start);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._var_ass.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._var_ass.value, out, src);
 fprintf(out, ";\n");
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_forward(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_forward(AST* ast, FILE* out, char* src) {
 if (ast->data._forward.is_func) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(ast->data._forward.return_type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._forward.return_type), out, src);
 fprintf(out, " ");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_lowered_func_name(current_codegen_module, out, src, ast->data._forward.name_start, ast->data._forward.name_length);
+mod_src_codegen_flo_emit_lowered_func_name(current_codegen_module, out, src, ast->data._forward.name_start, ast->data._forward.name_length);
 fprintf(out, "(");
 AST* param = ast->data._forward.params;
 while (param != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_param(param, out, src);
+mod_src_codegen_flo_gen_param(param, out, src);
 if (param->next != NULL) {
 fprintf(out, ", ");
 }
@@ -3649,11 +3663,11 @@ else {
 fprintf(out, "typedef struct %.*s %.*s;\n", ast->data._forward.name_length, src + ast->data._forward.name_start, ast->data._forward.name_length, src + ast->data._forward.name_start);
 }
 }
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_import(AST* ast, FILE* out, char* src);
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_module(Module* mod, FILE* out, char* alias, int alias_len, int has_alias);
+void mod_src_codegen_flo_gen_import(AST* ast, FILE* out, char* src);
+void mod_src_codegen_flo_emit_module(Module* mod, FILE* out, char* alias, int alias_len, int has_alias);
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_module(Module* mod, FILE* out, char* alias, int alias_len, int has_alias) {
+void mod_src_codegen_flo_emit_module(Module* mod, FILE* out, char* alias, int alias_len, int has_alias) {
 char* original = current_file;
 current_file = mod->path;
 Module* original_module = current_codegen_module;
@@ -3661,25 +3675,25 @@ current_codegen_module = mod;
 AST* curr = mod->ast;
 while (curr != NULL) {
 if (curr->kind == AST_IMPORT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_import(curr, out, mod->src);
+mod_src_codegen_flo_gen_import(curr, out, mod->src);
 }
 else if (curr->kind == AST_STRUCT_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_struct(curr, out, mod->src);
+mod_src_codegen_flo_gen_struct(curr, out, mod->src);
 }
 else if (curr->kind == AST_UNION_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_union(curr, out, mod->src);
+mod_src_codegen_flo_gen_union(curr, out, mod->src);
 }
 else if (curr->kind == AST_PROP) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_def(curr->data._prop.fnc, out, mod->src);
+mod_src_codegen_flo_gen_func_def(curr->data._prop.fnc, out, mod->src);
 }
 else if (curr->kind == AST_FORWARD) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_forward(curr, out, mod->src);
+mod_src_codegen_flo_gen_forward(curr, out, mod->src);
 }
 else if (curr->kind == AST_FUNC_DEF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_def(curr, out, mod->src);
+mod_src_codegen_flo_gen_func_def(curr, out, mod->src);
 }
 else if (curr->kind == AST_VAR_DECL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_var_decl(curr, out, mod->src);
+mod_src_codegen_flo_gen_var_decl(curr, out, mod->src);
 }
 curr = curr->next;
 }
@@ -3688,12 +3702,12 @@ current_codegen_module = original_module;
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_import(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_import(AST* ast, FILE* out, char* src) {
 if (ast->data._import.is_system) {
 return;}
 char raw_path[256];
 snprintf(raw_path, sizeof(raw_path), "%.*s", ast->data._import.path_length - 2, src + ast->data._import.path_start + 1);
-char* path = mod__Users_Ivy_Documents_GitHub_FloC_src_globals_flo_resolve_path(current_file, raw_path);
+char* path = mod_src_globals_flo_resolve_path(current_file, raw_path);
 char alias[64] = "";
 if (ast->data._import.has_alias) {
 snprintf(alias, sizeof(alias), "%.*s", ast->data._import.alias_length, src + ast->data._import.alias_start);
@@ -3703,7 +3717,7 @@ if (!(strcmp(emitted_imports[i].path, path))) {
 free(path);
 return;}
 }
-Module* imported = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_module(active_modules, path);
+Module* imported = mod_src_module_flo_find_module(active_modules, path);
 if (imported == NULL) {
 printf("%sCould not find loaded import module: %s%s", RED, RESET, path);
 free(path);
@@ -3711,12 +3725,12 @@ return;}
 emitted_imports[emitted_count].path = strdup(path);
 emitted_imports[emitted_count].alias = strdup(alias);
 emitted_count = emitted_count + 1;
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_module(imported, out, "", 0, 0);
+mod_src_codegen_flo_emit_module(imported, out, "", 0, 0);
 free(path);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_expr(AST* ast, FILE* out, char* src) {
 if (ast->kind == AST_VAR_REF) {
 fprintf(out, "%.*s", ast->data._var_ref.name_length, src + ast->data._var_ref.name_start);
 }
@@ -3730,12 +3744,12 @@ else if (ast->kind == AST_NULL) {
 fprintf(out, "NULL");
 }
 else if (ast->kind == AST_BINARY_OP) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._binary.left, out, src);
-fprintf(out, " %s ", mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_token_to_string(ast->data._binary.op));
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._binary.right, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._binary.left, out, src);
+fprintf(out, " %s ", mod_src_codegen_flo_token_to_string(ast->data._binary.op));
+mod_src_codegen_flo_gen_expr(ast->data._binary.right, out, src);
 }
 else if (ast->kind == AST_FUNC_CALL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_call(ast, out, src);
+mod_src_codegen_flo_gen_func_call(ast, out, src);
 }
 else if (ast->kind == AST_STRING_LIT) {
 fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
@@ -3744,7 +3758,7 @@ else if (ast->kind == AST_ARRAY_LIT) {
 fprintf(out, "{");
 AST* elem = ast->data._array.elements;
 while (elem != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(elem, out, src);
+mod_src_codegen_flo_gen_expr(elem, out, src);
 if (elem->next != NULL) {
 fprintf(out, ", ");
 }
@@ -3756,7 +3770,7 @@ else if (ast->kind == AST_STRUCT_LIT) {
 fprintf(out, "{");
 AST* struct_elem = ast->data._struct_lit.elements;
 while (struct_elem != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(struct_elem, out, src);
+mod_src_codegen_flo_gen_expr(struct_elem, out, src);
 if (struct_elem->next != NULL) {
 fprintf(out, ", ");
 struct_elem = struct_elem->next;
@@ -3766,14 +3780,14 @@ fprintf(out, "}");
 }
 else if (ast->kind == AST_CAST) {
 fprintf(out, "(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(ast->data._cast.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._cast.type), out, src);
 fprintf(out, ")(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 AST* object = ast->data._dot_access.object;
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(object, out, src);
+mod_src_codegen_flo_gen_expr(object, out, src);
 int obj_kind = ast->data._dot_access.access_kind;
 if (obj_kind == ACCESS_ARROW) {
 fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
@@ -3793,11 +3807,11 @@ fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_
 }
 else if (ast->kind == AST_NEW) {
 fprintf(out, "malloc(sizeof(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(ast->data._new_alloc.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._new_alloc.type), out, src);
 fprintf(out, ")");
 if (ast->data._new_alloc.type.arr_size_expr != NULL) {
 fprintf(out, " * (");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._new_alloc.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._new_alloc.type.arr_size_expr, out, src);
 fprintf(out, ")");
 }
 else if (ast->data._new_alloc.type.array_size > 0) {
@@ -3806,9 +3820,9 @@ fprintf(out, " * %d", ast->data._new_alloc.type.array_size);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_ALIAS_CALL) {
-Module* imported = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_find_imported_module(active_modules, current_codegen_module, src, ast->data._alias_call.alias_start, ast->data._alias_call.alias_length);
+Module* imported = mod_src_module_flo_find_imported_module(active_modules, current_codegen_module, src, ast->data._alias_call.alias_start, ast->data._alias_call.alias_length);
 if (imported != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_lowered_func_name(imported, out, src, ast->data._alias_call.func_start, ast->data._alias_call.func_length);
+mod_src_codegen_flo_emit_lowered_func_name(imported, out, src, ast->data._alias_call.func_start, ast->data._alias_call.func_length);
 }
 else {
 fprintf(out, "%.*s_%.*s", ast->data._alias_call.alias_length, ast->data._alias_call.alias_start + src, ast->data._alias_call.func_length, src + ast->data._alias_call.func_start);
@@ -3816,7 +3830,7 @@ fprintf(out, "%.*s_%.*s", ast->data._alias_call.alias_length, ast->data._alias_c
 fprintf(out, "(");
 AST* arg = ast->data._alias_call.args;
 while (arg != NULL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(arg, out, src);
+mod_src_codegen_flo_gen_expr(arg, out, src);
 if (arg->next != NULL) {
 fprintf(out, ", ");
 }
@@ -3826,35 +3840,35 @@ fprintf(out, ")");
 }
 else if (ast->kind == AST_UNARY_NOT) {
 fprintf(out, "!(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._unary.operand, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._unary.operand, out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_UNARY_NEG) {
 fprintf(out, "-");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._unary.operand, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._unary.operand, out, src);
 }
 else if (ast->kind == AST_DEREF) {
 fprintf(out, "*(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._deref.operand, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._deref.operand, out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_GET_ADDR) {
 fprintf(out, "&(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._get_addr.operand, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._get_addr.operand, out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_SIZEOF) {
 fprintf(out, "sizeof(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.type), out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_CHAR_LIT) {
 fprintf(out, "%.*s", ast->data._char_lit.length, ast->data._char_lit.start + src);
 }
 else if (ast->kind == AST_SUBSCRIPT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
 fprintf(out, "[");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
 fprintf(out, "]");
 }
 else {
@@ -3864,46 +3878,46 @@ exit(1);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_statement(AST* ast, FILE* out, char* src) {
+void mod_src_codegen_flo_gen_statement(AST* ast, FILE* out, char* src) {
 if (ast->kind == AST_VAR_DECL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_var_decl(ast, out, src);
+mod_src_codegen_flo_gen_var_decl(ast, out, src);
 }
 else if (ast->kind == AST_VAR_ASS) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_var_ass(ast, out, src);
+mod_src_codegen_flo_gen_var_ass(ast, out, src);
 }
 else if (ast->kind == AST_WHILE) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_while(ast, out, src);
+mod_src_codegen_flo_gen_while(ast, out, src);
 }
 else if (ast->kind == AST_FOR) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_for(ast, out, src);
+mod_src_codegen_flo_gen_for(ast, out, src);
 }
 else if (ast->kind == AST_FLOW_CONTROL) {
 Token* base = ast->data._flow_ctrl.base;
 if (base->kind == TOKEN_RETURN) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_return(ast, out, src);
+mod_src_codegen_flo_gen_return(ast, out, src);
 }
 else if (base->kind == TOKEN_CONTINUE) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_continue(ast, out, src);
+mod_src_codegen_flo_gen_continue(ast, out, src);
 }
 else if (base->kind == TOKEN_BREAK) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_break(ast, out, src);
+mod_src_codegen_flo_gen_break(ast, out, src);
 }
 else {
 Token* base = ast->data._flow_ctrl.base;
-printf("%s%s:%d:%d: error:%s Unexpected token: %s\n", RED, current_file, mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_line(src, base->start), mod__Users_Ivy_Documents_GitHub_FloC_include_lexer_h_flo_get_col(src, base->start), RESET, mod__Users_Ivy_Documents_GitHub_FloC_src_lexer_flo_token_kind_name(base->kind));
+printf("%s%s:%d:%d: error:%s Unexpected token: %s\n", RED, current_file, mod_include_lexer_h_flo_get_line(src, base->start), mod_include_lexer_h_flo_get_col(src, base->start), RESET, mod_src_lexer_flo_token_kind_name(base->kind));
 exit(1);
 }
 }
 else if (ast->kind == AST_FUNC_CALL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_func_call(ast, out, src);
+mod_src_codegen_flo_gen_func_call(ast, out, src);
 fprintf(out, ";\n");
 }
 else if (ast->kind == AST_IF) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_if(ast, out, src, 0);
+mod_src_codegen_flo_gen_if(ast, out, src, 0);
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 AST* object = ast->data._dot_access.object;
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(object, out, src);
+mod_src_codegen_flo_gen_expr(object, out, src);
 int obj_kind = ast->data._dot_access.access_kind;
 if (obj_kind == ACCESS_ARROW) {
 fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_access.field_start);
@@ -3922,38 +3936,38 @@ fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_
 }
 if (ast->data._dot_access.value != NULL) {
 fprintf(out, " = ");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._dot_access.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._dot_access.value, out, src);
 fprintf(out, ";\n");
 }
 }
 else if (ast->kind == AST_PRINT) {
 fprintf(out, "printf(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
 fprintf(out, ");\n");
 }
 else if (ast->kind == AST_PRUNE) {
 fprintf(out, "free(");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._prune_free.ptr, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._prune_free.ptr, out, src);
 fprintf(out, ");\n");
 }
 else if (ast->kind == AST_DEREF_ASS) {
 fprintf(out, "*%.*s = ", ast->data._deref_ass.name_length, src + ast->data._deref_ass.name_start);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._deref_ass.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._deref_ass.value, out, src);
 fprintf(out, ";\n");
 }
 else if (ast->kind == AST_SUBSCRIPT) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
 fprintf(out, "[");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
 fprintf(out, "]");
 if (ast->data._subscript.value != NULL) {
 fprintf(out, " = ");
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast->data._subscript.value, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._subscript.value, out, src);
 }
 fprintf(out, ";\n");
 }
 else if (ast->kind == AST_ALIAS_CALL) {
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_gen_expr(ast, out, src);
+mod_src_codegen_flo_gen_expr(ast, out, src);
 fprintf(out, ";\n");
 }
 else {
@@ -3963,12 +3977,12 @@ exit(1);
 }
 
 
-void mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_codegen(ModuleSet* mods, FILE* out) {
+void mod_src_codegen_flo_codegen(ModuleSet* mods, FILE* out) {
 active_modules = mods;
 if (mods->count == 0) {
 return;}
 Module* main_mod = mods->modules + 0;
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_module(main_mod, out, "", 0, 0);
+mod_src_codegen_flo_emit_module(main_mod, out, "", 0, 0);
 }
 
 
@@ -4016,16 +4030,16 @@ else {
 printf("%sCompiling file: %s%s\n", BLUE, argv[i], RESET);
 char abs_path[512];
 realpath(argv[i], abs_path);
-mod__Users_Ivy_Documents_GitHub_FloC_src_globals_flo_set_current_file(abs_path);
+mod_src_globals_flo_set_current_file(abs_path);
 printf("Initializing modules..\n");
 ModuleSet* mods = malloc(sizeof(ModuleSet));
-mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_init_modules(mods);
-Module* main_mod = mod__Users_Ivy_Documents_GitHub_FloC_src_module_flo_load_module(mods, abs_path);
+mod_src_module_flo_init_modules(mods);
+Module* main_mod = mod_src_module_flo_load_module(mods, abs_path);
 if (main_mod == NULL) {
 return -1;
 }
 printf("Checking types..\n");
-int type_errors = mod__Users_Ivy_Documents_GitHub_FloC_src_typecheck_flo_check_modules(mods);
+int type_errors = mod_src_typecheck_flo_check_modules(mods);
 if (type_errors > 0) {
 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
 return -1;
@@ -4045,14 +4059,14 @@ return -1;
 int has_output = 0;
 for (int j = 0; ((0) > (mods->count)) ? j > (mods->count) : j < (mods->count); ((0) > (mods->count)) ? j-- : j++) {
 Module* m = mods->modules + j;
-if (mod__Users_Ivy_Documents_GitHub_FloC_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
+if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = 1;
 }
 }
 printf("Codegen...\n");
 fflush(stdout);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_emit_includes(mods, output);
-mod__Users_Ivy_Documents_GitHub_FloC_src_codegen_flo_codegen(mods, output);
+mod_src_codegen_flo_emit_includes(mods, output);
+mod_src_codegen_flo_codegen(mods, output);
 free(mods);
 fclose(output);
 char bin_name[512];
