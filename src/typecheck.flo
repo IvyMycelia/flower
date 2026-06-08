@@ -57,6 +57,8 @@ struct TypeEnv {
     error_count: int
 }
 
+active_type_modules: @ModuleSet
+current_type_module: @Module
 
 // Helper Functions
 
@@ -98,9 +100,12 @@ forward func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
 forward func lookup_struct(env: @TypeEnv, src: @char, start: int, length: int): @StructInfo
 forward func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int): @FieldInfo
+forward func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
 
+forward func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
 forward func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+forward func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
 forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
@@ -118,8 +123,18 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
         else if curr.kind == AST_FUNC_DEF:
             register_func(env, curr, src)
 
-        else if curr.kind == AST_PROP:
-            register_func(env, curr.data._prop.fnc, src)
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_FUNC_DEF:
+                register_func(env, decl, src)
+
+            else if decl.kind == AST_STRUCT_DEF:
+                register_struct(env, decl, src)
+
+            else if decl.kind == AST_UNION_DEF:
+                register_struct(env, decl, src)
+            end
 
         else if curr.kind == AST_VAR_DECL:
             register_var(env, curr, src)
@@ -244,6 +259,16 @@ end
 forward func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 forward func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 
+func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
+    curr: @AST = list
+    while curr != null:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, curr, tmp, src)
+        prune tmp
+        curr = curr.next
+    end
+end
+
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     if expr == null:
         return 0
@@ -259,8 +284,8 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     
     else if expr.kind == AST_DEREF:
         if !resolve_expr(env, expr.data._deref.operand, out, src):
-            // type_error(env, expr, "could not resolve object type for field access")
-            expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+            type_error(env, expr, "could not resolve object type for field access")
+            // expr.data._dot_access.access_kind = ACCESS_UNKNOWN
             return 0
         end
 
@@ -284,13 +309,75 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return resolve_dot(env, expr, out, src)
 
     else if expr.kind == AST_FUNC_CALL:
+        resolve_expr_list(env, expr.data._func_call.args, src)
         return lookup_func_return_type(env, src, expr.data._func_call.name_start, expr.data._func_call.name_length, out)
+
+    else if expr.kind == AST_ALIAS_CALL:
+        resolve_expr_list(env, expr.data._alias_call.args, src)
+        return resolve_alias_call(env, expr, out, src)
 
     else if expr.kind == AST_SUBSCRIPT:
         if !resolve_expr(env, expr.data._subscript.array, out, src):
             return 0
         end
 
+        idx_type: @TypeInfo = new TypeInfo
+        resolve_expr(env, expr.data._subscript.index, idx_type, src)
+        prune idx_type
+
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_BINARY_OP:
+        left_type: @TypeInfo = new TypeInfo
+        right_type: @TypeInfo = new TypeInfo
+
+        resolve_expr(env, expr.data._binary.left, left_type, src)
+        resolve_expr(env, expr.data._binary.right, right_type, src)
+
+        out.base = TOKEN_INT
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+
+        prune left_type
+        prune right_type
+        return 1
+
+    else if expr.kind == AST_UNARY_NOT:
+        operand_type: @TypeInfo = new TypeInfo
+        resolve_expr(env, expr.data._unary.operand, operand_type, src)
+        prune operand_type
+
+        out.base = TOKEN_BOOL
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_UNARY_NEG:
+        operand_type: @TypeInfo = new TypeInfo
+        if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+            prune operand_type
+            return 0
+        end
+
+        copy_type(out, operand_type)
+        prune operand_type
+        return 1
+
+    else if expr.kind == AST_CAST:
+        value_type: @TypeInfo = new TypeInfo
+        resolve_expr(env, expr.data._cast.value, value_type, src)
+        prune value_type
+
+        copy_type(out, &expr.data._cast.type)
+        return 1
+
+    else if expr.kind == AST_SIZEOF:
+        out.base = TOKEN_INT
+        out.pointer_depth = 0
         out.array_size = 0
         out.arr_size_expr = null
         return 1
@@ -298,6 +385,36 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     else if expr.kind == AST_LITERAL:
         out.base = TOKEN_INT
         out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_FLOAT_LIT:
+        out.base = TOKEN_FLOAT
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_CHAR_LIT:
+        out.base = TOKEN_CHAR
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_STRING_LIT:
+        out.base = TOKEN_STRING
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_NULL:
+        out.base = TOKEN_VOID
+        out.pointer_depth = 1
+        out.array_size = 0
+        out.arr_size_expr = null
         return 1
     end
 
@@ -352,6 +469,30 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     return 1
 end
 
+func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+    if current_type_module == null:
+        return 0
+    end
+
+    imported: @Module = find_imported_module(active_type_modules, current_type_module, src, expr.data._alias_call.alias_start, expr.data._alias_call.alias_length)
+    if imported == null:
+        type_error(env, expr, "unknown module alias in function call")
+        return 0
+    end
+
+    if !module_exports_func(imported, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length):
+        type_error(env, expr, "function is not exported by imported module")
+        return 0
+    end
+
+    if !lookup_func_return_type_in_module(env, imported.src, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length, out):
+        type_error(env, expr, "could not resolve imported function return type")
+        return 0
+    end
+
+    return 1
+end
+
 func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast, src)
@@ -383,9 +524,34 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         walk_statement_list(env, ast.data._if_condition.else_branch, src)
         prune tmp
 
+    else if ast.kind == AST_WHILE:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast.data._while_loop.condition, tmp, src)
+        walk_statement_list(env, ast.data._while_loop.body, src)
+        prune tmp
+
+    else if ast.kind == AST_FOR:
+        from_type: @TypeInfo = new TypeInfo
+        to_type: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast.data._for_loop.from, from_type, src)
+        resolve_expr(env, ast.data._for_loop.to, to_type, src)
+        walk_statement_list(env, ast.data._for_loop.body, src)
+        prune from_type
+        prune to_type
+    
     else if ast.kind == AST_FLOW_CONTROL:
         tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast.data._flow_ctrl.value, tmp, src)
+        prune tmp
+
+    else if ast.kind == AST_PRINT:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast.data._print.value, tmp, src)
+        prune tmp
+    
+    else if ast.kind == AST_FUNC_CALL or ast.kind == AST_ALIAS_CALL:
+        tmp: @TypeInfo = new TypeInfo
+        resolve_expr(env, ast, tmp, src)
         prune tmp
     end
 end
@@ -399,12 +565,15 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
             walk_statement_list(env, curr.data._func_def.body, src)
             env.var_count = saved_var_count
 
-        else if curr.kind == AST_PROP:
-            saved_var_count: int = env.var_count
-            _prop: @AST = curr.data._prop.fnc
-            register_params(env, _prop, src)
-            walk_statement_list(env, _prop.data._func_def.body, src)
-            env.var_count = saved_var_count
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_FUNC_DEF:
+                saved_var_count: int = env.var_count
+                register_params(env, decl, src)
+                walk_statement_list(env, decl.data._func_def.body, src)
+                env.var_count = saved_var_count
+            end
         
         else if curr.kind == AST_VAR_DECL:
             if curr.data._var_decl.value != null:
@@ -472,6 +641,19 @@ func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int,
     return 0
 end
 
+func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
+    for i in 0..env.func_count:
+        info: @FuncInfo = env.funcs + i
+
+        if info.src == module_src and same_name(info.src, info.name_start, info.name_length, call_src, start, length):
+            copy_type(out, &info.return_type)
+            return 1
+        end
+    end
+
+    return 0
+end
+
 // Walk statement
 
 func walk_statement_list(env: @TypeEnv, list: @AST, src: @char): void
@@ -513,15 +695,21 @@ func check_modules(mods: @ModuleSet): int
     env: @TypeEnv = new TypeEnv
     init_type_env(env)
 
+    active_type_modules = mods
+
     for i in 0..mods.count:
         m: @Module = mods.modules + i
+        current_type_module = m
         typecheck_collect(env, m.ast, m.src)
     end
 
     for i in 0..mods.count:
         m: @Module = mods.modules + i
+        current_type_module = m
         typecheck_ast(env, m.ast, m.src)
     end
+
+    current_type_module = null
 
     count: int = env.error_count
     prune env

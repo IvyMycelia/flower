@@ -385,7 +385,6 @@ func gen_struct(ast: @AST, out: @FILE, src: @char): void
     defined_count = defined_count + 1
 end
 
-
 struct defined_union {
     name: @char,
     length: int
@@ -429,6 +428,24 @@ end
 
 // === FUNCTIONS ===
 
+// Track emitted alias+file combos to prevent duplicates
+
+struct EmittedImport {
+    path: @char
+    alias: @char
+}
+
+emitted_imports: EmittedImport[256]
+emitted_count: int = 0
+
+// Currently processing (for circular detection)
+active_modules: @ModuleSet
+current_codegen_module: @Module
+
+forward func emit_lowered_func_name(mod: @Module, out: @FILE, src: @char, start: int, length: int): void
+forward func resolve_called_function_module(src: @char, start: int, length: int): @Module
+
+
 func gen_param(param: @AST, out: @FILE, src: @char): void
     // Emit: int v,
     typeinfo_to_string(&param.data._func_params.type, out, src)
@@ -449,7 +466,9 @@ func gen_func_def(ast: @AST, out: @FILE, src: @char): void
     // Emit: int fib(
     fprintf(out, "\n\n")
     typeinfo_to_string(&ast.data._func_def.return_type, out, src)
-    fprintf(out, " %.*s(", ast.data._func_def.name_length, src + ast.data._func_def.name_start)
+    fprintf(out, " ")
+    emit_lowered_func_name(current_codegen_module, out, src, ast.data._func_def.name_start, ast.data._func_def.name_length)
+    fprintf(out, "(")
     
     // Emit: params
     param: @AST = ast.data._func_def.params
@@ -469,36 +488,46 @@ func gen_func_def(ast: @AST, out: @FILE, src: @char): void
         statement = statement.next
     end
     fprintf(out, "}\n")
+end
+
+func emit_lowered_func_name(mod: @Module, out: @FILE, src: @char, start: int, length: int): void
+    if mod != null:
+        root: @Module = active_modules.modules + 0
+
+        if not strcmp(mod.path, root.path) and length == 4 and not strncmp(src + start, "main", 4):
+            fprintf(out, "main")
+            return
+        end
+
+        fprintf(out, "%s_%.*s", mod.symbol_prefix, length, src + start)
+        return
+    end
+
+    fprintf(out, "%.*s", length, src + start)
+end
+
+func resolve_called_function_module(src: @char, start: int, length: int): @Module
+    if current_codegen_module != null and module_defines_func(current_codegen_module, src, start, length):
+        return current_codegen_module
+    end
+
+    return find_function_module(active_modules, src, start, length)
 end
 
 func gen_func_def_aliased(ast: @AST, out: @FILE, src: @char, alias: @char, alias_len: int): void
-    // Emit: int fib(
-    fprintf(out, "\n\n")
-    typeinfo_to_string(&ast.data._func_def.return_type, out, src)
-    fprintf(out, " %.*s_%.*s(", alias_len, alias, ast.data._func_def.name_length, src + ast.data._func_def.name_start)
-    
-    // Emit: params
-    param: @AST = ast.data._func_def.params
-    while param != null:
-        gen_param(param, out, src)
-        if param.next != null:
-            fprintf(out, ", ")
-        end
-        param = param.next
-    end
-    fprintf(out, ") {\n")
-
-    // Emit: body
-    statement: @AST = ast.data._func_def.body
-    while statement != null:
-        gen_statement(statement, out, src)
-        statement = statement.next
-    end
-    fprintf(out, "}\n")
+    gen_func_def(ast, out, src)
 end
 
 func gen_func_call(ast: @AST, out: @FILE, src: @char): void
-    fprintf(out, "%.*s(", ast.data._func_call.name_length, src + ast.data._func_call.name_start)
+    target_mod: @Module = resolve_called_function_module(src, ast.data._func_call.name_start, ast.data._func_call.name_length)
+
+    if target_mod != null:
+        emit_lowered_func_name(target_mod, out, src, ast.data._func_call.name_start, ast.data._func_call.name_length)
+    else:
+        fprintf(out, "%.*s", ast.data._func_call.name_length, src + ast.data._func_call.name_start)
+    end
+
+    fprintf(out, "(")
 
     arg: @AST = ast.data._func_call.args
     while arg != null:
@@ -547,7 +576,10 @@ end
 func gen_forward(ast: @AST, out: @FILE, src: @char): void
     if ast.data._forward.is_func:
         typeinfo_to_string(&ast.data._forward.return_type, out, src)
-        fprintf(out, " %.*s(", ast.data._forward.name_length, src + ast.data._forward.name_start)
+        fprintf(out, " ")
+        emit_lowered_func_name(current_codegen_module, out, src, ast.data._forward.name_start, ast.data._forward.name_length)
+        fprintf(out, "(")
+
         param: @AST = ast.data._forward.params
         while param != null:
             gen_param(param, out, src)
@@ -572,26 +604,15 @@ end
 // import_cache: ImportCache[64]
 // cache_count: int = 0
 
-// Track emitted alias+file combos to prevent duplicates
-struct EmittedImport {
-    path: @char
-    alias: @char
-}
-
-emitted_imports: EmittedImport[256]
-emitted_count: int = 0
-
-// Currently processing (for circular detection)
-// in_progress: @char[64]
-// in_progress_count: int = 0
-active_modules: @ModuleSet
-
 forward func gen_import(ast: @AST, out: @FILE, src: @char): void
 forward func emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_alias: int): void
 
 func emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_alias: int): void
     original: @char = current_file
     current_file = mod.path
+
+    original_module: @Module = current_codegen_module
+    current_codegen_module = mod
 
     // Emit imported file
     curr: @AST = mod.ast
@@ -603,11 +624,18 @@ func emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_ali
         else if curr.kind == AST_UNION_DEF:
             gen_union(curr, out, mod.src)
         else if curr.kind == AST_PROP:
-            if has_alias:
-                gen_func_def_aliased(curr.data._prop.fnc, out, mod.src, alias, strlen(alias))
-            else:
-                gen_func_def(curr.data._prop.fnc, out, mod.src)
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_FUNC_DEF:
+                gen_func_def(decl, out, mod.src)
+
+            else if decl.kind == AST_STRUCT_DEF:
+                gen_struct(decl, out, mod.src)
+
+            else if decl.kind == AST_UNION_DEF:
+                gen_union(decl, out, mod.src)
             end
+
         else if curr.kind == AST_FORWARD:
             gen_forward(curr, out, mod.src)
         else if curr.kind == AST_FUNC_DEF:
@@ -619,6 +647,7 @@ func emit_module(mod: @Module, out: @FILE, alias: @char, alias_len: int, has_ali
     end
 
     current_file = original
+    current_codegen_module = original_module
 end
 
 func gen_import(ast: @AST, out: @FILE, src: @char): void
@@ -638,7 +667,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
 
     // Check if this exact path+alias combo already emitted
     for i in 0..emitted_count:
-        if not strcmp(emitted_imports[i].path, path) and not strcmp(emitted_imports[i].alias, alias):
+        if not strcmp(emitted_imports[i].path, path):
             prune path
             return
         end
@@ -713,7 +742,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     emitted_imports[emitted_count].alias = strdup(alias)
     emitted_count = emitted_count + 1
 
-    emit_module(imported, out, alias, strlen(alias), ast.data._import.has_alias)
+    emit_module(imported, out, "", 0, 0)
 
     // // Emit functions
     // curr: @AST = imported_ast
@@ -817,8 +846,16 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
         else:
             obj_kind: int = object.kind
-            if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+            if obj_kind == AST_DOT_ACCESS:
+                if object.data._dot_access.resolved_type.pointer_depth > 0:
+                    fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                else:
+                    fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                end
+
+            else if obj_kind == AST_SUBSCRIPT:
                 fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+
             else:
                 fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
             end
@@ -839,7 +876,16 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
 
     else if ast.kind == AST_ALIAS_CALL:
-        fprintf(out, "%.*s_%.*s(", ast.data._alias_call.alias_length, ast.data._alias_call.alias_start + src, ast.data._alias_call.func_length, src + ast.data._alias_call.func_start)
+        imported: @Module = find_imported_module(active_modules, current_codegen_module, src, ast.data._alias_call.alias_start, ast.data._alias_call.alias_length)
+
+        if imported != null:
+            emit_lowered_func_name(imported, out, src, ast.data._alias_call.func_start, ast.data._alias_call.func_length)
+        else:
+            fprintf(out, "%.*s_%.*s", ast.data._alias_call.alias_length, ast.data._alias_call.alias_start + src, ast.data._alias_call.func_length, src + ast.data._alias_call.func_start)
+        end
+
+        fprintf(out, "(")
+
         arg: @AST = ast.data._alias_call.args
         while arg != null:
             gen_expr(arg, out, src)
@@ -933,8 +979,16 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
         else:
             obj_kind: int = object.kind
-            if obj_kind == AST_DOT_ACCESS or obj_kind == AST_SUBSCRIPT:
+            if obj_kind == AST_DOT_ACCESS:
+                if object.data._dot_access.resolved_type.pointer_depth > 0:
+                    fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                else:
+                    fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+                end
+
+            else if obj_kind == AST_SUBSCRIPT:
                 fprintf(out, ".%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
+
             else:
                 fprintf(out, "->%.*s", ast.data._dot_access.field_length, src + ast.data._dot_access.field_start)
             end

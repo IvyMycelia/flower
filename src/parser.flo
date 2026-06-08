@@ -1593,15 +1593,26 @@ prop func parse(ps: @Parser): @AST
         else if parser_peek(ps).kind == TOKEN_PROP:
             parser_advance(ps)
 
+            decl: @AST = null
+
             if parser_peek(ps).kind == TOKEN_FUNC:
-                fnc: @AST = parse_func_def(ps)
-                prop_node: @AST = make_node(AST_PROP)
-                prop_node.data._prop.fnc = fnc
-                node = prop_node
+                decl = parse_func_def(ps)
+                
             else if parser_peek(ps).kind == TOKEN_STRUCT:
-                // prop struct support
+                decl = parse_struct(ps)
+                
+            else if parser_peek(ps).kind == TOKEN_UNION:
+                decl = parse_union(ps)
+
             else:
                 parser_error(ps, "Expected declaration after prop")
+            end
+
+            if decl != null:
+                prop_node: @AST = make_node(AST_PROP)
+                prop_node.data._prop.decl = decl
+                node = prop_node
+            else:
                 node = null
             end
 
