@@ -136,7 +136,7 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
                 register_struct(env, decl, src)
 
             else if decl.kind == AST_UNION_DEF:
-                register_struct(env, decl, src)
+                register_union(env, decl, src)
             end
 
         else if curr.kind == AST_VAR_DECL:
