@@ -1083,6 +1083,9 @@ typedef struct AST {
 int kind;
 AST* next;
 int value;
+char* src;
+char* filename;
+int start;
 NodeData data;
 } AST;
 
@@ -1099,10 +1102,12 @@ int error_count;
 } Parser;
 
 
-AST* mod_src_parser_flo_make_node(int kind) {
+AST* mod_src_parser_flo_make_node(Parser* ps, int kind) {
 AST* node = calloc(1, sizeof(AST));
 node->kind = kind;
 node->value = 0;
+node->src = ps->src;
+node->filename = ps->filename;
 return node;
 }
 
@@ -1300,7 +1305,7 @@ mod_src_parser_flo_parser_advance(ps);
 
 
 AST* mod_src_parser_flo_parse_var_decl(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_VAR_DECL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_DECL);
 Token* tok = mod_src_parser_flo_parser_advance(ps);
 if (tok->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected variable name");
@@ -1329,7 +1334,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_var_ass(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_VAR_ASS);
+AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_ASS);
 Token* tok = mod_src_parser_flo_parser_advance(ps);
 if (tok->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected variable name");
@@ -1351,7 +1356,7 @@ return node;
 
 AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps) {
 Token* name = mod_src_parser_flo_parser_advance(ps);
-AST* arr_ref = mod_src_parser_flo_make_node(AST_VAR_REF);
+AST* arr_ref = mod_src_parser_flo_make_node(ps, AST_VAR_REF);
 arr_ref->data._var_ref.name_start = name->start;
 arr_ref->data._var_ref.name_length = name->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LBRACK))) {
@@ -1373,7 +1378,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript express
 return arr_ref;
 }
 AST* val = mod_src_parser_flo_parse_expr(ps, 0);
-AST* sub = mod_src_parser_flo_make_node(AST_SUBSCRIPT);
+AST* sub = mod_src_parser_flo_make_node(ps, AST_SUBSCRIPT);
 sub->data._subscript.array = arr_ref;
 sub->data._subscript.index = idx;
 sub->data._subscript.value = val;
@@ -1382,7 +1387,7 @@ return sub;
 
 
 AST* mod_src_parser_flo_parse_return(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 mod_src_parser_flo_parser_advance(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1395,7 +1400,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_continue(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.value = NULL;
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1407,7 +1412,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_break(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.value = NULL;
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1419,7 +1424,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_while(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_WHILE);
+AST* node = mod_src_parser_flo_make_node(ps, AST_WHILE);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_WHILE))) {
 return node;
 }
@@ -1454,7 +1459,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_if(Parser* ps, int is_elf_if) {
-AST* node = mod_src_parser_flo_make_node(AST_IF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_IF);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_IF))) {
 return node;
 }
@@ -1489,7 +1494,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IF) {
 node->data._if_condition.else_branch = mod_src_parser_flo_parse_if(ps, 1);
 }
 else {
-AST* else_node = mod_src_parser_flo_make_node(AST_IF);
+AST* else_node = mod_src_parser_flo_make_node(ps, AST_IF);
 else_node->data._if_condition.condition = NULL;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
@@ -1528,7 +1533,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_for(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FOR);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FOR);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_FOR))) {
 return node;
 }
@@ -1599,7 +1604,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in cast expression");
 return NULL;
 }
-AST* cast = mod_src_parser_flo_make_node(AST_CAST);
+AST* cast = mod_src_parser_flo_make_node(ps, AST_CAST);
 cast->data._cast.value = left;
 cast->data._cast.type = *(mod_src_parser_flo_parse_type(ps));
 left = cast;
@@ -1617,7 +1622,7 @@ AST* right = mod_src_parser_flo_parse_expr(ps, mod_src_parser_flo_get_precedence
 if (right == NULL) {
 return left;
 }
-AST* bin = mod_src_parser_flo_make_node(AST_BINARY_OP);
+AST* bin = mod_src_parser_flo_make_node(ps, AST_BINARY_OP);
 bin->data._binary.left = left;
 bin->data._binary.right = right;
 bin->data._binary.op = op->kind;
@@ -1681,7 +1686,7 @@ return mod_src_parser_flo_parse_for(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRINT) {
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_PRINT);
+AST* node = mod_src_parser_flo_make_node(ps, AST_PRINT);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
@@ -1695,7 +1700,7 @@ return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRUNE) {
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_PRUNE);
+AST* node = mod_src_parser_flo_make_node(ps, AST_PRUNE);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in prune statement");
 return node;
@@ -1705,7 +1710,7 @@ return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_DEREF_ASS);
+AST* node = mod_src_parser_flo_make_node(ps, AST_DEREF_ASS);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in dereference statement");
 return node;
@@ -1755,7 +1760,7 @@ if (field->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
 return node;
 }
-AST* dot = mod_src_parser_flo_make_node(AST_DOT_ACCESS);
+AST* dot = mod_src_parser_flo_make_node(ps, AST_DOT_ACCESS);
 dot->data._dot_access.object = node;
 dot->data._dot_access.field_length = field->length;
 dot->data._dot_access.field_start = field->start;
@@ -1768,7 +1773,7 @@ return mod_src_parser_flo_parse_alias_call(ps);
 }
 Token* tok = mod_src_parser_flo_parser_peek(ps);
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_VAR_REF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_REF);
 node->data._var_ref.name_start = tok->start;
 node->data._var_ref.name_length = tok->length;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
@@ -1778,7 +1783,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
 return node;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* drf = mod_src_parser_flo_make_node(AST_DEREF);
+AST* drf = mod_src_parser_flo_make_node(ps, AST_DEREF);
 drf->data._unary.operand = operand;
 return drf;
 }
@@ -1794,7 +1799,7 @@ if (field->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
 return node;
 }
-AST* dot = mod_src_parser_flo_make_node(AST_DOT_ACCESS);
+AST* dot = mod_src_parser_flo_make_node(ps, AST_DOT_ACCESS);
 dot->data._dot_access.object = node;
 dot->data._dot_access.field_start = field->start;
 dot->data._dot_access.field_length = field->length;
@@ -1810,7 +1815,7 @@ AST* idx = mod_src_parser_flo_parse_expr(ps, 0);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
 return node;
 }
-AST* sub = mod_src_parser_flo_make_node(AST_SUBSCRIPT);
+AST* sub = mod_src_parser_flo_make_node(ps, AST_SUBSCRIPT);
 sub->data._subscript.array = node;
 sub->data._subscript.index = idx;
 node = sub;
@@ -1822,25 +1827,25 @@ break;
 return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
-AST* lit = mod_src_parser_flo_make_node(AST_LITERAL);
+AST* lit = mod_src_parser_flo_make_node(ps, AST_LITERAL);
 lit->value = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
 mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FLOAT_LIT) {
-AST* lit = mod_src_parser_flo_make_node(AST_FLOAT_LIT);
+AST* lit = mod_src_parser_flo_make_node(ps, AST_FLOAT_LIT);
 lit->data._float_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
 lit->data._float_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
 mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NULL) {
-AST* nll = mod_src_parser_flo_make_node(AST_NULL);
+AST* nll = mod_src_parser_flo_make_node(ps, AST_NULL);
 mod_src_parser_flo_parser_advance(ps);
 return nll;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRING_LIT) {
-AST* str = mod_src_parser_flo_make_node(AST_STRING_LIT);
+AST* str = mod_src_parser_flo_make_node(ps, AST_STRING_LIT);
 str->data._string.str_start = mod_src_parser_flo_parser_peek(ps)->start;
 str->data._string.str_length = mod_src_parser_flo_parser_peek(ps)->length;
 mod_src_parser_flo_parser_advance(ps);
@@ -1848,7 +1853,7 @@ return str;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
 mod_src_parser_flo_parser_advance(ps);
-AST* arr = mod_src_parser_flo_make_node(AST_ARRAY_LIT);
+AST* arr = mod_src_parser_flo_make_node(ps, AST_ARRAY_LIT);
 AST* elem_head = NULL;
 AST* elem_tail = NULL;
 while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACK) {
@@ -1874,7 +1879,7 @@ return arr;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACE) {
 mod_src_parser_flo_parser_advance(ps);
-AST* strct_lit = mod_src_parser_flo_make_node(AST_STRUCT_LIT);
+AST* strct_lit = mod_src_parser_flo_make_node(ps, AST_STRUCT_LIT);
 AST* struct_head = NULL;
 AST* struct_tail = NULL;
 while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
@@ -1914,7 +1919,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'new'");
 return NULL;
 }
-AST* new_node = mod_src_parser_flo_make_node(AST_NEW);
+AST* new_node = mod_src_parser_flo_make_node(ps, AST_NEW);
 new_node->data._new_alloc.type = *(mod_src_parser_flo_parse_type(ps));
 return new_node;
 }
@@ -1925,7 +1930,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'not'");
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* unry = mod_src_parser_flo_make_node(AST_UNARY_NOT);
+AST* unry = mod_src_parser_flo_make_node(ps, AST_UNARY_NOT);
 unry->data._unary.operand = operand;
 return unry;
 }
@@ -1936,7 +1941,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after unary '-' oper
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* unry = mod_src_parser_flo_make_node(AST_UNARY_NEG);
+AST* unry = mod_src_parser_flo_make_node(ps, AST_UNARY_NEG);
 unry->data._unary.operand = operand;
 return unry;
 }
@@ -1947,7 +1952,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* deref = mod_src_parser_flo_make_node(AST_DEREF);
+AST* deref = mod_src_parser_flo_make_node(ps, AST_DEREF);
 deref->data._deref.operand = operand;
 return deref;
 }
@@ -1958,7 +1963,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '&'");
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* get = mod_src_parser_flo_make_node(AST_GET_ADDR);
+AST* get = mod_src_parser_flo_make_node(ps, AST_GET_ADDR);
 get->data._get_addr.operand = operand;
 return get;
 }
@@ -1967,13 +1972,13 @@ mod_src_parser_flo_parser_advance(ps);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_SIZEOF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_SIZEOF);
 node->data._size_of.type = *(mod_src_parser_flo_parse_type(ps));
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_CHAR_LIT) {
-AST* node = mod_src_parser_flo_make_node(AST_CHAR_LIT);
+AST* node = mod_src_parser_flo_make_node(ps, AST_CHAR_LIT);
 node->data._char_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
 node->data._char_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
 mod_src_parser_flo_parser_advance(ps);
@@ -1991,7 +1996,7 @@ AST* mod_src_parser_flo_parse_func_def(Parser* ps) {
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_FUNC))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_FUNC_DEF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FUNC_DEF);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected function name");
@@ -2054,7 +2059,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_func_call(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FUNC_CALL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FUNC_CALL);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._func_call.name_start = name->start;
 node->data._func_call.name_length = name->length;
@@ -2087,7 +2092,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_alias_call(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_ALIAS_CALL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_ALIAS_CALL);
 Token* alias = mod_src_parser_flo_parser_advance(ps);
 node->data._alias_call.alias_start = alias->start;
 node->data._alias_call.alias_length = alias->length;
@@ -2126,7 +2131,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_param(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_PARAM);
+AST* node = mod_src_parser_flo_make_node(ps, AST_PARAM);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._func_params.name_start = name->start;
 node->data._func_params.name_length = name->length;
@@ -2142,7 +2147,7 @@ AST* mod_src_parser_flo_parse_struct(Parser* ps) {
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_STRUCT))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_STRUCT_DEF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_STRUCT_DEF);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected struct name");
@@ -2166,7 +2171,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in struct body");
 return node;
 }
-AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+AST* field = mod_src_parser_flo_make_node(ps, AST_STRUCT_FIELD);
 mod_src_parser_flo_parse_field_flags(ps, field);
 Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
@@ -2197,7 +2202,7 @@ AST* mod_src_parser_flo_parse_union(Parser* ps) {
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_UNION))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_UNION_DEF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_UNION_DEF);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected union name");
@@ -2224,7 +2229,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in union body");
 return node;
 }
-AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+AST* field = mod_src_parser_flo_make_node(ps, AST_STRUCT_FIELD);
 mod_src_parser_flo_parse_field_flags(ps, field);
 Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
@@ -2272,7 +2277,7 @@ return expr;
 
 AST* mod_src_parser_flo_parse_import(Parser* ps) {
 mod_src_parser_flo_parser_expect(ps, TOKEN_IMPORT);
-AST* node = mod_src_parser_flo_make_node(AST_IMPORT);
+AST* node = mod_src_parser_flo_make_node(ps, AST_IMPORT);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LT) {
 mod_src_parser_flo_parser_advance(ps);
 Token* path = mod_src_parser_flo_parser_advance(ps);
@@ -2319,7 +2324,7 @@ return node;
 
 AST* mod_src_parser_flo_parse_forward(Parser* ps) {
 mod_src_parser_flo_parser_expect(ps, TOKEN_FORWARD);
-AST* node = mod_src_parser_flo_make_node(AST_FORWARD);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FORWARD);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
 mod_src_parser_flo_parser_advance(ps);
 Token* name = mod_src_parser_flo_parser_advance(ps);
@@ -2400,7 +2405,7 @@ else {
 mod_src_parser_flo_parser_error(ps, "Expected declaration after prop");
 }
 if (decl != NULL) {
-AST* prop_node = mod_src_parser_flo_make_node(AST_PROP);
+AST* prop_node = mod_src_parser_flo_make_node(ps, AST_PROP);
 prop_node->data._prop.decl = decl;
 node = prop_node;
 }
@@ -2772,7 +2777,14 @@ dst->name_src = src_type->name_src;
 
 
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message) {
+if (ast != NULL  &&  ast->src != NULL  &&  ast->filename != NULL) {
+int line = mod_include_lexer_h_flo_get_line(ast->src, ast->start);
+int col = mod_include_lexer_h_flo_get_col(ast->src, ast->start);
+printf("%s%s:%d%d: error:%s %s\n", RED, ast->filename, line, col, RESET, message);
+}
+else {
 printf("%serror:%s %s\n", RED, RESET, message);
+}
 env->error_count = env->error_count + 1;
 }
 void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src);
@@ -2813,7 +2825,7 @@ else if (decl->kind == AST_STRUCT_DEF) {
 mod_src_typecheck_flo_register_struct(env, decl, src);
 }
 else if (decl->kind == AST_UNION_DEF) {
-mod_src_typecheck_flo_register_struct(env, decl, src);
+mod_src_typecheck_flo_register_union(env, decl, src);
 }
 }
 else if (curr->kind == AST_VAR_DECL) {
