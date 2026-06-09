@@ -272,7 +272,7 @@ func load_module(set: @ModuleSet, path: @char): @Module
     lexer.lex(m.tokens, src)
 
     p: Parser
-    parser.init_parser(&p, m.tokens, src, path)
+    parser.init_parser(&p, m.tokens, src, m.path)
     m.ast = parser.parse(&p)
     
     collect_exports(m)
