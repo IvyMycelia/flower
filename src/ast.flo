@@ -348,5 +348,10 @@ struct AST {
     kind: int,
     next: @AST,     // Next statement,
     value: int,     // For vals
+
+    src: @char,
+    filename: @char,
+    start: int,
+    
     data: NodeData
 }
