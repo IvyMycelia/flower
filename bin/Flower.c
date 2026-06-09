@@ -2694,7 +2694,7 @@ m->tokens = malloc(sizeof(TokenStream));
 mod_src_lexer_flo_init_token_stream(m->tokens);
 mod_src_lexer_flo_lex(m->tokens, src);
 Parser p;
-mod_src_parser_flo_init_parser(&(p), m->tokens, src, path);
+mod_src_parser_flo_init_parser(&(p), m->tokens, src, m->path);
 m->ast = mod_src_parser_flo_parse(&(p));
 mod_src_module_flo_collect_exports(m);
 set->count = set->count + 1;
