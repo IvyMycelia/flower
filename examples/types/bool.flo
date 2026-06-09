@@ -1,0 +1,17 @@
+import <stdio>
+
+prop func test(): int
+    a: bool = true
+    b: bool = false
+    c: bool = 3 > 2
+
+    if a and not b:
+        if c:
+            if false or a:
+                return 1
+            end
+        end
+    end
+
+    return 0
+end
