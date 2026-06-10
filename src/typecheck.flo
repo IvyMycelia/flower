@@ -275,6 +275,14 @@ end
 forward func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 forward func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 
+func is_comparison_op(kind: int): int
+    return kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP
+end
+
+func is_logical_op(kind: int): int
+    return kind == TOKEN_AND or kind == TOKEN_OR
+end
+
 func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
     curr: @AST = list
     while curr != null:
@@ -349,13 +357,26 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         left_type: @TypeInfo = new TypeInfo
         right_type: @TypeInfo = new TypeInfo
 
-        resolve_expr(env, expr.data._binary.left, left_type, src)
-        resolve_expr(env, expr.data._binary.right, right_type, src)
+        if !resolve_expr(env, expr.data._binary.left, left_type, src):
+            prune left_type
+            prune right_type
+            return 0
+        end
+        
+        if !resolve_expr(env, expr.data._binary.right, right_type, src):
+            prune left_type
+            prune right_type
+            return 0
+        end
 
-        out.base = TOKEN_INT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        if is_comparison_op(expr.data._binary.op) or is_logical_op(expr.data._binary.op):
+            out.base = TOKEN_BOOL
+            out.pointer_depth = 0
+            out.array_size = 0
+            out.arr_size_expr = null
+        else:
+            copy_type(out, left_type)
+        end
 
         prune left_type
         prune right_type
@@ -407,6 +428,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     else if expr.kind == AST_FLOAT_LIT:
         out.base = TOKEN_FLOAT
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
+    else if expr.kind == AST_BOOL_LIT:
+        out.base = TOKEN_BOOL
         out.pointer_depth = 0
         out.array_size = 0
         out.arr_size_expr = null

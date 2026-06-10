@@ -62,58 +62,60 @@ int TOKEN_FLOAT_LIT = 13;
 int TOKEN_STRING_LIT = 14;
 int TOKEN_CHAR_LIT = 15;
 int TOKEN_VOID = 16;
-int TOKEN_RETURN = 17;
-int TOKEN_CONTINUE = 18;
-int TOKEN_BREAK = 19;
-int TOKEN_WHILE = 20;
-int TOKEN_FUNC = 21;
-int TOKEN_FOR = 22;
-int TOKEN_IN = 23;
-int TOKEN_END = 24;
-int TOKEN_IF = 25;
-int TOKEN_ELSE = 26;
-int TOKEN_NOT = 27;
-int TOKEN_AND = 28;
-int TOKEN_OR = 29;
-int TOKEN_IMPORT = 30;
-int TOKEN_FORWARD = 31;
-int TOKEN_AS = 32;
-int TOKEN_PROP = 33;
-int TOKEN_HIDDEN = 34;
-int TOKEN_READONLY = 35;
-int TOKEN_FROZEN = 36;
-int TOKEN_NEW = 37;
-int TOKEN_PRUNE = 38;
-int TOKEN_SIZEOF = 39;
-int TOKEN_PRINT = 40;
-int TOKEN_DOT = 41;
-int TOKEN_DOTDOT = 42;
-int TOKEN_DOTDOTEQ = 43;
-int TOKEN_PLUS = 44;
-int TOKEN_MINUS = 45;
-int TOKEN_STAR = 46;
-int TOKEN_CARET = 47;
-int TOKEN_SLASH = 48;
-int TOKEN_AMPERSAND = 49;
-int TOKEN_AT = 50;
-int TOKEN_ASSIGN = 51;
-int TOKEN_LT = 52;
-int TOKEN_GT = 53;
-int TOKEN_COMP = 54;
-int TOKEN_NEQ = 55;
-int TOKEN_GEQ = 56;
-int TOKEN_LEQ = 57;
-int TOKEN_LPAREN = 58;
-int TOKEN_RPAREN = 59;
-int TOKEN_LBRACK = 60;
-int TOKEN_RBRACK = 61;
-int TOKEN_LBRACE = 62;
-int TOKEN_RBRACE = 63;
-int TOKEN_COLON = 64;
-int TOKEN_COMMA = 65;
-int TOKEN_SEMI = 66;
-int TOKEN_NEWLINE = 67;
-int TOKEN_EOF = 68;
+int TOKEN_TRUE = 17;
+int TOKEN_FALSE = 18;
+int TOKEN_RETURN = 19;
+int TOKEN_CONTINUE = 20;
+int TOKEN_BREAK = 21;
+int TOKEN_WHILE = 22;
+int TOKEN_FUNC = 23;
+int TOKEN_FOR = 24;
+int TOKEN_IN = 25;
+int TOKEN_END = 26;
+int TOKEN_IF = 27;
+int TOKEN_ELSE = 28;
+int TOKEN_NOT = 29;
+int TOKEN_AND = 30;
+int TOKEN_OR = 31;
+int TOKEN_IMPORT = 32;
+int TOKEN_FORWARD = 33;
+int TOKEN_AS = 34;
+int TOKEN_PROP = 35;
+int TOKEN_HIDDEN = 36;
+int TOKEN_READONLY = 37;
+int TOKEN_FROZEN = 38;
+int TOKEN_NEW = 39;
+int TOKEN_PRUNE = 40;
+int TOKEN_SIZEOF = 41;
+int TOKEN_PRINT = 42;
+int TOKEN_DOT = 43;
+int TOKEN_DOTDOT = 44;
+int TOKEN_DOTDOTEQ = 45;
+int TOKEN_PLUS = 46;
+int TOKEN_MINUS = 47;
+int TOKEN_STAR = 48;
+int TOKEN_CARET = 49;
+int TOKEN_SLASH = 50;
+int TOKEN_AMPERSAND = 51;
+int TOKEN_AT = 52;
+int TOKEN_ASSIGN = 53;
+int TOKEN_LT = 54;
+int TOKEN_GT = 55;
+int TOKEN_COMP = 56;
+int TOKEN_NEQ = 57;
+int TOKEN_GEQ = 58;
+int TOKEN_LEQ = 59;
+int TOKEN_LPAREN = 60;
+int TOKEN_RPAREN = 61;
+int TOKEN_LBRACK = 62;
+int TOKEN_RBRACK = 63;
+int TOKEN_LBRACE = 64;
+int TOKEN_RBRACE = 65;
+int TOKEN_COLON = 66;
+int TOKEN_COMMA = 67;
+int TOKEN_SEMI = 68;
+int TOKEN_NEWLINE = 69;
+int TOKEN_EOF = 70;
 
 
 typedef struct Token {
@@ -302,6 +304,9 @@ mod_src_lexer_flo_add_token(ts, TOKEN_PROP, start, length);
 else if (length == 4  &&  !(strncmp(src + start, "func", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FUNC, start, length);
 }
+else if (length == 4  &&  !(strncmp(src + start, "true", 4))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_TRUE, start, length);
+}
 else if (length == 5  &&  !(strncmp(src + start, "union", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_UNION, start, length);
 }
@@ -319,6 +324,9 @@ mod_src_lexer_flo_add_token(ts, TOKEN_FLOAT, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "break", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_BREAK, start, length);
+}
+else if (length == 5  &&  !(strncmp(src + start, "false", 5))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_FALSE, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "return", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_RETURN, start, length);
@@ -546,6 +554,12 @@ return "TOKEN_STRING_LIT";
 else if (kind == TOKEN_CHAR_LIT) {
 return "TOKEN_CHAR_LIT";
 }
+else if (kind == TOKEN_TRUE) {
+return "TOKEN_TRUE";
+}
+else if (kind == TOKEN_FALSE) {
+return "TOKEN_FALSE";
+}
 else if (kind == TOKEN_STRUCT) {
 return "TOKEN_STRUCT";
 }
@@ -755,38 +769,39 @@ int AST_LITERAL = 1;
 int AST_FLOAT_LIT = 2;
 int AST_CAST = 3;
 int AST_NULL = 4;
-int AST_STRING_LIT = 5;
-int AST_ARRAY_LIT = 6;
-int AST_SUBSCRIPT = 7;
-int AST_STRUCT_LIT = 8;
-int AST_CHAR_LIT = 9;
-int AST_STRUCT_DEF = 10;
-int AST_UNION_DEF = 11;
-int AST_STRUCT_FIELD = 12;
-int AST_DOT_ACCESS = 13;
-int AST_BINARY_OP = 14;
-int AST_UNARY_NOT = 15;
-int AST_UNARY_NEG = 16;
-int AST_NEW = 17;
-int AST_PRUNE = 18;
-int AST_SIZEOF = 19;
-int AST_DEREF_ASS = 20;
-int AST_DEREF = 21;
-int AST_GET_ADDR = 22;
-int AST_IMPORT = 23;
-int AST_PROP = 24;
-int AST_FORWARD = 25;
-int AST_ALIAS_CALL = 26;
-int AST_VAR_DECL = 27;
-int AST_VAR_ASS = 28;
-int AST_VAR_REF = 29;
-int AST_FUNC_DEF = 30;
-int AST_FUNC_CALL = 31;
-int AST_WHILE = 32;
-int AST_FOR = 33;
-int AST_IF = 34;
-int AST_PARAM = 35;
-int AST_PRINT = 36;
+int AST_BOOL_LIT = 5;
+int AST_STRING_LIT = 6;
+int AST_ARRAY_LIT = 7;
+int AST_SUBSCRIPT = 8;
+int AST_STRUCT_LIT = 9;
+int AST_CHAR_LIT = 10;
+int AST_STRUCT_DEF = 11;
+int AST_UNION_DEF = 12;
+int AST_STRUCT_FIELD = 13;
+int AST_DOT_ACCESS = 14;
+int AST_BINARY_OP = 15;
+int AST_UNARY_NOT = 16;
+int AST_UNARY_NEG = 17;
+int AST_NEW = 18;
+int AST_PRUNE = 19;
+int AST_SIZEOF = 20;
+int AST_DEREF_ASS = 21;
+int AST_DEREF = 22;
+int AST_GET_ADDR = 23;
+int AST_IMPORT = 24;
+int AST_PROP = 25;
+int AST_FORWARD = 26;
+int AST_ALIAS_CALL = 27;
+int AST_VAR_DECL = 28;
+int AST_VAR_ASS = 29;
+int AST_VAR_REF = 30;
+int AST_FUNC_DEF = 31;
+int AST_FUNC_CALL = 32;
+int AST_WHILE = 33;
+int AST_FOR = 34;
+int AST_IF = 35;
+int AST_PARAM = 36;
+int AST_PRINT = 37;
 int FIELD_FALSE = 0;
 int FIELD_TRUE = 1;
 typedef struct AST AST;
@@ -813,6 +828,11 @@ typedef struct float_lit {
 int start;
 int length;
 } float_lit;
+
+
+typedef struct bool_lit {
+int value;
+} bool_lit;
 
 
 typedef struct char_lit {
@@ -1044,6 +1064,7 @@ AST* else_branch;
 typedef union NodeData {
 cast _cast;
 float_lit _float_lit;
+bool_lit _bool_lit;
 char_lit _char_lit;
 strng _string;
 array _array;
@@ -1232,19 +1253,19 @@ return type;
 
 int mod_src_parser_flo_get_precedence(int kind) {
 if (kind == TOKEN_STAR  ||  kind == TOKEN_SLASH) {
+return 5;
+}
+else if (kind == TOKEN_PLUS  ||  kind == TOKEN_MINUS) {
+return 4;
+}
+else if (kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP) {
 return 3;
 }
-else if (kind == TOKEN_AND  ||  kind == TOKEN_PLUS  ||  kind == TOKEN_MINUS) {
+else if (kind == TOKEN_AND) {
 return 2;
 }
-else if (kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_OR  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP) {
+else if (kind == TOKEN_OR) {
 return 1;
-}
-else if (kind == TOKEN_DOTDOT) {
-return 0;
-}
-else if (kind == TOKEN_DOTDOTEQ) {
-return 0;
 }
 else {
 return 0;
@@ -1838,6 +1859,13 @@ else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FLOAT_LIT) {
 AST* lit = mod_src_parser_flo_make_node(ps, AST_FLOAT_LIT);
 lit->data._float_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
 lit->data._float_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
+mod_src_parser_flo_parser_advance(ps);
+return lit;
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_TRUE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FALSE) {
+AST* lit = mod_src_parser_flo_make_node(AST_BOOL_LIT);
+int val = mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_TRUE;
+lit->data._bool_lit.value = val;
 mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
@@ -2937,6 +2965,16 @@ int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, in
 int mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
 
 
+int mod_src_typecheck_flo_is_comparison_op(int kind) {
+return kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP;
+}
+
+
+int mod_src_typecheck_flo_is_logical_op(int kind) {
+return kind == TOKEN_AND  ||  kind == TOKEN_OR;
+}
+
+
 void mod_src_typecheck_flo_resolve_expr_list(TypeEnv* env, AST* list, char* src) {
 AST* curr = list;
 while (curr != NULL) {
@@ -3003,12 +3041,25 @@ return 1;
 else if (expr->kind == AST_BINARY_OP) {
 TypeInfo* left_type = malloc(sizeof(TypeInfo));
 TypeInfo* right_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.left, left_type, src);
-mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.right, right_type, src);
-out->base = TOKEN_INT;
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.left, left_type, src))) {
+free(left_type);
+free(right_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.right, right_type, src))) {
+free(left_type);
+free(right_type);
+return 0;
+}
+if (mod_src_typecheck_flo_is_comparison_op(expr->data._binary.op)  ||  mod_src_typecheck_flo_is_logical_op(expr->data._binary.op)) {
+out->base = TOKEN_BOOL;
 out->pointer_depth = 0;
 out->array_size = 0;
 out->arr_size_expr = NULL;
+}
+else {
+mod_src_typecheck_flo_copy_type(out, left_type);
+}
 free(left_type);
 free(right_type);
 return 1;
@@ -3056,6 +3107,13 @@ return 1;
 }
 else if (expr->kind == AST_FLOAT_LIT) {
 out->base = TOKEN_FLOAT;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
+else if (expr->kind == AST_BOOL_LIT) {
+out->base = TOKEN_BOOL;
 out->pointer_depth = 0;
 out->array_size = 0;
 out->arr_size_expr = NULL;
@@ -3993,6 +4051,9 @@ fprintf(out, "%d", ast->value);
 }
 else if (ast->kind == AST_FLOAT_LIT) {
 fprintf(out, "%.*s", ast->data._float_lit.length, src + ast->data._float_lit.start);
+}
+else if (ast->kind == AST_BOOL_LIT) {
+fprintf(out, "%d", ast->data._bool_lit.value);
 }
 else if (ast->kind == AST_NULL) {
 fprintf(out, "NULL");

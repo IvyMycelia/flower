@@ -163,15 +163,15 @@ end
 
 func get_precedence(kind: int): int
     if kind == TOKEN_STAR or kind == TOKEN_SLASH:
+        return 5
+    else if kind == TOKEN_PLUS or kind == TOKEN_MINUS:
+        return 4
+    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP:
         return 3
-    else if kind == TOKEN_AND or kind == TOKEN_PLUS or kind == TOKEN_MINUS:
+    else if kind == TOKEN_AND:
         return 2
-    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_OR or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP:
+    else if kind == TOKEN_OR:
         return 1
-    else if kind == TOKEN_DOTDOT:
-        return 0
-    else if kind == TOKEN_DOTDOTEQ:
-        return 0
     else:
         return 0
     end
@@ -913,6 +913,16 @@ func parse_primary(ps: @Parser): @AST
         lit.data._float_lit.start = parser_peek(ps).start
         lit.data._float_lit.length = parser_peek(ps).length
 
+        parser_advance(ps)
+
+        return lit
+
+    else if parser_peek(ps).kind == TOKEN_TRUE or parser_peek(ps).kind == TOKEN_FALSE:
+        lit: @AST = make_node(AST_BOOL_LIT)
+
+        val: int = parser_peek(ps).kind == TOKEN_TRUE
+        lit.data._bool_lit.value = val
+        
         parser_advance(ps)
 
         return lit
