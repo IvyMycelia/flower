@@ -662,9 +662,9 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
 
     alias: char[64]
     alias[0] = '\0'
-    
+
     if ast.data._import.has_alias:
-        snprintf(alias, sizeof(alias), "%.*s", ast.data._import.alias_length, src + ast.data._import.alias_start )
+        snprintf(alias, sizeof(alias), "%.*s", ast.data._import.alias_length, src + ast.data._import.alias_start)
     end
 
     // Check if this exact path+alias combo already emitted
