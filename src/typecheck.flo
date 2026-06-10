@@ -89,7 +89,7 @@ func type_error(env: @TypeEnv, ast: @AST, message: @char): void
     if ast != null and ast.src != null and ast.filename != null:
         line: int = get_line(ast.src, ast.start)
         col: int = get_col(ast.src, ast.start)
-        printf("%s%s:%d%d: error:%s %s\n", RED, ast.filename, line, col, RESET, message)
+        printf("%s%s:%d:%d: error:%s %s\n", RED, ast.filename, line, col, RESET, message)
     else:
         printf("%serror:%s %s\n", RED, RESET, message)
     end
