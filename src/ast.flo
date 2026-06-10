@@ -4,14 +4,14 @@
 AST_FLOW_CONTROL:   int = 0     // return, break, continue
 AST_LITERAL:        int = 1     // A value
 AST_FLOAT_LIT:      int = 2     // A decimal value
-AST_CAST:           int = 3     // Cast a type
-AST_NULL:           int = 4     // An empty value
-AST_BOOL_LIT:       int = 5
+AST_BOOL_LIT:       int = 3
+AST_CAST:           int = 4     // Cast a type
+AST_NULL:           int = 5     // An empty value
 AST_STRING_LIT:     int = 6     // A string "Hello, World!"
 AST_ARRAY_LIT:      int = 7     // Array literal [0, 1, 2 ..]
 AST_SUBSCRIPT:      int = 8     // arr[1]
 AST_STRUCT_LIT:     int = 9     // Struct literal {0, 1, 2 ..}
-AST_CHAR_LIT:       int = 10    // char literal 'a' 'B'
+AST_CHAR_LIT:       int = 10     // char literal 'a' 'B'
 AST_STRUCT_DEF:     int = 11    // Struct declaration
 AST_UNION_DEF:      int = 12
 AST_STRUCT_FIELD:   int = 13    // Struct field
@@ -358,6 +358,6 @@ struct AST {
     src: @char,
     filename: @char,
     start: int,
-    
+
     data: NodeData
 }

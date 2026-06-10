@@ -206,7 +206,11 @@ func parser_error(ps: @Parser, message: @char): void
 end
 
 func is_field_flag(kind: int): int
-    return kind == TOKEN_HIDDEN or kind == TOKEN_READONLY or kind == TOKEN_FROZEN
+    if kind == TOKEN_HIDDEN or kind == TOKEN_READONLY or kind == TOKEN_FROZEN:
+        return 1
+    end
+
+    return 0
 end
 
 func parse_field_flags(ps: @Parser, field: @AST): void
@@ -918,9 +922,12 @@ func parse_primary(ps: @Parser): @AST
         return lit
 
     else if parser_peek(ps).kind == TOKEN_TRUE or parser_peek(ps).kind == TOKEN_FALSE:
-        lit: @AST = make_node(AST_BOOL_LIT)
+        lit: @AST = make_node(ps, AST_BOOL_LIT)
 
-        val: int = parser_peek(ps).kind == TOKEN_TRUE
+        val: int = 0
+        if parser_peek(ps).kind == TOKEN_TRUE:
+            val = 1
+        end
         lit.data._bool_lit.value = val
         
         parser_advance(ps)
