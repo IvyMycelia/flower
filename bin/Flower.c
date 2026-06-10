@@ -2782,7 +2782,7 @@ void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message) {
 if (ast != NULL  &&  ast->src != NULL  &&  ast->filename != NULL) {
 int line = mod_include_lexer_h_flo_get_line(ast->src, ast->start);
 int col = mod_include_lexer_h_flo_get_col(ast->src, ast->start);
-printf("%s%s:%d%d: error:%s %s\n", RED, ast->filename, line, col, RESET, message);
+printf("%s%s:%d:%d: error:%s %s\n", RED, ast->filename, line, col, RESET, message);
 }
 else {
 printf("%serror:%s %s\n", RED, RESET, message);
