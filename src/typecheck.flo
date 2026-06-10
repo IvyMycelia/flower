@@ -447,7 +447,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     end
 
     if object_type.base != TOKEN_IDENTIFIER:
-        // type_error(env, expr, "cannot access field on non-struct type")
+        type_error(env, expr, "cannot access field on non-struct type")
         expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0
@@ -465,7 +465,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     base_struct: @StructInfo = lookup_struct(env, object_type.name_src, object_type.name_start, object_type.name_length)
     if base_struct == null:
-        // type_error(env, expr, "unknown struct type in field access")
+        type_error(env, expr, "unknown struct type in field access")
         expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0
@@ -473,7 +473,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     field: @FieldInfo = lookup_field(env, base_struct, src, expr.data._dot_access.field_start, expr.data._dot_access.field_length)
     if field == null:
-        // type_error(env, expr, "unknown field on struct")
+        type_error(env, expr, "unknown field on struct")
         expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0

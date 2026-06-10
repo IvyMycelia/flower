@@ -1100,6 +1100,7 @@ int alias_count;
 char* filename;
 int error_count;
 } Parser;
+Token* mod_src_parser_flo_parser_peek(Parser* ps);
 
 
 AST* mod_src_parser_flo_make_node(Parser* ps, int kind) {
@@ -1107,6 +1108,7 @@ AST* node = calloc(1, sizeof(AST));
 node->kind = kind;
 node->value = 0;
 node->src = ps->src;
+node->start = mod_src_parser_flo_parser_peek(ps)->start;
 node->filename = ps->filename;
 return node;
 }
@@ -3092,6 +3094,7 @@ free(object_type);
 return 0;
 }
 if (object_type->base != TOKEN_IDENTIFIER) {
+mod_src_typecheck_flo_type_error(env, expr, "cannot access field on non-struct type");
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
@@ -3109,12 +3112,14 @@ return 0;
 }
 StructInfo* base_struct = mod_src_typecheck_flo_lookup_struct(env, object_type->name_src, object_type->name_start, object_type->name_length);
 if (base_struct == NULL) {
+mod_src_typecheck_flo_type_error(env, expr, "unknown struct type in field access");
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
 }
 FieldInfo* field = mod_src_typecheck_flo_lookup_field(env, base_struct, src, expr->data._dot_access.field_start, expr->data._dot_access.field_length);
 if (field == NULL) {
+mod_src_typecheck_flo_type_error(env, expr, "unknown field on struct");
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;

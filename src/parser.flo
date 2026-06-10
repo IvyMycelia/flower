@@ -11,6 +11,7 @@ struct Parser {
     error_count: int
 }
 
+forward func parser_peek(ps: @Parser): @Token
 
 // === SETUP ===
 
@@ -19,6 +20,7 @@ func make_node(ps: @Parser, kind: int): @AST
     node.kind = kind
     node.value = 0
     node.src = ps.src
+    node.start = parser_peek(ps).start
     node.filename = ps.filename
     return node
 end
