@@ -14,7 +14,7 @@ prop func test(): int
 
     print("  pointer dereference... ")
     total = total + 1
-    if deref.test() == 1:
+    if deref.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -23,7 +23,7 @@ prop func test(): int
 
     print("  pointer math... ")
     total = total + 1
-    if pmath.test() == 1:
+    if pmath.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -32,7 +32,7 @@ prop func test(): int
 
     print("  ptr alloc/deref/free... ")
     total = total + 1
-    if ptr.test() == 1:
+    if ptr.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -41,7 +41,7 @@ prop func test(): int
 
     print("  new/prune... ")
     total = total + 1
-    if new_prune.test() == 1:
+    if new_prune.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -50,7 +50,7 @@ prop func test(): int
 
     print("  sizeof... ")
     total = total + 1
-    if size_of.test() == 1:
+    if size_of.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -59,7 +59,7 @@ prop func test(): int
 
     print("  realloc... ")
     total = total + 1
-    if realloc_test.test() == 1:
+    if realloc_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -72,5 +72,8 @@ prop func test(): int
         print("  Memory: Some Failed!\n")
     end
 
-    return pass == total
+    if pass == total:
+        return 1
+    end
+    return 0
 end

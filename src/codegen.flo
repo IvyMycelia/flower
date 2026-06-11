@@ -660,9 +660,11 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     
     path: @char = resolve_path(current_file, raw_path)
 
-    alias: char[64] = ""
+    alias: char[64]
+    alias[0] = '\0'
+
     if ast.data._import.has_alias:
-        snprintf(alias, sizeof(alias), "%.*s", ast.data._import.alias_length, src + ast.data._import.alias_start )
+        snprintf(alias, sizeof(alias), "%.*s", ast.data._import.alias_length, src + ast.data._import.alias_start)
     end
 
     // Check if this exact path+alias combo already emitted
@@ -790,6 +792,9 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
 
     else if ast.kind == AST_FLOAT_LIT:
         fprintf(out, "%.*s", ast.data._float_lit.length, src + ast.data._float_lit.start)
+
+    else if ast.kind == AST_BOOL_LIT:
+        fprintf(out, "%d", ast.data._bool_lit.value)
         
     else if ast.kind == AST_BOOL_LIT:
         fprintf(out, "%d", ast.data._bool_lit.value)

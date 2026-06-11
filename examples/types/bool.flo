@@ -1,6 +1,6 @@
 import <stdio>
 
-prop func test(): int
+prop func test(): bool
     a: bool = true
     b: bool = false
     c: bool = 3 > 2
@@ -8,10 +8,10 @@ prop func test(): int
     if a and not b:
         if c:
             if false or a:
-                return 1
+                return true
             end
         end
     end
 
-    return 0
+    return false
 end

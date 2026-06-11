@@ -1,12 +1,9 @@
 import <stdio>
 
-prop func test(): int
+prop func test(): bool
     count: int = 0
     for i in 0..5:
         count = count + 1
     end
-    if count == 5:
-        return 1
-    end
-    return 0
+    return count == 5
 end

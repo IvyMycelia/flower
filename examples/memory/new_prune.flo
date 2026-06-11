@@ -1,13 +1,13 @@
 import <stdio>
 import <stdlib>
 
-prop func test(): int
+prop func test(): bool
     p: @int = new int
     @p = 42
     if @p == 42:
         prune p
-        return 1
+        return true
     end
     prune p
-    return 0
+    return false
 end

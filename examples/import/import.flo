@@ -3,7 +3,7 @@ import <stdlib>
 
 import "examples/import/math.flo" as math
 
-prop func test(): int
+prop func test(): bool
     total: int = 0
     pass: int = 0
 

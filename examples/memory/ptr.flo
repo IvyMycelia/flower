@@ -5,12 +5,12 @@ func inner_test(ptr: @int): void
     x: @int = ptr
 end
 
-prop func test(): int
+prop func test(): bool
     x: @int = null
     inner_test(x)
 
     ptr: @int = new int
     @ptr = 42
     prune ptr
-    return 1
+    return true
 end
