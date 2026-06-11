@@ -12,13 +12,13 @@ import "examples/types/cast.flo" as cast_test
 import "examples/types/array.flo" as array_test
 import "examples/types/struct.flo" as struct_test
 
-prop func test(): int
+prop func test(): bool
     total: int = 0
     pass: int = 0
 
     print("  int... ")
     total = total + 1
-    if int_test.test() == 1:
+    if int_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -27,7 +27,7 @@ prop func test(): int
 
     print("  float... ")
     total = total + 1
-    if float_test.test() == 1:
+    if float_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -36,7 +36,7 @@ prop func test(): int
 
     print("  double... ")
     total = total + 1
-    if double_test.test() == 1:
+    if double_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -45,7 +45,7 @@ prop func test(): int
 
     print("  bool... ")
     total = total + 1
-    if bool_test.test() == 1:
+    if bool_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -54,7 +54,7 @@ prop func test(): int
 
     print("  char... ")
     total = total + 1
-    if char_test.test() == 1:
+    if char_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -63,7 +63,7 @@ prop func test(): int
 
     print("  null... ")
     total = total + 1
-    if null_test.test() == 1:
+    if null_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -72,7 +72,7 @@ prop func test(): int
 
     print("  cast... ")
     total = total + 1
-    if cast_test.test() == 1:
+    if cast_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -90,7 +90,7 @@ prop func test(): int
 
     print("  array... ")
     total = total + 1
-    if array_test.test() == 1:
+    if array_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -99,7 +99,7 @@ prop func test(): int
 
     print("  struct... ")
     total = total + 1
-    if struct_test.test() == 1:
+    if struct_test.test():
         pass = pass + 1
         print("OK\n")
     else:

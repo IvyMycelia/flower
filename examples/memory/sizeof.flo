@@ -1,10 +1,7 @@
 import <stdio>
 import <stdlib>
 
-prop func test(): int
+prop func test(): bool
     s: int = sizeof(int)
-    if s == 4:
-        return 1
-    end
-    return 0
+    return s == 4
 end

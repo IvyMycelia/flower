@@ -1,9 +1,6 @@
 import <stdio>
 
-prop func test(): int
+prop func test(): bool
     x: int = -5
-    if x == -5:
-        return 1
-    end
-    return 0
+    return x == -5
 end

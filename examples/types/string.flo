@@ -1,9 +1,6 @@
 import <stdio>
 
-prop func test(): int
+prop func test(): bool
     s: string = "hello"
-    if s != null:
-        return 1
-    end
-    return 0
+    return s != null
 end
