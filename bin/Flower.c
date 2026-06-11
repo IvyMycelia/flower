@@ -2840,6 +2840,11 @@ return type->base == TOKEN_INT  ||  type->base == TOKEN_CHAR  &&  type->pointer_
 }
 
 
+int mod_src_typecheck_flo_is_decimal_type(TypeInfo* type) {
+return type->base == TOKEN_FLOAT  ||  type->base == TOKEN_DOUBLE  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+}
+
+
 int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* type) {
 return type->pointer_depth > 0  ||  type->array_size != 0;
 }
@@ -2867,6 +2872,9 @@ return 1;
 if (mod_src_typecheck_flo_is_null_type(actual)  &&  mod_src_typecheck_flo_is_pointer_like_type(expected)) {
 return 1;
 }
+if (mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual)) {
+return 1;
+}
 if (expected->base != actual->base) {
 return 0;
 }
@@ -2874,7 +2882,10 @@ if (expected->pointer_depth != actual->pointer_depth) {
 return 0;
 }
 if (expected->base == TOKEN_IDENTIFIER) {
-return mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length);
+if (mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length)) {
+return 1;
+}
+return 0;
 }
 return 1;
 }
@@ -3161,22 +3172,22 @@ mod_src_typecheck_flo_copy_type(out, left_type);
 if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
-out->pointer_depth = out->pointer_depth - 1;
+out->pointer_depth = out->pointer_depth + 1;
 }
 free(left_type);
 free(right_type);
-return 0;
+return 1;
 }
 if (expr->data._binary.op == TOKEN_PLUS  &&  mod_src_typecheck_flo_is_integer_type(left_type)  &&  mod_src_typecheck_flo_is_pointer_like_type(right_type)) {
 mod_src_typecheck_flo_copy_type(out, right_type);
 if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
-out->pointer_depth = out->pointer_depth - 1;
+out->pointer_depth = out->pointer_depth + 1;
 }
 free(left_type);
 free(right_type);
-return 1;
+return 0;
 }
 if (!(mod_src_typecheck_flo_types_match(left_type, right_type))) {
 mod_src_typecheck_flo_type_error(env, expr, "arithmetic operands must have matching or compatible types");

@@ -144,18 +144,21 @@ func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
     end
 
     if expected.base != actual.base:
-        return true
+        return false
     end
 
     if expected.pointer_depth != actual.pointer_depth:
-        return true
+        return false
     end
 
     if expected.base == TOKEN_IDENTIFIER:
-        return same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length)
+        if same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length):
+            return true
+        end
+        return false
     end
 
-    return false
+    return true
 end
 
 
@@ -489,7 +492,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 if out.array_size != 0:
                     out.array_size = 0
                     out.arr_size_expr = null
-                    out.pointer_depth = out.pointer_depth - 1
+                    out.pointer_depth = out.pointer_depth + 1
                 end
                 
                 prune left_type
@@ -503,7 +506,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 if out.array_size != 0:
                     out.array_size = 0
                     out.arr_size_expr = null
-                    out.pointer_depth = out.pointer_depth - 1
+                    out.pointer_depth = out.pointer_depth + 1
                 end
 
                 prune left_type
