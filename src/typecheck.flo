@@ -125,6 +125,14 @@ func is_condition_type(type: @TypeInfo): bool
     return is_bool_type(type) or is_integer_type(type) or is_pointer_like_type(type)
 end
 
+func is_string_type(type: @TypeInfo): bool
+    return type.base == TOKEN_STRING and type.pointer_depth == 0 and type.array_size == 0
+end
+
+func is_cstr_type(type: @TypeInfo): bool
+    return type.base == TOKEN_CHAR and type.pointer_depth == 1 and type.array_size == 0
+end
+
 func is_numeric_type(type: @TypeInfo): bool
     return (type.base == TOKEN_INT or type.base == TOKEN_FLOAT or type.base == TOKEN_DOUBLE) and type.pointer_depth == 0 and type.array_size == 0
 end
@@ -173,6 +181,14 @@ func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
     end
 
     if is_bool_type(value) and target.base == TOKEN_INT and target.pointer_depth == 0 and target.array_size == 0:
+        return true
+    end
+
+    if is_string_type(target) and is_cstr_type(value):
+        return true
+    end
+
+    if is_cstr_type(target) and is_string_type(value):
         return true
     end
 
@@ -597,11 +613,32 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             out.arr_size_expr = null
 
         else if is_comparison_op(expr.data._binary.op):
-            if not can_convert_either_way(left_type, right_type):
+            expr.data._binary.is_string_compare = 0
+
+            if is_string_type(left_type) or is_string_type(right_type):
+                if is_string_type(left_type) and is_string_type(right_type):
+                    if expr.data._binary.op == TOKEN_COMP or expr.data._binary.op == TOKEN_NEQ:
+                        set_plain_type(out, TOKEN_BOOL)
+                        expr.data._binary.is_string_compare = 1
+                    else:
+                        type_error(env, expr, "string comparisons only support == and !=")
+                        prune left_type
+                        prune right_type
+                        return 0
+                    end
+                else:
+                    type_error(env, expr, "string comparisons require both operands to be string")
+                    prune left_type
+                    prune right_type
+                    return 0
+                end
+            else if not can_convert_either_way(left_type, right_type):
                 type_error(env, expr, "comparison operands must have matching types")
                 prune left_type
                 prune right_type
                 return 0
+            else:
+                set_plain_type(out, TOKEN_BOOL)
             end
 
             out.base = TOKEN_BOOL
@@ -716,6 +753,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if not can_explicitly_convert(&expr.data._cast.type, value_type):
+            type_error(env, expr, "cast is not valid for these types")
+            prune value_type
+            return 0
+        end
+        
+        copy_type(&expr.data._cast.value_type, value_type)
         prune value_type
         copy_type(out, &expr.data._cast.type)
         return 1
@@ -756,10 +800,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_STRING_LIT:
-        out.base = TOKEN_CHAR
-        out.pointer_depth = 1
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_STRING)
         return 1
 
     else if expr.kind == AST_NULL:
@@ -776,8 +817,37 @@ end
 func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     object_type: @TypeInfo = new TypeInfo
     
-    if !resolve_expr(env, expr.data._dot_access.object, object_type, src):
+    if not resolve_expr(env, expr.data._dot_access.object, object_type, src):
         type_error(env, expr, "could not resolve object type for field access")
+        prune object_type
+        return 0
+    end
+
+    if object_type.base == TOKEN_STRING:
+        if object_type.pointer_depth == 0:
+            expr.data._dot_access.access_kind = ACCESS_DOT
+        else if object_type.pointer_depth == 1:
+            expr.data._dot_access.access_kind = ACCESS_ARROW
+        else:
+            type_error(env, expr, "cannot directly access field through multi-pointer type")
+            prune object_type
+            return 0
+        end
+
+        if expr.data._dot_access.field_length == 6 and not strncmp(src + expr.data._dot_access.field_start, "length", 6):
+            expr.data._dot_access.is_hidden = 0
+            expr.data._dot_access.is_frozen = 1
+            expr.data._dot_access.is_readonly = 1
+            expr.data._dot_access.owner_src = null
+
+            set_plain_type(out, TOKEN_INT)
+            copy_type(&expr.data._dot_access.resolved_type, out)
+            prune object_type
+            return 1
+        end
+
+        type_error(env, expr, "unknown field on string")
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0
     end
@@ -910,6 +980,16 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         resolve_expr(env, ast, tmp, src)
         prune tmp
         if ast.data._dot_access.value != null:
+            object_type: @TypeInfo = new TypeInfo
+            if resolve_expr(env, ast.data._dot_access.object, object_type, src):
+                if object_type.base == TOKEN_STRING:
+                    type_error(env, ast, "string.length is readonly")
+                    prune object_type
+                    return
+                end
+            end
+            prune object_type
+            
             if current_type_module != null and ast.data._dot_access.owner_src != null and ast.data._dot_access.owner_src != current_type_module.src:
                 if ast.data._dot_access.is_readonly:
                     type_error(env, ast, "field is readonly from this scope")
@@ -1001,7 +1081,9 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
     else if ast.kind == AST_PRINT:
         tmp: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._print.value, tmp, src)
+        if resolve_expr(env, ast.data._print.value, tmp, src):
+            copy_type(&ast.data._print.value_type, tmp)
+        end
         prune tmp
     
     else if ast.kind == AST_FUNC_CALL or ast.kind == AST_ALIAS_CALL:

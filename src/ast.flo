@@ -78,7 +78,8 @@ struct TypeInfo {
     // === Type Casting ===
 struct cast {
     value: @AST,
-    type: TypeInfo
+    type: TypeInfo,
+    value_type: TypeInfo
 }
 
 struct float_lit {
@@ -149,6 +150,7 @@ struct get_addr {
     // === stdio ===
 struct prnt {
     value: @AST,
+    value_type: TypeInfo
 }
 
 
@@ -240,6 +242,7 @@ struct binary {
     left: @AST,   // left binary-op
     right: @AST,  // right bin-op
     op: int,
+    is_string_compare: int,
 }
 
     // === Variables ===
