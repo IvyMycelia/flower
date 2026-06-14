@@ -967,6 +967,10 @@ func parse_primary(ps: @Parser): @AST
 
             elem: @AST = parse_expr(ps, 0)
 
+            if elem == null:
+                return arr
+            end
+
             if elem_head == null:
                 elem_head = elem
             else:
@@ -976,6 +980,9 @@ func parse_primary(ps: @Parser): @AST
 
             if parser_peek(ps).kind == TOKEN_COMMA:
                 parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RBRACK:
+                parser_error(ps, "Expected ',' or ']' in array literal")
+                return arr
             end
         end
 
@@ -1253,6 +1260,10 @@ func parse_func_call(ps: @Parser): @AST
 
         param: @AST = parse_expr(ps, 0)
 
+        if param == null:
+            return node
+        end
+
         if arg_head == null:
             arg_head = param
         else:
@@ -1262,6 +1273,9 @@ func parse_func_call(ps: @Parser): @AST
 
         if parser_peek(ps).kind == TOKEN_COMMA:
             parser_advance(ps)
+        else if parser_peek(ps).kind != TOKEN_RPAREN:
+            parser_error(ps, "Expected ',' or ')' in function call arguments")
+            return node
         end
     end
 
@@ -1301,6 +1315,11 @@ func parse_alias_call(ps: @Parser): @AST
         end
 
         arg: @AST = parse_expr(ps, 0)
+
+        if arg == null:
+            return node
+        end
+
         if arg_head == null:
             arg_head = arg
         else:
@@ -1310,6 +1329,9 @@ func parse_alias_call(ps: @Parser): @AST
 
         if parser_peek(ps).kind == TOKEN_COMMA:
             parser_advance(ps)
+        else if parser_peek(ps).kind != TOKEN_RPAREN:
+            parser_error(ps, "Expected ',' or ')' in function alias arguments")
+            return node
         end
     end
 

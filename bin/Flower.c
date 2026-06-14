@@ -1898,6 +1898,9 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in array literal");
 return arr;
 }
 AST* elem = mod_src_parser_flo_parse_expr(ps, 0);
+if (elem == NULL) {
+return arr;
+}
 if (elem_head == NULL) {
 elem_head = elem;
 }
@@ -1907,6 +1910,10 @@ elem_tail->next = elem;
 elem_tail = elem;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
 mod_src_parser_flo_parser_advance(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACK) {
+mod_src_parser_flo_parser_error(ps, "Expected ',' or ']' in array literal");
+return arr;
 }
 }
 mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK);
@@ -2110,6 +2117,9 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function call arg
 return node;
 }
 AST* param = mod_src_parser_flo_parse_expr(ps, 0);
+if (param == NULL) {
+return node;
+}
 if (arg_head == NULL) {
 arg_head = param;
 }
@@ -2119,6 +2129,10 @@ arg_tail->next = param;
 arg_tail = param;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
 mod_src_parser_flo_parser_advance(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+mod_src_parser_flo_parser_error(ps, "Expected ',' or ')' in function call arguments");
+return node;
 }
 }
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
@@ -2149,6 +2163,9 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function alias ar
 return node;
 }
 AST* arg = mod_src_parser_flo_parse_expr(ps, 0);
+if (arg == NULL) {
+return node;
+}
 if (arg_head == NULL) {
 arg_head = arg;
 }
@@ -2158,6 +2175,10 @@ arg_tail->next = arg;
 arg_tail = arg;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
 mod_src_parser_flo_parser_advance(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+mod_src_parser_flo_parser_error(ps, "Expected ',' or ')' in function alias arguments");
+return node;
 }
 }
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
