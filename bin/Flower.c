@@ -1144,6 +1144,7 @@ ps->filename = filename;
 ps->error_count = 0;
 }
 void mod_src_parser_flo_parser_error(Parser* ps, char* message);
+void mod_src_parser_flo_parser_sync_until(Parser* ps, int stop_a, int stop_b);
 AST* mod_src_parser_flo_parse_var_decl(Parser* ps);
 AST* mod_src_parser_flo_parse_var_ass(Parser* ps);
 AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps);
@@ -1300,6 +1301,13 @@ int line = mod_include_lexer_h_flo_get_line(ps->src, token->start);
 int col = mod_include_lexer_h_flo_get_col(ps->src, token->start);
 printf("%s%s:%d:%d: error:%s %s\n", RED, ps->filename, line, col, RESET, message);
 ps->error_count = ps->error_count + 1;
+}
+
+
+void mod_src_parser_flo_parser_sync_until(Parser* ps, int stop_a, int stop_b) {
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_EOF  &&  mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_NEWLINE  &&  mod_src_parser_flo_parser_peek(ps)->kind != stop_a  &&  mod_src_parser_flo_parser_peek(ps)->kind != stop_b) {
+mod_src_parser_flo_parser_advance(ps);
+}
 }
 
 
@@ -2118,6 +2126,14 @@ return node;
 }
 AST* param = mod_src_parser_flo_parse_expr(ps, 0);
 if (param == NULL) {
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
+continue;
+}
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RPAREN) {
+break;
+}
 return node;
 }
 if (arg_head == NULL) {
@@ -2132,10 +2148,18 @@ mod_src_parser_flo_parser_advance(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
 mod_src_parser_flo_parser_error(ps, "Expected ',' or ')' in function call arguments");
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
 return node;
 }
 }
-mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+}
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN))) {
+return node;
+}
 node->data._func_call.args = arg_head;
 return node;
 }
@@ -2164,6 +2188,14 @@ return node;
 }
 AST* arg = mod_src_parser_flo_parse_expr(ps, 0);
 if (arg == NULL) {
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
+continue;
+}
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RPAREN) {
+break;
+}
 return node;
 }
 if (arg_head == NULL) {
@@ -2178,10 +2210,18 @@ mod_src_parser_flo_parser_advance(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
 mod_src_parser_flo_parser_error(ps, "Expected ',' or ')' in function alias arguments");
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
 return node;
 }
 }
-mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+}
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN))) {
+return node;
+}
 node->data._alias_call.args = arg_head;
 return node;
 }

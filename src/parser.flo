@@ -35,6 +35,7 @@ prop func init_parser(ps: @Parser, ts: @TokenStream, src: @char, filename: @char
 end
 
 forward func parser_error(ps: @Parser, message: @char): void
+forward func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
 
 forward func parse_var_decl(ps: @Parser):               @AST
 forward func parse_var_ass(ps: @Parser):                @AST
@@ -203,6 +204,12 @@ func parser_error(ps: @Parser, message: @char): void
 
     printf("%s%s:%d:%d: error:%s %s\n", RED, ps.filename, line, col, RESET, message)
     ps.error_count = ps.error_count + 1
+end
+
+func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
+    while parser_peek(ps).kind != TOKEN_EOF and parser_peek(ps).kind != TOKEN_NEWLINE and parser_peek(ps).kind != stop_a and parser_peek(ps).kind != stop_b:
+        parser_advance(ps)
+    end
 end
 
 func is_field_flag(kind: int): int
@@ -1261,12 +1268,22 @@ func parse_func_call(ps: @Parser): @AST
         param: @AST = parse_expr(ps, 0)
 
         if param == null:
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps) continue
+            end
+
+            if parser_peek(ps).kind == TOKEN_RPAREN:
+                break
+            end
+
             return node
         end
 
-        if arg_head == null:
+        if arg_head == null: 
             arg_head = param
-        else:
+        else: 
             arg_tail.next = param
         end
         arg_tail = param
@@ -1275,14 +1292,21 @@ func parse_func_call(ps: @Parser): @AST
             parser_advance(ps)
         else if parser_peek(ps).kind != TOKEN_RPAREN:
             parser_error(ps, "Expected ',' or ')' in function call arguments")
-            return node
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RPAREN:
+                return node
+            end
         end
     end
 
-    parser_expect(ps, TOKEN_RPAREN)
+    if !parser_expect(ps, TOKEN_RPAREN):
+        return node
+    end
 
     node.data._func_call.args = arg_head
-
     return node
 end
 
@@ -1317,6 +1341,17 @@ func parse_alias_call(ps: @Parser): @AST
         arg: @AST = parse_expr(ps, 0)
 
         if arg == null:
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+                continue
+            end
+
+            if parser_peek(ps).kind == TOKEN_RPAREN:
+                break
+            end
+
             return node
         end
 
@@ -1331,14 +1366,21 @@ func parse_alias_call(ps: @Parser): @AST
             parser_advance(ps)
         else if parser_peek(ps).kind != TOKEN_RPAREN:
             parser_error(ps, "Expected ',' or ')' in function alias arguments")
-            return node
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RPAREN:
+                return node
+            end
         end
     end
 
-    parser_expect(ps, TOKEN_RPAREN)
+    if !parser_expect(ps, TOKEN_RPAREN):
+        return node
+    end
 
     node.data._alias_call.args = arg_head
-
     return node
 end
 
