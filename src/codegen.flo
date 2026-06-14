@@ -838,11 +838,17 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "}")
         
     else if ast.kind == AST_CAST:
-        fprintf(out, "(")
-        typeinfo_to_string(&ast.data._cast.type, out, src)
-        fprintf(out, ")(")
-        gen_expr(ast.data._cast.value, out, src)
-        fprintf(out, ")")
+        if ast.data._cast.type.base == TOKEN_BOOL and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0:
+            fprintf(out, "((")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ") != 0")
+        else:
+            fprintf(out, "(")
+            typeinfo_to_string(&ast.data._cast.type, out, src)
+            fprintf(out, ")(")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ")")
+        end
         
     else if ast.kind == AST_DOT_ACCESS:
         object: @AST = ast.data._dot_access.object
