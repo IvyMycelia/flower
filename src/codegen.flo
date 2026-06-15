@@ -861,10 +861,10 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_STRING_LIT:
         // PROPER STRING LOWERING — UNNUSED UNTIL COMPILER IS UPDATED
-        // fprintf(out, "flowe_string_from_cst(")
-        // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
-        // fprintf(out, ")")
+        fprintf(out, "flowe_string_from_cst(")
         fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+        fprintf(out, ")")
+        // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
         
     else if ast.kind == AST_ARRAY_LIT:
         fprintf(out, "{")
