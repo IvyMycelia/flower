@@ -1,9 +1,11 @@
-name: string = "Ivy"
-raw: @char = name as @char
-other: string = raw as string
+func main(): int
+    name: string = "Ivy" as string
+    raw: @char = name as @char
+    other: string = raw as string
 
-if name == other:
-    print("same\n")
+    if name == other:
+        print("same\n")
+    end
+
+    print(name.length)
 end
-
-print(name.length)

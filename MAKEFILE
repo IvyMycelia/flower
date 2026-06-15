@@ -24,6 +24,7 @@ rebuild:
 	@echo "Clean rebuild complete"
 
 test:
+	mkdir -p output
 	./bin/Flower ./examples/test.flo ./output/out
 
 clean:

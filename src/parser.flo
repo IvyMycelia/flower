@@ -789,6 +789,7 @@ func parse_statement(ps: @Parser): @AST
         message: char[128]
         snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", token_kind_name(parser_peek(ps).kind))
         parser_error(ps, message)
+        parser_advance(ps)
         return null
     end
 end
@@ -1690,7 +1691,7 @@ prop func parse(ps: @Parser): @AST
             break
         end
 
-        node: @AST
+        node: @AST = null
         if parser_peek(ps).kind == TOKEN_IMPORT:
             node = parse_import(ps)
 
@@ -1734,14 +1735,20 @@ prop func parse(ps: @Parser): @AST
 
         else if parser_peek(ps).kind == TOKEN_IDENTIFIER and peek(ps.ts, ps.pos + 1).kind == TOKEN_COLON:
             node = parse_var_decl(ps)
+        
+        else:
+            parser_error(ps, "Unexpected top-level statement or declaration")
+            parser_sync_until(ps, TOKEN_NEWLINE, TOKEN_EOF)
         end
 
-        if head == null:
-            head = node
-        else:
-            tail.next = node
+        if node != null:
+            if head == null:
+                head = node
+            else:
+                tail.next = node
+            end
+            tail = node
         end
-        tail = node
     end
 
     return head

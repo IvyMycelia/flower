@@ -800,7 +800,15 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_STRING_LIT:
-        set_plain_type(out, TOKEN_STRING)
+        // STRING SETTING— UNNUSED UNTIL COMPILER IS UPDATED
+        // set_plain_type(out, TOKEN_STRING)
+        out.base = TOKEN_CHAR
+        out.pointer_depth = 1
+        out.array_size = 0
+        out.arr_size_expr = null
+        out.name_start = 0
+        out.name_length = 0
+        out.name_src = null
         return 1
 
     else if expr.kind == AST_NULL:
@@ -989,7 +997,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 end
             end
             prune object_type
-            
+
             if current_type_module != null and ast.data._dot_access.owner_src != null and ast.data._dot_access.owner_src != current_type_module.src:
                 if ast.data._dot_access.is_readonly:
                     type_error(env, ast, "field is readonly from this scope")

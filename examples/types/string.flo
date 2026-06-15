@@ -1,6 +1,20 @@
 import <stdio>
 
 prop func test(): bool
-    s: string = "hello"
-    return s != null
+    name: string = "Ivy" as string
+    raw: @char = name as @char
+    other: string = raw as string
+
+    if name != other:
+        return false
+    end
+
+    if name.length != 3:
+        return false
+    end
+    
+    print(name)
+    print("\n")
+
+    return true
 end

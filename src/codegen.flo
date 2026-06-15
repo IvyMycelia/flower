@@ -8,14 +8,35 @@ has_stdio: int = 0
 
 // === UTILITIES ===
 
+func emit_string_runtime(out: @FILE): void
+    fprintf(out, "#include <stdio.h>\n")
+    fprintf(out, "#include <string.h>\n")
+
+    fprintf(out, "typedef struct { char* data; int length; } flower_string;\n")
+
+    fprintf(out, "static flower_string flower_string_from_cstr(char* s) {\n")
+    fprintf(out, "  flower_string out;\n")
+    fprintf(out, "  out.data = s;\n")
+    fprintf(out, "  out.length = (int)strlen(s);\n")
+    fprintf(out, "  return out;\n")
+    fprintf(out, "}\n")
+
+    fprintf(out, "static int flower_string_eq(flower_string a, flower_string b) {\n")
+    fprintf(out, "  if (a.length != b.length) return 0;\n")
+    fprintf(out, "  return !strncmp(a.data, b.data, a.length);\n")
+    fprintf(out, "}\n")
+
+    fprintf(out, "static void flower_print_string(flower_string s) {\n")
+    fprintf(out, "  printf(\"%%.*s\", s.length, s.data);\n")
+    fprintf(out, "}\n;\n")
+end
+
 func emit_includes(mods: @ModuleSet, out: @FILE): void
     need_stdlib: int = 0
     need_stdio: int = 0
     need_string: int = 0
     need_ctype: int = 0
     need_unistd: int = 0
-
-    emit_string_runtime(out)
 
     for i in 0..mods.count:
         m: @Module = mods.modules + i
@@ -72,25 +93,6 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
     end
 end
 
-func emit_string_runtime(out: @FILE): void
-    fprintf(out, "typedef struct { char* data; int length; } flower_string;\n")
-
-    fprintf(out, "static flower_string flower_string_from_cstr(char* s) {\n")
-    fprintf(out, "  flower_string out;\n")
-    fprintf(out, "  out.data = s;\n")
-    fprintf(out, "  out.length = (int)strlen(s);\n")
-    fprintf(out, "  return out;\n")
-    fprintf(out, "}\n")
-
-    fprintf(out, "static int flower_string_eq(flower_string a, flower_string b) {\n")
-    fprintf(out, "  if (a.length != b.length) return 0;\n")
-    fprintf(out, "  return !strncmp(a.data, b.data, a.length);\n")
-    fprintf(out, "}\n")
-
-    fprintf(out, "static void flower_print_string(flower_string s) {\n")
-    fprintf(out, "  printf(\"%.*s\", s.length, s.data);\n")
-    fprintf(out, "}\n;\n")
-end
 
 func token_to_string(kind: int): @char
     if kind == TOKEN_INT:
@@ -832,7 +834,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "NULL")
         
     else if ast.kind == AST_BINARY_OP: 
-        if ast.data._binary._is_string_compare:
+        if ast.data._binary.is_string_compare:
             if ast.data._binary.op == TOKEN_NEQ:
                 fprintf(out, "(!flower_string_eq(")
             else:
@@ -858,9 +860,11 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         gen_func_call(ast, out, src)
         
     else if ast.kind == AST_STRING_LIT:
-        fprintf(out, "flowe_string_from_cst(")
+        // PROPER STRING LOWERING — UNNUSED UNTIL COMPILER IS UPDATED
+        // fprintf(out, "flowe_string_from_cst(")
+        // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+        // fprintf(out, ")")
         fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
-        fprintf(out, ")")
         
     else if ast.kind == AST_ARRAY_LIT:
         fprintf(out, "{")
@@ -1079,6 +1083,22 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, "flower_print_string(")
             gen_expr(ast.data._print.value, out, src)
             fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_CHAR and ast.data._print.value_type.pointer_depth == 1 and ast.data._print.value_type.array_size == 0:
+            fprintf(out, "printf(\"%%s\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_CHAR and ast.data._print.value_type.pointer_depth == 0:
+            fprintf(out, "printf(\"%%c\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_FLOAT or ast.data._print.value_type.base == TOKEN_DOUBLE:
+            fprintf(out, "printf(\"%%f\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+            
         else:
             fprintf(out, "printf(")
             gen_expr(ast.data._print.value, out, src)
