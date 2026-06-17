@@ -62,8 +62,11 @@ FIELD_TRUE:  int = 1
 // FIELD_READONLY: int = 2
 // FIELD_FROZEN:   int = 4
 
-forward struct AST
+// Constants for Strings
+STRING_LOWER_STRING: int = 0
+STRING_LOWER_CSTR:   int = 1
 
+forward struct AST
 
 struct TypeInfo {
     base: int,
@@ -99,7 +102,8 @@ struct char_lit {
     // === Strings ===
 struct strng {
     str_start: int,
-    str_length: int
+    str_length: int,
+    lower_kind: int,
 }
 
     // === Arrays ===

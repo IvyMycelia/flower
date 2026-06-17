@@ -955,6 +955,8 @@ func parse_primary(ps: @Parser): @AST
         str.data._string.str_start = parser_peek(ps).start
         str.data._string.str_length = parser_peek(ps).length
 
+        str.data._string.lower_kind = STRING_LOWER_STRING
+
         parser_advance(ps)
 
         return str
