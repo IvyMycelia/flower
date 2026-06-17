@@ -187,7 +187,7 @@ ts->capacity = ts->capacity * 2;
 }
 ts->data = realloc(ts->data, ts->capacity * sizeof(Token));
 if (ts->data == NULL) {
-printf("%s", "Memory allocation failed\n");
+flower_print_string(((flower_string){ "Memory allocation failed\n", (int)(sizeof("Memory allocation failed\n") - 1) }));
 return;}
 }
 Token* t = ts->data + ts->count;
@@ -756,7 +756,7 @@ printf("%-18s\t", mod_src_lexer_flo_token_kind_name(token->kind));
 if (token->kind == TOKEN_IDENTIFIER  ||  token->kind == TOKEN_NUMBER) {
 printf("\"%.*s\"", token->length, src + token->start);
 }
-printf("%s", "\n");
+flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
 }
 
 
@@ -821,6 +821,8 @@ int AST_PARAM = 36;
 int AST_PRINT = 37;
 int FIELD_FALSE = 0;
 int FIELD_TRUE = 1;
+int STRING_LOWER_STRING = 0;
+int STRING_LOWER_CSTR = 1;
 typedef struct AST AST;
 
 
@@ -862,6 +864,7 @@ int length;
 typedef struct strng {
 int str_start;
 int str_length;
+int lower_kind;
 } strng;
 
 
@@ -1913,6 +1916,7 @@ else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRING_LIT) {
 AST* str = mod_src_parser_flo_make_node(ps, AST_STRING_LIT);
 str->data._string.str_start = mod_src_parser_flo_parser_peek(ps)->start;
 str->data._string.str_length = mod_src_parser_flo_parser_peek(ps)->length;
+str->data._string.lower_kind = STRING_LOWER_STRING;
 mod_src_parser_flo_parser_advance(ps);
 return str;
 }
@@ -3021,6 +3025,73 @@ return mod_src_typecheck_flo_can_implicitly_convert(left, right)  ||  mod_src_ty
 }
 
 
+int mod_src_typecheck_flo_allow_string_literal_for_target(AST* expr, TypeInfo* expected) {
+if (expr == NULL  ||  expr->kind != AST_STRING_LIT) {
+return 0;
+}
+if (mod_src_typecheck_flo_is_cstr_type(expected)) {
+expr->data._string.lower_kind = STRING_LOWER_CSTR;
+return 1;
+}
+if (mod_src_typecheck_flo_is_string_type(expected)) {
+expr->data._string.lower_kind = STRING_LOWER_STRING;
+return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_builtin_expects_cstr_arg(char* src, int start, int length, int index) {
+if (length == 6  &&  !(strncmp(src + start, "printf", 6))) {
+return index == 0;
+}
+else if (length == 7  &&  !(strncmp(src + start, "fprintf", 7))) {
+return index == 1;
+}
+else if (length == 8  &&  !(strncmp(src + start, "snprintf", 8))) {
+return index == 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcmp", 6))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncmp", 7))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcpy", 6))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncpy", 7))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strdup", 6))) {
+return index == 0;
+}
+else if (length == 5  &&  !(strncmp(src + start, "fopen", 5))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "system", 6))) {
+return index == 0;
+}
+else if (length == 8  &&  !(strncmp(src + start, "realpath", 8))) {
+return index == 0;
+}
+return 0;
+}
+
+
+void mod_src_typecheck_flo_annotate_builtin_cstr_args(AST* args, char* src, int start, int length) {
+AST* arg = args;
+int index = 0;
+while (arg != NULL) {
+if (mod_src_typecheck_flo_builtin_expects_cstr_arg(src, start, length, index)  &&  arg->kind == AST_STRING_LIT) {
+arg->data._string.lower_kind = STRING_LOWER_CSTR;
+}
+arg = arg->next;
+index = index + 1;
+}
+}
+
+
 int mod_src_typecheck_flo_wider_numeric_base(TypeInfo* left, TypeInfo* right) {
 if (left->base == TOKEN_DOUBLE  ||  right->base == TOKEN_DOUBLE) {
 return TOKEN_DOUBLE;
@@ -3035,6 +3106,17 @@ return TOKEN_INT;
 void mod_src_typecheck_flo_set_plain_type(TypeInfo* out, int base) {
 out->base = base;
 out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+}
+
+
+void mod_src_typecheck_flo_set_cstr_type(TypeInfo* out) {
+out->base = TOKEN_CHAR;
+out->pointer_depth = 1;
 out->array_size = 0;
 out->arr_size_expr = NULL;
 out->name_start = 0;
@@ -3283,6 +3365,73 @@ curr = curr->next;
 }
 
 
+int mod_src_typecheck_flo_resolve_builtin_c_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+int start = expr->data._func_call.name_start;
+int length = expr->data._func_call.name_length;
+int return_kind = 0;
+if (length == 6  &&  !(strncmp(src + start, "printf", 6))) {
+return_kind = 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "fprintf", 7))) {
+return_kind = 1;
+}
+else if (length == 8  &&  !(strncmp(src + start, "snprintf", 8))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcmp", 6))) {
+return_kind = 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncmp", 7))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strlen", 6))) {
+return_kind = 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "tolower", 7))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "system", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "fflush", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "fclose", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcpy", 6))) {
+return_kind = 2;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncpy", 7))) {
+return_kind = 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strdup", 6))) {
+return_kind = 2;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strrchr", 7))) {
+return_kind = 2;
+}
+else if (length == 8  &&  !(strncmp(src + start, "realpath", 8))) {
+return_kind = 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "getcwd", 6))) {
+return_kind = 2;
+}
+else {
+return 0;
+}
+mod_src_typecheck_flo_annotate_builtin_cstr_args(expr->data._func_call.args, src, start, length);
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._func_call.args, src);
+if (return_kind == 1) {
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
+}
+else {
+mod_src_typecheck_flo_set_cstr_type(out);
+}
+return 1;
+}
+
+
 int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
 if (expr == NULL) {
 return 0;
@@ -3317,6 +3466,10 @@ else if (expr->kind == AST_DOT_ACCESS) {
 return mod_src_typecheck_flo_resolve_dot(env, expr, out, src);
 }
 else if (expr->kind == AST_FUNC_CALL) {
+if (mod_src_typecheck_flo_resolve_builtin_c_call(env, expr, out, src)) {
+return 1;
+}
+mod_src_typecheck_flo_annotate_builtin_cstr_args(expr->data._func_call.args, src, expr->data._func_call.name_start, expr->data._func_call.name_length);
 FuncInfo* info = mod_src_typecheck_flo_lookup_func_info(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length);
 if (info == NULL) {
 mod_src_typecheck_flo_resolve_expr_list(env, expr->data._func_call.args, src);
@@ -3549,13 +3702,7 @@ out->arr_size_expr = NULL;
 return 1;
 }
 else if (expr->kind == AST_STRING_LIT) {
-out->base = TOKEN_CHAR;
-out->pointer_depth = 1;
-out->array_size = 0;
-out->arr_size_expr = NULL;
-out->name_start = 0;
-out->name_length = 0;
-out->name_src = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_STRING);
 return 1;
 }
 else if (expr->kind == AST_NULL) {
@@ -3688,8 +3835,9 @@ mod_src_typecheck_flo_register_var(env, ast, src);
 if (ast->data._var_decl.value != NULL) {
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._var_decl.value, value_type, src)) {
-if (!(mod_src_typecheck_flo_can_implicitly_convert(&(ast->data._var_decl.type), value_type))) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_decl.value, &(ast->data._var_decl.type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(ast->data._var_decl.type), value_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "variable initializer does not match declared type");
+free(value_type);
 return;}
 }
 free(value_type);
@@ -3704,7 +3852,7 @@ free(target_type);
 free(value_type);
 return;}
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._var_ass.value, value_type, src)) {
-if (!(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_ass.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match variable type");
 }
 }
@@ -3793,7 +3941,7 @@ mod_src_typecheck_flo_type_error(env, ast, "return value does not match function
 else {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src)) {
-if (!(mod_src_typecheck_flo_can_implicitly_convert(&(current_return_type), tmp))) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._flow_ctrl.value, &(current_return_type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(current_return_type), tmp))) {
 mod_src_typecheck_flo_type_error(env, ast, "return value does not match function return type");
 }
 }
@@ -3847,9 +3995,13 @@ inside_function = 0;
 }
 else if (curr->kind == AST_VAR_DECL) {
 if (curr->data._var_decl.value != NULL) {
-TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, tmp, src);
-free(tmp);
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, value_type, src)) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(curr->data._var_decl.value, &(curr->data._var_decl.type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(curr->data._var_decl.type), value_type))) {
+mod_src_typecheck_flo_type_error(env, curr, "variable initializer does not match declared type");
+}
+}
+free(value_type);
 }
 }
 curr = curr->next;
@@ -3952,7 +4104,7 @@ if (!(mod_src_typecheck_flo_resolve_expr(env, arg, arg_type, src))) {
 free(arg_type);
 return 0;
 }
-if (!(mod_src_typecheck_flo_can_pass_arg(&(param->data._func_params.type), arg_type))) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(arg, &(param->data._func_params.type)))  &&  !(mod_src_typecheck_flo_can_pass_arg(&(param->data._func_params.type), arg_type))) {
 mod_src_typecheck_flo_type_error(env, arg, "function argument does not match parameter type");
 free(arg_type);
 return 0;
@@ -4705,7 +4857,16 @@ else if (ast->kind == AST_FUNC_CALL) {
 mod_src_codegen_flo_gen_func_call(ast, out, src);
 }
 else if (ast->kind == AST_STRING_LIT) {
+if (ast->data._string.lower_kind == STRING_LOWER_CSTR) {
 fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
+}
+else {
+fprintf(out, "((flower_string){ ");
+fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
+fprintf(out, ", (int)(sizeof(");
+fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
+fprintf(out, ") - 1) })");
+}
 }
 else if (ast->kind == AST_ARRAY_LIT) {
 fprintf(out, "{");
@@ -5012,22 +5173,22 @@ arg[i] = tolower((char)(arg[i]));
 if (!(strcmp(arg, "help"))  ||  !(strcmp(arg, "h"))) {
 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET);
 printf("%sUsage:\n%s", BLUE, RESET);
-printf("%s", "\tflower\t[options] <filepath>\n\n");
+flower_print_string(((flower_string){ "\tflower\t[options] <filepath>\n\n", (int)(sizeof("\tflower\t[options] <filepath>\n\n") - 1) }));
 printf("%sOptions:\n%s", BLUE, RESET);
-printf("%s", "\t-help,    -h\tShow this help message\n");
-printf("%s", "\t-version, -v\tShow the current version of FloC\n");
-printf("%s", "\t<filepath>\tSpecify the source code file to compile\n\n");
+flower_print_string(((flower_string){ "\t-help,    -h\tShow this help message\n", (int)(sizeof("\t-help,    -h\tShow this help message\n") - 1) }));
+flower_print_string(((flower_string){ "\t-version, -v\tShow the current version of FloC\n", (int)(sizeof("\t-version, -v\tShow the current version of FloC\n") - 1) }));
+flower_print_string(((flower_string){ "\t<filepath>\tSpecify the source code file to compile\n\n", (int)(sizeof("\t<filepath>\tSpecify the source code file to compile\n\n") - 1) }));
 printf("%sExample:\n%s", BLUE, RESET);
-printf("%s", "\tflower -help\n");
-printf("%s", "\tflower main.flo\n\n");
+flower_print_string(((flower_string){ "\tflower -help\n", (int)(sizeof("\tflower -help\n") - 1) }));
+flower_print_string(((flower_string){ "\tflower main.flo\n\n", (int)(sizeof("\tflower main.flo\n\n") - 1) }));
 printf("%sTips:\n%s", BLUE, RESET);
-printf("%s", " - You can use any number of dashes before a flag, e.g., ---help\n");
-printf("%s", " - Flags are case-insensitive: -HELP works too!\n\n");
+flower_print_string(((flower_string){ " - You can use any number of dashes before a flag, e.g., ---help\n", (int)(sizeof(" - You can use any number of dashes before a flag, e.g., ---help\n") - 1) }));
+flower_print_string(((flower_string){ " - Flags are case-insensitive: -HELP works too!\n\n", (int)(sizeof(" - Flags are case-insensitive: -HELP works too!\n\n") - 1) }));
 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET);
 continue;
 }
 else if (!(strcmp(arg, "version"))  ||  !(strcmp(arg, "v"))) {
-printf("%s", "Version: 0.0.4\n");
+flower_print_string(((flower_string){ "Version: 0.0.4\n", (int)(sizeof("Version: 0.0.4\n") - 1) }));
 continue;
 }
 else {
@@ -5039,14 +5200,14 @@ printf("%sCompiling file: %s%s\n", BLUE, argv[i], RESET);
 char abs_path[512];
 realpath(argv[i], abs_path);
 mod_src_globals_flo_set_current_file(abs_path);
-printf("%s", "Initializing modules..\n");
+flower_print_string(((flower_string){ "Initializing modules..\n", (int)(sizeof("Initializing modules..\n") - 1) }));
 ModuleSet* mods = malloc(sizeof(ModuleSet));
 mod_src_module_flo_init_modules(mods);
 Module* main_mod = mod_src_module_flo_load_module(mods, abs_path);
 if (main_mod == NULL) {
 return -1;
 }
-printf("%s", "Checking types..\n");
+flower_print_string(((flower_string){ "Checking types..\n", (int)(sizeof("Checking types..\n") - 1) }));
 int type_errors = mod_src_typecheck_flo_check_modules(mods);
 if (type_errors > 0) {
 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
@@ -5071,7 +5232,7 @@ if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = 1;
 }
 }
-printf("%s", "Codegen...\n");
+flower_print_string(((flower_string){ "Codegen...\n", (int)(sizeof("Codegen...\n") - 1) }));
 fflush(stdout);
 mod_src_codegen_flo_emit_string_runtime(output);
 mod_src_codegen_flo_emit_includes(mods, output);
@@ -5091,7 +5252,7 @@ fflush(stdout);
 snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name);
 }
 system(build_cmd);
-printf("%s", "\n");
+flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
 printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET);
 break;
 }
