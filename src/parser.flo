@@ -35,6 +35,7 @@ prop func init_parser(ps: @Parser, ts: @TokenStream, src: @char, filename: @char
 end
 
 forward func parser_error(ps: @Parser, message: @char): void
+forward func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
 
 forward func parse_var_decl(ps: @Parser):               @AST
 forward func parse_var_ass(ps: @Parser):                @AST
@@ -203,6 +204,12 @@ func parser_error(ps: @Parser, message: @char): void
 
     printf("%s%s:%d:%d: error:%s %s\n", RED, ps.filename, line, col, RESET, message)
     ps.error_count = ps.error_count + 1
+end
+
+func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
+    while parser_peek(ps).kind != TOKEN_EOF and parser_peek(ps).kind != TOKEN_NEWLINE and parser_peek(ps).kind != stop_a and parser_peek(ps).kind != stop_b:
+        parser_advance(ps)
+    end
 end
 
 func is_field_flag(kind: int): int
@@ -782,6 +789,7 @@ func parse_statement(ps: @Parser): @AST
         message: char[128]
         snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", token_kind_name(parser_peek(ps).kind))
         parser_error(ps, message)
+        parser_advance(ps)
         return null
     end
 end
@@ -947,6 +955,8 @@ func parse_primary(ps: @Parser): @AST
         str.data._string.str_start = parser_peek(ps).start
         str.data._string.str_length = parser_peek(ps).length
 
+        str.data._string.lower_kind = STRING_LOWER_STRING
+
         parser_advance(ps)
 
         return str
@@ -967,6 +977,10 @@ func parse_primary(ps: @Parser): @AST
 
             elem: @AST = parse_expr(ps, 0)
 
+            if elem == null:
+                return arr
+            end
+
             if elem_head == null:
                 elem_head = elem
             else:
@@ -976,6 +990,9 @@ func parse_primary(ps: @Parser): @AST
 
             if parser_peek(ps).kind == TOKEN_COMMA:
                 parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RBRACK:
+                parser_error(ps, "Expected ',' or ']' in array literal")
+                return arr
             end
         end
 
@@ -1253,22 +1270,46 @@ func parse_func_call(ps: @Parser): @AST
 
         param: @AST = parse_expr(ps, 0)
 
-        if arg_head == null:
+        if param == null:
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps) continue
+            end
+
+            if parser_peek(ps).kind == TOKEN_RPAREN:
+                break
+            end
+
+            return node
+        end
+
+        if arg_head == null: 
             arg_head = param
-        else:
+        else: 
             arg_tail.next = param
         end
         arg_tail = param
 
         if parser_peek(ps).kind == TOKEN_COMMA:
             parser_advance(ps)
+        else if parser_peek(ps).kind != TOKEN_RPAREN:
+            parser_error(ps, "Expected ',' or ')' in function call arguments")
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RPAREN:
+                return node
+            end
         end
     end
 
-    parser_expect(ps, TOKEN_RPAREN)
+    if !parser_expect(ps, TOKEN_RPAREN):
+        return node
+    end
 
     node.data._func_call.args = arg_head
-
     return node
 end
 
@@ -1301,6 +1342,22 @@ func parse_alias_call(ps: @Parser): @AST
         end
 
         arg: @AST = parse_expr(ps, 0)
+
+        if arg == null:
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+                continue
+            end
+
+            if parser_peek(ps).kind == TOKEN_RPAREN:
+                break
+            end
+
+            return node
+        end
+
         if arg_head == null:
             arg_head = arg
         else:
@@ -1310,13 +1367,23 @@ func parse_alias_call(ps: @Parser): @AST
 
         if parser_peek(ps).kind == TOKEN_COMMA:
             parser_advance(ps)
+        else if parser_peek(ps).kind != TOKEN_RPAREN:
+            parser_error(ps, "Expected ',' or ')' in function alias arguments")
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RPAREN:
+                return node
+            end
         end
     end
 
-    parser_expect(ps, TOKEN_RPAREN)
+    if !parser_expect(ps, TOKEN_RPAREN):
+        return node
+    end
 
     node.data._alias_call.args = arg_head
-
     return node
 end
 
@@ -1626,7 +1693,7 @@ prop func parse(ps: @Parser): @AST
             break
         end
 
-        node: @AST
+        node: @AST = null
         if parser_peek(ps).kind == TOKEN_IMPORT:
             node = parse_import(ps)
 
@@ -1670,14 +1737,20 @@ prop func parse(ps: @Parser): @AST
 
         else if parser_peek(ps).kind == TOKEN_IDENTIFIER and peek(ps.ts, ps.pos + 1).kind == TOKEN_COLON:
             node = parse_var_decl(ps)
+        
+        else:
+            parser_error(ps, "Unexpected top-level statement or declaration")
+            parser_sync_until(ps, TOKEN_NEWLINE, TOKEN_EOF)
         end
 
-        if head == null:
-            head = node
-        else:
-            tail.next = node
+        if node != null:
+            if head == null:
+                head = node
+            else:
+                tail.next = node
+            end
+            tail = node
         end
-        tail = node
     end
 
     return head

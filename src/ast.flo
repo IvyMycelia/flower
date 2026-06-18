@@ -62,8 +62,11 @@ FIELD_TRUE:  int = 1
 // FIELD_READONLY: int = 2
 // FIELD_FROZEN:   int = 4
 
-forward struct AST
+// Constants for Strings
+STRING_LOWER_STRING: int = 0
+STRING_LOWER_CSTR:   int = 1
 
+forward struct AST
 
 struct TypeInfo {
     base: int,
@@ -78,7 +81,8 @@ struct TypeInfo {
     // === Type Casting ===
 struct cast {
     value: @AST,
-    type: TypeInfo
+    type: TypeInfo,
+    value_type: TypeInfo
 }
 
 struct float_lit {
@@ -98,7 +102,8 @@ struct char_lit {
     // === Strings ===
 struct strng {
     str_start: int,
-    str_length: int
+    str_length: int,
+    lower_kind: int,
 }
 
     // === Arrays ===
@@ -149,6 +154,7 @@ struct get_addr {
     // === stdio ===
 struct prnt {
     value: @AST,
+    value_type: TypeInfo
 }
 
 
@@ -240,6 +246,7 @@ struct binary {
     left: @AST,   // left binary-op
     right: @AST,  // right bin-op
     op: int,
+    is_string_compare: int,
 }
 
     // === Variables ===
