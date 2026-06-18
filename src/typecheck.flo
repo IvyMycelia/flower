@@ -3,6 +3,7 @@ import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
 import "src/parser.flo" as parser
 import "src/file.flo" as file
+import "src/stdlib/cstr.flo" as cstr
 
 forward struct StructInfo
 forward struct FieldInfo
@@ -74,7 +75,7 @@ func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: in
         return false
     end
 
-    if !strncmp(a_src + a_start, b_src + b_start, a_len):
+    if cstr.eq_n(a_src + a_start, b_src + b_start, a_len):
         return true
     end
 
@@ -218,37 +219,22 @@ func allow_string_literal_for_target(expr: @AST, expected: @TypeInfo): bool
 end
 
 func builtin_expects_cstr_arg(src: @char, start: int, length: int, index: int): bool
-    if length == 6 and not strncmp(src + start, "printf", 6):
+    if length == 6 and cstr.eq_n(src + start, "printf", 6):
         return index == 0
 
-    else if length == 7 and not strncmp(src + start, "fprintf", 7):
+    else if length == 7 and cstr.eq_n(src + start, "fprintf", 7):
         return index == 1
 
-    else if length == 8 and not strncmp(src + start, "snprintf", 8):
+    else if length == 8 and cstr.eq_n(src + start, "snprintf", 8):
         return index == 2
 
-    else if length == 6 and not strncmp(src + start, "strcmp", 6):
+    else if length == 5 and cstr.eq_n(src + start, "fopen", 5):
         return index == 0 or index == 1
 
-    else if length == 7 and not strncmp(src + start, "strncmp", 7):
-        return index == 0 or index == 1
-
-    else if length == 6 and not strncmp(src + start, "strcpy", 6):
-        return index == 0 or index == 1
-
-    else if length == 7 and not strncmp(src + start, "strncpy", 7):
-        return index == 0 or index == 1
-
-    else if length == 6 and not strncmp(src + start, "strdup", 6):
+    else if length == 6 and cstr.eq_n(src + start, "system", 6):
         return index == 0
 
-    else if length == 5 and not strncmp(src + start, "fopen", 5):
-        return index == 0 or index == 1
-
-    else if length == 6 and not strncmp(src + start, "system", 6):
-        return index == 0
-
-    else if length == 8 and not strncmp(src + start, "realpath", 8):
+    else if length == 8 and cstr.eq_n(src + start, "realpath", 8):
         return index == 0
     end
 
@@ -588,53 +574,31 @@ func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @cha
     length: int = expr.data._func_call.name_length
     return_kind: int = 0    // 1 = int, 2 = @char
 
-    if length == 6 and not strncmp(src + start, "printf", 6):
+    if length == 6 and cstr.eq_n(src + start, "printf", 6):
         return_kind = 1
 
-    else if length == 7 and not strncmp(src + start, "fprintf", 7):
+    else if length == 7 and cstr.eq_n(src + start, "fprintf", 7):
         return_kind = 1
 
-    else if length == 8 and not strncmp(src + start, "snprintf", 8):
+    else if length == 8 and cstr.eq_n(src + start, "snprintf", 8):
         return_kind = 1
 
-    else if length == 6 and not strncmp(src + start, "strcmp", 6):
+    else if length == 7 and cstr.eq_n(src + start, "tolower", 7):
         return_kind = 1
 
-    else if length == 7 and not strncmp(src + start, "strncmp", 7):
-        return_kind = 1
-
-    else if length == 6 and not strncmp(src + start, "strlen", 6):
-        return_kind = 1
-    
-    else if length == 7 and not strncmp(src + start, "tolower", 7):
-        return_kind = 1
-
-    else if length == 6 and not strncmp(src + start, "system", 6):
+    else if length == 6 and cstr.eq_n(src + start, "system", 6):
         return_kind = 1
         
-    else if length == 6 and not strncmp(src + start, "fflush", 6):
+    else if length == 6 and cstr.eq_n(src + start, "fflush", 6):
         return_kind = 1
         
-    else if length == 6 and not strncmp(src + start, "fclose", 6):
+    else if length == 6 and cstr.eq_n(src + start, "fclose", 6):
         return_kind = 1
-
-    
-    else if length == 6 and not strncmp(src + start, "strcpy", 6):
+        
+    else if length == 8 and cstr.eq_n(src + start, "realpath", 8):
         return_kind = 2
         
-    else if length == 7 and not strncmp(src + start, "strncpy", 7):
-        return_kind = 2
-        
-    else if length == 6 and not strncmp(src + start, "strdup", 6):
-        return_kind = 2
-        
-    else if length == 7 and not strncmp(src + start, "strrchr", 7):
-        return_kind = 2
-        
-    else if length == 8 and not strncmp(src + start, "realpath", 8):
-        return_kind = 2
-        
-    else if length == 6 and not strncmp(src + start, "getcwd", 6):
+    else if length == 6 and cstr.eq_n(src + start, "getcwd", 6):
         return_kind = 2
 
     else:
@@ -1008,7 +972,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
-        if expr.data._dot_access.field_length == 6 and not strncmp(src + expr.data._dot_access.field_start, "length", 6):
+        if expr.data._dot_access.field_length == 6 and cstr.eq_n(src + expr.data._dot_access.field_start, "length", 6):
             expr.data._dot_access.is_hidden = 0
             expr.data._dot_access.is_frozen = 1
             expr.data._dot_access.is_readonly = 1

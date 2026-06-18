@@ -2,6 +2,7 @@ import "src/lexer.flo" as lexer
 import "src/parser.flo" as parser
 import "src/file.flo" as file
 import "src/module.flo" as module
+import "src/stdlib/cstr.flo" as cstr
 
 has_stdlib: int = 0
 has_stdio: int = 0
@@ -75,16 +76,16 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
                 name: char[64]
                 snprintf(name, sizeof(name), "%.*s", curr.data._import.path_length, m.src + curr.data._import.path_start)
 
-                if not strcmp(name, "stdio"):
+                if cstr.eq(name, "stdio"):
                     need_stdio = 1
-                else if not strcmp(name, "stdlib"):
+                else if cstr.eq(name, "stdlib"):
                     need_stdlib = 1
-                else if not strcmp(name, "string"):
+                else if cstr.eq(name, "string"):
                     need_stdio = 1
                     need_string = 1
-                else if not strcmp(name, "ctype"):
+                else if cstr.eq(name, "ctype"):
                     need_ctype = 1
-                else if not strcmp(name, "unistd"):
+                else if cstr.eq(name, "unistd"):
                     need_unistd = 1
                 end
             end
@@ -402,7 +403,7 @@ defined_count: int = 0
 
 func gen_struct(ast: @AST, out: @FILE, src: @char): void
     for i in 0..defined_count:
-        if defined_structs[i].length == ast.data._struct_def.name_length and not strncmp(defined_structs[i].name, ast.data._struct_def.name_start + src, ast.data._struct_def.name_length):
+        if defined_structs[i].length == ast.data._struct_def.name_length and cstr.eq_n(defined_structs[i].name, src + ast.data._struct_def.name_start, ast.data._struct_def.name_length):
             return
         end
     end
@@ -441,7 +442,7 @@ defined_union_count: int = 0
 
 func gen_union(ast: @AST, out: @FILE, src: @char): void
     for i in 0..defined_union_count:
-        if defined_unions[i].length == ast.data._union_def.name_length and not strncmp(defined_unions[i].name, ast.data._union_def.name_start + src, ast.data._union_def.name_length):
+        if defined_unions[i].length == ast.data._union_def.name_length and cstr.eq_n(defined_unions[i].name, src + ast.data._union_def.name_start, ast.data._union_def.name_length):
             return
         end
     end
@@ -541,7 +542,7 @@ func emit_lowered_func_name(mod: @Module, out: @FILE, src: @char, start: int, le
     if mod != null:
         root: @Module = active_modules.modules + 0
 
-        if not strcmp(mod.path, root.path) and length == 4 and not strncmp(src + start, "main", 4):
+        if cstr.eq(mod.path, root.path) and length == 4 and cstr.eq_n(src + start, "main", 4):
             fprintf(out, "main")
             return
         end
@@ -716,7 +717,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
 
     // Check if this exact path+alias combo already emitted
     for i in 0..emitted_count:
-        if not strcmp(emitted_imports[i].path, path):
+        if cstr.eq(emitted_imports[i].path, path):
             prune path
             return
         end
@@ -731,7 +732,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     end
 
     // // Mark as in progress
-    // in_progress[in_progress_count] = strdup(path)
+    // in_progress[in_progress_count] = cstr.dup(path)
     // in_progress_count = in_progress_count + 1
 
     // // Check cache for already-parsed AST
@@ -740,7 +741,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     // cached_ts: @TokenStream = null
 
     // for i in 0..cache_count:
-    //     if not strcmp(import_cache[i].path, path):
+    //     if cstr.eq(import_cache[i].path, path):
     //         imported_ast = import_cache[i].ast
     //         imported_src = import_cache[i].src
     //         break
@@ -762,7 +763,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     //     lexer.init_token_stream(ts)
     //     lexer.lex(ts, imported_src)
         
-    //     if strcmp(path, "PATH") == 0:
+    //     if cstr.eq(path, "PATH") == 0:
     //         lexer.print_all_tokens(ts, imported_src)
     //     end
 
@@ -780,15 +781,15 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     //     imported_ast = parser.parse(&p)
 
     //     // Store in cache
-    //     import_cache[cache_count].path = strdup(path)
+    //     import_cache[cache_count].path = cstr.dup(path)
     //     import_cache[cache_count].ast = imported_ast
     //     import_cache[cache_count].src = imported_src
     //     cache_count = cache_count + 1
     // end
 
     // Record this path+alias as emitted
-    emitted_imports[emitted_count].path = strdup(path)
-    emitted_imports[emitted_count].alias = strdup(alias)
+    emitted_imports[emitted_count].path = cstr.dup(path)
+    emitted_imports[emitted_count].alias = cstr.dup(alias)
     emitted_count = emitted_count + 1
 
     emit_module(imported, out, "", 0, 0)
@@ -986,7 +987,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         if imported != null:
             emit_lowered_func_name(imported, out, src, ast.data._alias_call.func_start, ast.data._alias_call.func_length)
         else:
-            fprintf(out, "%.*s_%.*s", ast.data._alias_call.alias_length, ast.data._alias_call.alias_start + src, ast.data._alias_call.func_length, src + ast.data._alias_call.func_start)
+            fprintf(out, "%.*s_%.*s", ast.data._alias_call.alias_length, src + ast.data._alias_call.alias_start, ast.data._alias_call.func_length, src + ast.data._alias_call.func_start)
         end
 
         fprintf(out, "(")
@@ -1026,7 +1027,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
         
     else if ast.kind == AST_CHAR_LIT:
-        fprintf(out, "%.*s", ast.data._char_lit.length, ast.data._char_lit.start + src)
+        fprintf(out, "%.*s", ast.data._char_lit.length, src + ast.data._char_lit.start)
         
     else if ast.kind == AST_SUBSCRIPT:
         gen_expr(ast.data._subscript.array, out, src)

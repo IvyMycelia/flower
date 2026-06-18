@@ -1,3 +1,5 @@
+import "src/stdlib/cstr.flo" as cstr
+
 struct Parser {
     ts: @TokenStream,
     src: @char,
@@ -190,7 +192,7 @@ end
 
 func is_alias(ps: @Parser, tok: @Token): int
     for i in 0..ps.alias_count:
-        if ps.alias_lengths[i] == tok.length and !strncmp(ps.src + ps.alias_start[i], ps.src + tok.start, tok.length):
+        if ps.alias_lengths[i] == tok.length and cstr.eq_n(ps.src + ps.alias_start[i], ps.src + tok.start, tok.length):
             return 1
         end
     end
