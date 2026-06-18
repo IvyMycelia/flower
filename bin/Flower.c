@@ -5252,11 +5252,17 @@ printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
 return -1;
 }
 char out_c[512];
+int explicit_output = 0;
 if (i + 1 < argc  &&  argv[i + 1][0] != '-') {
+explicit_output = 1;
 snprintf(out_c, sizeof(out_c), "%s.c", argv[i + 1]);
 }
 else {
-snprintf(out_c, sizeof(out_c), "output.c");
+if (system("mkdir -p output") != 0) {
+printf("%sFailed to create output directory\n%s", RED, RESET);
+return -1;
+}
+snprintf(out_c, sizeof(out_c), "output/out.c");
 }
 FILE* output = fopen(out_c, "w");
 if (!(output)) {
@@ -5270,6 +5276,10 @@ if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = 1;
 }
 }
+int should_run = 0;
+if (has_output  &&  !(explicit_output)) {
+should_run = 1;
+}
 flower_print_string(((flower_string){ "Codegen...\n", (int)(sizeof("Codegen...\n") - 1) }));
 fflush(stdout);
 mod_src_codegen_flo_emit_string_runtime(output);
@@ -5281,15 +5291,23 @@ char bin_name[512];
 snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(strlen(out_c) - 2), out_c);
 char build_cmd[1024];
 snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name);
-system(build_cmd);
-if (has_output) {
+int build_status = system(build_cmd);
+if (build_status != 0) {
+printf("%sFailed to compile generated C outputs%s\n", RED, RESET);
+return -1;
+}
+if (should_run) {
 printf("%s\nOUTPUT:\n", YELLOW);
 fflush(stdout);
 printf("%s", RESET);
 fflush(stdout);
 snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name);
+int run_status = system(build_cmd);
+if (run_status != 0) {
+printf("%sFailed to run generated binary%s\n", RED, RESET);
+return -1;
 }
-system(build_cmd);
+}
 flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
 printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET);
 break;

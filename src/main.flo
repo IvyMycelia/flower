@@ -113,10 +113,18 @@ func main(argc: int, argv: @char[]): int
 
             // Codegen
             out_c: char[512]
+            explicit_output: bool = false
+            
             if i + 1 < argc and argv[i + 1][0] != '-':
+                explicit_output = true
                 snprintf(out_c, sizeof(out_c), "%s.c", argv[i + 1])
             else:
-                snprintf(out_c, sizeof(out_c), "output.c")
+                if system("mkdir -p output") != 0:
+                    printf("%sFailed to create output directory\n%s", RED, RESET)
+                    return -1
+                end
+
+                snprintf(out_c, sizeof(out_c), "output/out.c")
             end
 
             output: @FILE = fopen(out_c, "w")
@@ -131,6 +139,11 @@ func main(argc: int, argv: @char[]): int
                 if token_stream_contains(m.tokens, TOKEN_PRINT):
                     has_output = 1
                 end
+            end
+
+            should_run: bool = false
+            if has_output and not explicit_output:
+                should_run = true
             end
 
             print("Codegen...\n"); fflush(stdout)
@@ -151,17 +164,26 @@ func main(argc: int, argv: @char[]): int
             build_cmd: char[1024]
             snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name)
 
-            system(build_cmd)
+            build_status: int = system(build_cmd)
+            if build_status != 0:
+                printf("%sFailed to compile generated C outputs%s\n", RED, RESET)
+                return -1
+            end
 
-            if has_output:
+            if should_run:
                 printf("%s\nOUTPUT:\n", YELLOW)
                 fflush(stdout)
                 printf("%s", RESET)
                 fflush(stdout)
                 snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name)
+
+                run_status: int = system(build_cmd)
+                if run_status != 0:
+                    printf("%sFailed to run generated binary%s\n", RED, RESET)
+                    return -1
+                end
             end
 
-            system(build_cmd)
             print("\n")
             printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET)
             break
