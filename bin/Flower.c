@@ -1,20 +1,34 @@
 #include <stdio.h>
 #include <string.h>
 typedef struct { char* data; int length; } flower_string;
+static int flower_cstr_len(char* s) {
+  int i = 0;
+  if (s == NULL) return 0;
+  while (s[i] != '\0') i++;
+  return i;
+}
 static flower_string flower_string_from_cstr(char* s) {
   flower_string out;
   out.data = s;
-  out.length = (int)strlen(s);
+  out.length = (int)flower_cstr_len(s);
   return out;
 }
 static int flower_string_eq(flower_string a, flower_string b) {
+  int i = 0;
   if (a.length != b.length) return 0;
-  return !strncmp(a.data, b.data, a.length);
+  while (i < a.length) {
+      if (a.data[i] != b.data[i]) return 0;
+      i++;
+  }
+  return 1;
 }
 static void flower_print_string(flower_string s) {
-  printf("%.*s", s.length, s.data);
+  int i = 0;
+  while (i < s.length) {
+      putchar(s.data[i]);
+      i++;
+  }
 }
-;
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -4193,19 +4207,34 @@ void mod_src_codegen_flo_emit_string_runtime(FILE* out) {
 fprintf(out, "#include <stdio.h>\n");
 fprintf(out, "#include <string.h>\n");
 fprintf(out, "typedef struct { char* data; int length; } flower_string;\n");
+fprintf(out, "static int flower_cstr_len(char* s) {\n");
+fprintf(out, "  int i = 0;\n");
+fprintf(out, "  if (s == NULL) return 0;\n");
+fprintf(out, "  while (s[i] != '\\0') i++;\n");
+fprintf(out, "  return i;\n");
+fprintf(out, "}\n");
 fprintf(out, "static flower_string flower_string_from_cstr(char* s) {\n");
 fprintf(out, "  flower_string out;\n");
 fprintf(out, "  out.data = s;\n");
-fprintf(out, "  out.length = (int)strlen(s);\n");
+fprintf(out, "  out.length = (int)flower_cstr_len(s);\n");
 fprintf(out, "  return out;\n");
 fprintf(out, "}\n");
 fprintf(out, "static int flower_string_eq(flower_string a, flower_string b) {\n");
+fprintf(out, "  int i = 0;\n");
 fprintf(out, "  if (a.length != b.length) return 0;\n");
-fprintf(out, "  return !strncmp(a.data, b.data, a.length);\n");
+fprintf(out, "  while (i < a.length) {\n");
+fprintf(out, "      if (a.data[i] != b.data[i]) return 0;\n");
+fprintf(out, "      i++;\n");
+fprintf(out, "  }\n");
+fprintf(out, "  return 1;\n");
 fprintf(out, "}\n");
 fprintf(out, "static void flower_print_string(flower_string s) {\n");
-fprintf(out, "  printf(\"%%.*s\", s.length, s.data);\n");
-fprintf(out, "}\n;\n");
+fprintf(out, "  int i = 0;\n");
+fprintf(out, "  while (i < s.length) {\n");
+fprintf(out, "      putchar(s.data[i]);\n");
+fprintf(out, "      i++;\n");
+fprintf(out, "  }\n");
+fprintf(out, "}\n");
 }
 
 
