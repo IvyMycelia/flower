@@ -15,7 +15,8 @@ Flower values simplicity, so before adding a feature, ask:
 ```bash
 git clone https://github.com/ivymycelia/flower.git
 cd flower
-clang %s -o %s
+clang -o ./bin/Flower ./bin/Flower.c
+make bootstrap
 make test
 ```
 
@@ -34,11 +35,11 @@ When you make a branch, there's six different **prefixes**  you can use:
 - `refactor/`   — Code restructuring
 - `chore/`      — Maintence, tooling, cleanup, CI, build scripts, etc (anything that doesn't fit above or doesn't have to do with docs or code)
 
-For example, if you wanted to make a **feature** contribution that implements **booleans**, you could do:
+For example, if you wanted to make a **feature** contribution that implements **type aliases**, you could do:
 
-`feature/boolean-implementation`
+`feature/type-aliases`
 
-NOTE: If you are contributing an 'experiment,' please include a `synopsis.md` that explains your methodology, reason for contributing, and an outline of what you've accomplished. Any Pull Requests for experiments without one will will take longer to review, which may delay any feedback / merge. 
+NOTE: If you are contributing an 'experiment,' please include a `synopsis.md` that explains your methodology, reason for contributing, and an outline of what you've accomplished. Any Pull Requests for experiments without one will will take longer to review, which may delay any feedback / merge.
 
 ### Workflow
 
@@ -117,7 +118,9 @@ The compiler pipeline (all in Flower):
 
 1. **Lexer** (`src/lexer.flo`, `include/lexer_h.flo`)   — Tokenizes source
 2. **Parser** (`src/parser.flo`, `src/ast.flo`)         — Builds AST
-3. **Codegen** (`src/codegen.flo`)                      — Generates C code
+3. **Module Loader** (`src/module.flo`)                 - Loads imports and module metadata
+4. **Typecheck** (`src/typecheck.flo`)                  - Resolves types, access kinds, and module visibility
+5. **Codegen** (`src/codegen.flo`)                      — Generates C code
 
 Output: Cfile —> Compiled with Clang —> Executable
 
@@ -157,7 +160,7 @@ Following this step-by-step process helps avoid someone putting in a lot of effo
 
 - Open an issue and discuss
 - Check existing issues / discussions
-- Look at [ROADMAP.md](docs/) for planned work
+- Look at [ROADMAP.md](Docs/ROADMAP.md) for planned work
 
 ## Code of Conduct
 

@@ -43,6 +43,12 @@ Core feature: Proper String and Boolean support.
 
 **Why String Operations and Booleans first?** Many programs need them. Current work arounds are verbose.
 
+Current shipped scope:
+
+- `bool` is a real semantic type, lwoered to integer output in the C backend
+- `string` supports equality / inequality, `.length`, indexing, and explicit casts to / from `@char`
+- `src/stdlib/string.flo` currently provides `is_empty`, `starts_with`, `ends_with`, and `find_char`
+
 ## v1.4.0 (Better Types)
 
 Improve the type system.
@@ -94,7 +100,6 @@ Things Flower probably *won't* do:
 - ~~**Module System Beyond Imports**: Current system works, no overengineering.~~
 - **Heavy OOP-Style Type Systems**: No classes or method-dispath model just to support data access or modules
 
-
 ## How to Help
 
 ### Testing
@@ -124,7 +129,7 @@ Things Flower probably *won't* do:
 ## How Priority is Decided
 
 1. **Blocking Issues**: Bugs that prevent normal use
-2. **Language Gaps**: Things you can't express properly (like bools)
+2. **Language Gaps**: Things you can't express properly yet
 3. **Developer Experience**: Error messages, warnings, tooling
 4. **Performance**: Optimizations that help real programs
 5. **Nice to Have**: Everything else

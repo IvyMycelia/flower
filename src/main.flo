@@ -38,25 +38,28 @@ func main(argc: int, argv: @char[]): int
                 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET)
         
                 printf("%sUsage:\n%s", BLUE, RESET)
-                print("\tflower\t[options] <filepath>\n\n")
+                print("\tflower\t[options] <filepath> [output_path]\n\n")
 
                 printf("%sOptions:\n%s", BLUE, RESET)
                 print("\t-help,    -h\tShow this help message\n")
                 print("\t-version, -v\tShow the current version of FloC\n")
-                print("\t<filepath>\tSpecify the source code file to compile\n\n")
+                print("\t<filepath>\tSpecify the source file to compile")
+                print("\t[output_path]\tOptional output binary path\n\n")
         
                 printf("%sExample:\n%s", BLUE, RESET)
                 print("\tflower -help\n")
-                print("\tflower main.flo\n\n")
+                print("\tflower main.flo build/demo\n\n")
         
                 printf("%sTips:\n%s", BLUE, RESET)
+                print(" - Omit output_path to emit `output/out.c` and `output/out`\n")
+                print(" - When output_path is omitted, Flower auto-runs binaries that use `print`\n")
                 print(" - You can use any number of dashes before a flag, e.g., ---help\n")
                 print(" - Flags are case-insensitive: -HELP works too!\n\n")
         
                 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET)
                 continue
             else if flag == "version" or flag == "v":
-                print("Version: 0.0.4\n")
+                print("Version: 1.3.0\n")
                 continue
             else:
                 printf("%sUnrecognized flag argument! Use -help for more information.\n%s", RED, RESET)
