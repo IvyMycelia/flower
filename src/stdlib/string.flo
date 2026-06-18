@@ -1,6 +1,47 @@
-string from_cstr(value: @char, len: int):
-    s: @string = new string
-    s.value = value
-    s.length = len
-    return @s
+// Returns true if the string has a length of 0
+prop func is_empty(s: string): bool
+    return s.length == 0
+end
+
+// Returns true if the prefix's length is not greater than the string's length and if the prefix comes first in the string
+prop func starts_with(s: string, prefix: string): bool
+    if prefix.length > s.length:
+        return false
+    end
+
+    for i in 0..prefix.length:
+        if s[i] != prefix[i]:
+            return false
+        end
+    end
+
+    return true
+end
+
+// Returns true if the suffix's length is not greater than the string's length and if the suffix comes last in the string
+prop func ends_with(s: string, suffix: string): bool
+    if suffix.length > s.length:
+        return false
+    end
+
+    start: int = s.length - suffix.length
+
+    for i in 0..suffix.length:
+        if s[start + i] != suffix[i]:
+            return false
+        end
+    end
+
+    return true
+end
+
+// Returns the index of the character in the string, and -1 if the character isn't found in the string
+prop func find_char(s: string, ch: char): int
+    for i in 0..s.length:
+        if s[i] == ch:
+            return i
+        end
+    end
+
+    return -1
 end
