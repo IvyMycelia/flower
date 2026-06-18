@@ -67,34 +67,6 @@ func main(argc: int, argv: @char[]): int
             realpath(argv[i], abs_path)
             set_current_file(abs_path)
 
-            // file: @char = file.read_file(argv[i])
-            // if not file:
-            //     return -1
-            // end
-
-            // // Initialize token handling
-            // tokens: @TokenStream = new TokenStream
-            // lexer.init_token_stream(tokens)
-
-            // // Lexer
-            // print("Lexing...\n"); fflush(stdout)
-            // lexer.lex(tokens, file)
-            // // lexer.print_all_tokens(tokens, file)
-
-            // // printf("sizeof AST: %d\n", sizeof(AST))
-            // // printf("sizeof Token: %d\n", sizeof(Token))
-            // // printf("sizeof TokenStream: %d\n", sizeof(TokenStream))
-
-            // // Parser
-            // print("Parsing...\n"); fflush(stdout)
-            // tree: Parser;
-            // parser.init_parser(&tree, tokens, file, argv[i])
-            // ast: @AST = parser.parse(&tree)
-
-            // // Typecheck
-            // print("Checking types...\n");
-            
-
             print("Initializing modules..\n")
             mods: @ModuleSet = new ModuleSet
             init_modules(mods)
@@ -149,12 +121,8 @@ func main(argc: int, argv: @char[]): int
             print("Codegen...\n"); fflush(stdout)
             emit_string_runtime(output)
             emit_includes(mods, output)
-            // fprintf(output, "typedef struct { char* value; int length; } string;\n\n")
             codegen(mods, output)
 
-            // free_token_stream(tokens)
-            // prune tokens
-            // prune file
             prune mods
             fclose(output)
 
