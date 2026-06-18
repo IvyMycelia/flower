@@ -1,15 +1,17 @@
 import <stdio>
 
 prop func test(): bool
-    a: int = 5
-    b: int = 3
-    
-    if a != b:
-        if a >= b:
-            if b <= a:
+    a: bool = true
+    b: bool = false
+    c: bool = 3 > 2
+
+    if a and not b:
+        if c:
+            if false or a:
                 return true
             end
         end
     end
+
     return false
 end

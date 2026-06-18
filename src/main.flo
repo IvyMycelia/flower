@@ -134,6 +134,7 @@ func main(argc: int, argv: @char[]): int
             end
 
             print("Codegen...\n"); fflush(stdout)
+            emit_string_runtime(output)
             emit_includes(mods, output)
             // fprintf(output, "typedef struct { char* value; int length; } string;\n\n")
             codegen(mods, output)

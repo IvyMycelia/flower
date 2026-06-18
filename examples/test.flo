@@ -14,27 +14,39 @@ func main(): int
 
     print("\n=== Memory ===\n")
     total = total + 1
-    pass = pass + memory.test()
+    if memory.test():
+        pass = pass + 1
+    end
 
     print("\n=== Types ===\n")
     total = total + 1
-    pass = pass + types.test()
+    if types.test():
+        pass = pass + 1
+    end
 
     print("\n=== Control ===\n")
     total = total + 1
-    pass = pass + control.test()
+    if control.test():
+        pass = pass + 1
+    end
 
     print("\n=== IO ===\n")
     total = total + 1
-    pass = pass + io.test()
+    if io.test():
+        pass = pass + 1
+    end
 
     print("\n=== Misc ===\n")
     total = total + 1
-    pass = pass + misc.test()
+    if misc.test():
+        pass = pass + 1
+    end
 
     print("\n=== Import ===\n")
     total = total + 1
-    pass = pass + imports.test()
+    if imports.test():
+        pass = pass + 1
+    end
 
     print("\n=== Results ===\n")
     if pass == total:

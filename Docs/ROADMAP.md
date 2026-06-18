@@ -35,8 +35,8 @@ Focus: Make imports and public APIs mean something semantically.
 
 Core feature: Proper String and Boolean support.
 
-- [ ] Real `string` type support
-- [ ] Boolean support distinct from `1` and `0`
+- [x] Real `string` type support
+- [x] Boolean support distinct from `1` and `0`
 - [ ] String operations
 - [ ] Examples and tests
 - [ ] Standard library basics

@@ -2,7 +2,7 @@ import <stdio>
 
 import "examples/misc/fibonacci.flo" as fibonacci
 
-prop func test(): int
+prop func test(): bool
     total: int = 0
     pass: int = 0
 

@@ -1,10 +1,7 @@
 import <stdio>
 
-prop func test(): int
+prop func test(): bool
     x: float = 3.14
     y: int = x as int
-    if y == 3:
-        return 1
-    end
-    return 0
+    return y == 3
 end

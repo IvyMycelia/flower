@@ -1,3 +1,20 @@
+#include <stdio.h>
+#include <string.h>
+typedef struct { char* data; int length; } flower_string;
+static flower_string flower_string_from_cstr(char* s) {
+  flower_string out;
+  out.data = s;
+  out.length = (int)strlen(s);
+  return out;
+}
+static int flower_string_eq(flower_string a, flower_string b) {
+  if (a.length != b.length) return 0;
+  return !strncmp(a.data, b.data, a.length);
+}
+static void flower_print_string(flower_string s) {
+  printf("%.*s", s.length, s.data);
+}
+;
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -62,58 +79,60 @@ int TOKEN_FLOAT_LIT = 13;
 int TOKEN_STRING_LIT = 14;
 int TOKEN_CHAR_LIT = 15;
 int TOKEN_VOID = 16;
-int TOKEN_RETURN = 17;
-int TOKEN_CONTINUE = 18;
-int TOKEN_BREAK = 19;
-int TOKEN_WHILE = 20;
-int TOKEN_FUNC = 21;
-int TOKEN_FOR = 22;
-int TOKEN_IN = 23;
-int TOKEN_END = 24;
-int TOKEN_IF = 25;
-int TOKEN_ELSE = 26;
-int TOKEN_NOT = 27;
-int TOKEN_AND = 28;
-int TOKEN_OR = 29;
-int TOKEN_IMPORT = 30;
-int TOKEN_FORWARD = 31;
-int TOKEN_AS = 32;
-int TOKEN_PROP = 33;
-int TOKEN_HIDDEN = 34;
-int TOKEN_READONLY = 35;
-int TOKEN_FROZEN = 36;
-int TOKEN_NEW = 37;
-int TOKEN_PRUNE = 38;
-int TOKEN_SIZEOF = 39;
-int TOKEN_PRINT = 40;
-int TOKEN_DOT = 41;
-int TOKEN_DOTDOT = 42;
-int TOKEN_DOTDOTEQ = 43;
-int TOKEN_PLUS = 44;
-int TOKEN_MINUS = 45;
-int TOKEN_STAR = 46;
-int TOKEN_CARET = 47;
-int TOKEN_SLASH = 48;
-int TOKEN_AMPERSAND = 49;
-int TOKEN_AT = 50;
-int TOKEN_ASSIGN = 51;
-int TOKEN_LT = 52;
-int TOKEN_GT = 53;
-int TOKEN_COMP = 54;
-int TOKEN_NEQ = 55;
-int TOKEN_GEQ = 56;
-int TOKEN_LEQ = 57;
-int TOKEN_LPAREN = 58;
-int TOKEN_RPAREN = 59;
-int TOKEN_LBRACK = 60;
-int TOKEN_RBRACK = 61;
-int TOKEN_LBRACE = 62;
-int TOKEN_RBRACE = 63;
-int TOKEN_COLON = 64;
-int TOKEN_COMMA = 65;
-int TOKEN_SEMI = 66;
-int TOKEN_NEWLINE = 67;
-int TOKEN_EOF = 68;
+int TOKEN_TRUE = 17;
+int TOKEN_FALSE = 18;
+int TOKEN_RETURN = 19;
+int TOKEN_CONTINUE = 20;
+int TOKEN_BREAK = 21;
+int TOKEN_WHILE = 22;
+int TOKEN_FUNC = 23;
+int TOKEN_FOR = 24;
+int TOKEN_IN = 25;
+int TOKEN_END = 26;
+int TOKEN_IF = 27;
+int TOKEN_ELSE = 28;
+int TOKEN_NOT = 29;
+int TOKEN_AND = 30;
+int TOKEN_OR = 31;
+int TOKEN_IMPORT = 32;
+int TOKEN_FORWARD = 33;
+int TOKEN_AS = 34;
+int TOKEN_PROP = 35;
+int TOKEN_HIDDEN = 36;
+int TOKEN_READONLY = 37;
+int TOKEN_FROZEN = 38;
+int TOKEN_NEW = 39;
+int TOKEN_PRUNE = 40;
+int TOKEN_SIZEOF = 41;
+int TOKEN_PRINT = 42;
+int TOKEN_DOT = 43;
+int TOKEN_DOTDOT = 44;
+int TOKEN_DOTDOTEQ = 45;
+int TOKEN_PLUS = 46;
+int TOKEN_MINUS = 47;
+int TOKEN_STAR = 48;
+int TOKEN_CARET = 49;
+int TOKEN_SLASH = 50;
+int TOKEN_AMPERSAND = 51;
+int TOKEN_AT = 52;
+int TOKEN_ASSIGN = 53;
+int TOKEN_LT = 54;
+int TOKEN_GT = 55;
+int TOKEN_COMP = 56;
+int TOKEN_NEQ = 57;
+int TOKEN_GEQ = 58;
+int TOKEN_LEQ = 59;
+int TOKEN_LPAREN = 60;
+int TOKEN_RPAREN = 61;
+int TOKEN_LBRACK = 62;
+int TOKEN_RBRACK = 63;
+int TOKEN_LBRACE = 64;
+int TOKEN_RBRACE = 65;
+int TOKEN_COLON = 66;
+int TOKEN_COMMA = 67;
+int TOKEN_SEMI = 68;
+int TOKEN_NEWLINE = 69;
+int TOKEN_EOF = 70;
 
 
 typedef struct Token {
@@ -168,7 +187,7 @@ ts->capacity = ts->capacity * 2;
 }
 ts->data = realloc(ts->data, ts->capacity * sizeof(Token));
 if (ts->data == NULL) {
-printf("Memory allocation failed\n");
+flower_print_string(((flower_string){ "Memory allocation failed\n", (int)(sizeof("Memory allocation failed\n") - 1) }));
 return;}
 }
 Token* t = ts->data + ts->count;
@@ -302,6 +321,9 @@ mod_src_lexer_flo_add_token(ts, TOKEN_PROP, start, length);
 else if (length == 4  &&  !(strncmp(src + start, "func", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FUNC, start, length);
 }
+else if (length == 4  &&  !(strncmp(src + start, "true", 4))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_TRUE, start, length);
+}
 else if (length == 5  &&  !(strncmp(src + start, "union", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_UNION, start, length);
 }
@@ -319,6 +341,9 @@ mod_src_lexer_flo_add_token(ts, TOKEN_FLOAT, start, length);
 }
 else if (length == 5  &&  !(strncmp(src + start, "break", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_BREAK, start, length);
+}
+else if (length == 5  &&  !(strncmp(src + start, "false", 5))) {
+mod_src_lexer_flo_add_token(ts, TOKEN_FALSE, start, length);
 }
 else if (length == 6  &&  !(strncmp(src + start, "return", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_RETURN, start, length);
@@ -546,6 +571,12 @@ return "TOKEN_STRING_LIT";
 else if (kind == TOKEN_CHAR_LIT) {
 return "TOKEN_CHAR_LIT";
 }
+else if (kind == TOKEN_TRUE) {
+return "TOKEN_TRUE";
+}
+else if (kind == TOKEN_FALSE) {
+return "TOKEN_FALSE";
+}
 else if (kind == TOKEN_STRUCT) {
 return "TOKEN_STRUCT";
 }
@@ -725,7 +756,7 @@ printf("%-18s\t", mod_src_lexer_flo_token_kind_name(token->kind));
 if (token->kind == TOKEN_IDENTIFIER  ||  token->kind == TOKEN_NUMBER) {
 printf("\"%.*s\"", token->length, src + token->start);
 }
-printf("\n");
+flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
 }
 
 
@@ -753,42 +784,45 @@ ts->capacity = 0;
 int AST_FLOW_CONTROL = 0;
 int AST_LITERAL = 1;
 int AST_FLOAT_LIT = 2;
-int AST_CAST = 3;
-int AST_NULL = 4;
-int AST_STRING_LIT = 5;
-int AST_ARRAY_LIT = 6;
-int AST_SUBSCRIPT = 7;
-int AST_STRUCT_LIT = 8;
-int AST_CHAR_LIT = 9;
-int AST_STRUCT_DEF = 10;
-int AST_UNION_DEF = 11;
-int AST_STRUCT_FIELD = 12;
-int AST_DOT_ACCESS = 13;
-int AST_BINARY_OP = 14;
-int AST_UNARY_NOT = 15;
-int AST_UNARY_NEG = 16;
-int AST_NEW = 17;
-int AST_PRUNE = 18;
-int AST_SIZEOF = 19;
-int AST_DEREF_ASS = 20;
-int AST_DEREF = 21;
-int AST_GET_ADDR = 22;
-int AST_IMPORT = 23;
-int AST_PROP = 24;
-int AST_FORWARD = 25;
-int AST_ALIAS_CALL = 26;
-int AST_VAR_DECL = 27;
-int AST_VAR_ASS = 28;
-int AST_VAR_REF = 29;
-int AST_FUNC_DEF = 30;
-int AST_FUNC_CALL = 31;
-int AST_WHILE = 32;
-int AST_FOR = 33;
-int AST_IF = 34;
-int AST_PARAM = 35;
-int AST_PRINT = 36;
+int AST_BOOL_LIT = 3;
+int AST_CAST = 4;
+int AST_NULL = 5;
+int AST_STRING_LIT = 6;
+int AST_ARRAY_LIT = 7;
+int AST_SUBSCRIPT = 8;
+int AST_STRUCT_LIT = 9;
+int AST_CHAR_LIT = 10;
+int AST_STRUCT_DEF = 11;
+int AST_UNION_DEF = 12;
+int AST_STRUCT_FIELD = 13;
+int AST_DOT_ACCESS = 14;
+int AST_BINARY_OP = 15;
+int AST_UNARY_NOT = 16;
+int AST_UNARY_NEG = 17;
+int AST_NEW = 18;
+int AST_PRUNE = 19;
+int AST_SIZEOF = 20;
+int AST_DEREF_ASS = 21;
+int AST_DEREF = 22;
+int AST_GET_ADDR = 23;
+int AST_IMPORT = 24;
+int AST_PROP = 25;
+int AST_FORWARD = 26;
+int AST_ALIAS_CALL = 27;
+int AST_VAR_DECL = 28;
+int AST_VAR_ASS = 29;
+int AST_VAR_REF = 30;
+int AST_FUNC_DEF = 31;
+int AST_FUNC_CALL = 32;
+int AST_WHILE = 33;
+int AST_FOR = 34;
+int AST_IF = 35;
+int AST_PARAM = 36;
+int AST_PRINT = 37;
 int FIELD_FALSE = 0;
 int FIELD_TRUE = 1;
+int STRING_LOWER_STRING = 0;
+int STRING_LOWER_CSTR = 1;
 typedef struct AST AST;
 
 
@@ -806,6 +840,7 @@ char* name_src;
 typedef struct cast {
 AST* value;
 TypeInfo type;
+TypeInfo value_type;
 } cast;
 
 
@@ -813,6 +848,11 @@ typedef struct float_lit {
 int start;
 int length;
 } float_lit;
+
+
+typedef struct bool_lit {
+int value;
+} bool_lit;
 
 
 typedef struct char_lit {
@@ -824,6 +864,7 @@ int length;
 typedef struct strng {
 int str_start;
 int str_length;
+int lower_kind;
 } strng;
 
 
@@ -879,6 +920,7 @@ AST* operand;
 
 typedef struct prnt {
 AST* value;
+TypeInfo value_type;
 } prnt;
 
 
@@ -965,6 +1007,7 @@ typedef struct binary {
 AST* left;
 AST* right;
 int op;
+int is_string_compare;
 } binary;
 
 
@@ -1044,6 +1087,7 @@ AST* else_branch;
 typedef union NodeData {
 cast _cast;
 float_lit _float_lit;
+bool_lit _bool_lit;
 char_lit _char_lit;
 strng _string;
 array _array;
@@ -1083,6 +1127,9 @@ typedef struct AST {
 int kind;
 AST* next;
 int value;
+char* src;
+char* filename;
+int start;
 NodeData data;
 } AST;
 
@@ -1097,12 +1144,16 @@ int alias_count;
 char* filename;
 int error_count;
 } Parser;
+Token* mod_src_parser_flo_parser_peek(Parser* ps);
 
 
-AST* mod_src_parser_flo_make_node(int kind) {
+AST* mod_src_parser_flo_make_node(Parser* ps, int kind) {
 AST* node = calloc(1, sizeof(AST));
 node->kind = kind;
 node->value = 0;
+node->src = ps->src;
+node->start = mod_src_parser_flo_parser_peek(ps)->start;
+node->filename = ps->filename;
 return node;
 }
 
@@ -1116,6 +1167,7 @@ ps->filename = filename;
 ps->error_count = 0;
 }
 void mod_src_parser_flo_parser_error(Parser* ps, char* message);
+void mod_src_parser_flo_parser_sync_until(Parser* ps, int stop_a, int stop_b);
 AST* mod_src_parser_flo_parse_var_decl(Parser* ps);
 AST* mod_src_parser_flo_parse_var_ass(Parser* ps);
 AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps);
@@ -1225,19 +1277,19 @@ return type;
 
 int mod_src_parser_flo_get_precedence(int kind) {
 if (kind == TOKEN_STAR  ||  kind == TOKEN_SLASH) {
+return 5;
+}
+else if (kind == TOKEN_PLUS  ||  kind == TOKEN_MINUS) {
+return 4;
+}
+else if (kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP) {
 return 3;
 }
-else if (kind == TOKEN_AND  ||  kind == TOKEN_PLUS  ||  kind == TOKEN_MINUS) {
+else if (kind == TOKEN_AND) {
 return 2;
 }
-else if (kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_OR  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP) {
+else if (kind == TOKEN_OR) {
 return 1;
-}
-else if (kind == TOKEN_DOTDOT) {
-return 0;
-}
-else if (kind == TOKEN_DOTDOTEQ) {
-return 0;
 }
 else {
 return 0;
@@ -1275,8 +1327,18 @@ ps->error_count = ps->error_count + 1;
 }
 
 
+void mod_src_parser_flo_parser_sync_until(Parser* ps, int stop_a, int stop_b) {
+while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_EOF  &&  mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_NEWLINE  &&  mod_src_parser_flo_parser_peek(ps)->kind != stop_a  &&  mod_src_parser_flo_parser_peek(ps)->kind != stop_b) {
+mod_src_parser_flo_parser_advance(ps);
+}
+}
+
+
 int mod_src_parser_flo_is_field_flag(int kind) {
-return kind == TOKEN_HIDDEN  ||  kind == TOKEN_READONLY  ||  kind == TOKEN_FROZEN;
+if (kind == TOKEN_HIDDEN  ||  kind == TOKEN_READONLY  ||  kind == TOKEN_FROZEN) {
+return 1;
+}
+return 0;
 }
 
 
@@ -1300,7 +1362,7 @@ mod_src_parser_flo_parser_advance(ps);
 
 
 AST* mod_src_parser_flo_parse_var_decl(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_VAR_DECL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_DECL);
 Token* tok = mod_src_parser_flo_parser_advance(ps);
 if (tok->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected variable name");
@@ -1329,7 +1391,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_var_ass(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_VAR_ASS);
+AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_ASS);
 Token* tok = mod_src_parser_flo_parser_advance(ps);
 if (tok->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected variable name");
@@ -1351,7 +1413,7 @@ return node;
 
 AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps) {
 Token* name = mod_src_parser_flo_parser_advance(ps);
-AST* arr_ref = mod_src_parser_flo_make_node(AST_VAR_REF);
+AST* arr_ref = mod_src_parser_flo_make_node(ps, AST_VAR_REF);
 arr_ref->data._var_ref.name_start = name->start;
 arr_ref->data._var_ref.name_length = name->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LBRACK))) {
@@ -1373,7 +1435,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in subscript express
 return arr_ref;
 }
 AST* val = mod_src_parser_flo_parse_expr(ps, 0);
-AST* sub = mod_src_parser_flo_make_node(AST_SUBSCRIPT);
+AST* sub = mod_src_parser_flo_make_node(ps, AST_SUBSCRIPT);
 sub->data._subscript.array = arr_ref;
 sub->data._subscript.index = idx;
 sub->data._subscript.value = val;
@@ -1382,7 +1444,7 @@ return sub;
 
 
 AST* mod_src_parser_flo_parse_return(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 mod_src_parser_flo_parser_advance(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1395,7 +1457,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_continue(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.value = NULL;
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1407,7 +1469,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_break(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FLOW_CONTROL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.value = NULL;
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1419,7 +1481,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_while(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_WHILE);
+AST* node = mod_src_parser_flo_make_node(ps, AST_WHILE);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_WHILE))) {
 return node;
 }
@@ -1454,7 +1516,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_if(Parser* ps, int is_elf_if) {
-AST* node = mod_src_parser_flo_make_node(AST_IF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_IF);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_IF))) {
 return node;
 }
@@ -1489,7 +1551,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IF) {
 node->data._if_condition.else_branch = mod_src_parser_flo_parse_if(ps, 1);
 }
 else {
-AST* else_node = mod_src_parser_flo_make_node(AST_IF);
+AST* else_node = mod_src_parser_flo_make_node(ps, AST_IF);
 else_node->data._if_condition.condition = NULL;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
@@ -1528,7 +1590,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_for(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FOR);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FOR);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_FOR))) {
 return node;
 }
@@ -1599,7 +1661,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in cast expression");
 return NULL;
 }
-AST* cast = mod_src_parser_flo_make_node(AST_CAST);
+AST* cast = mod_src_parser_flo_make_node(ps, AST_CAST);
 cast->data._cast.value = left;
 cast->data._cast.type = *(mod_src_parser_flo_parse_type(ps));
 left = cast;
@@ -1617,7 +1679,7 @@ AST* right = mod_src_parser_flo_parse_expr(ps, mod_src_parser_flo_get_precedence
 if (right == NULL) {
 return left;
 }
-AST* bin = mod_src_parser_flo_make_node(AST_BINARY_OP);
+AST* bin = mod_src_parser_flo_make_node(ps, AST_BINARY_OP);
 bin->data._binary.left = left;
 bin->data._binary.right = right;
 bin->data._binary.op = op->kind;
@@ -1681,7 +1743,7 @@ return mod_src_parser_flo_parse_for(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRINT) {
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_PRINT);
+AST* node = mod_src_parser_flo_make_node(ps, AST_PRINT);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return node;
 }
@@ -1695,7 +1757,7 @@ return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PRUNE) {
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_PRUNE);
+AST* node = mod_src_parser_flo_make_node(ps, AST_PRUNE);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in prune statement");
 return node;
@@ -1705,7 +1767,7 @@ return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_DEREF_ASS);
+AST* node = mod_src_parser_flo_make_node(ps, AST_DEREF_ASS);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in dereference statement");
 return node;
@@ -1731,6 +1793,7 @@ else {
 char message[128];
 snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
 mod_src_parser_flo_parser_error(ps, message);
+mod_src_parser_flo_parser_advance(ps);
 return NULL;
 }
 }
@@ -1755,7 +1818,7 @@ if (field->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
 return node;
 }
-AST* dot = mod_src_parser_flo_make_node(AST_DOT_ACCESS);
+AST* dot = mod_src_parser_flo_make_node(ps, AST_DOT_ACCESS);
 dot->data._dot_access.object = node;
 dot->data._dot_access.field_length = field->length;
 dot->data._dot_access.field_start = field->start;
@@ -1768,7 +1831,7 @@ return mod_src_parser_flo_parse_alias_call(ps);
 }
 Token* tok = mod_src_parser_flo_parser_peek(ps);
 mod_src_parser_flo_parser_advance(ps);
-AST* node = mod_src_parser_flo_make_node(AST_VAR_REF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_REF);
 node->data._var_ref.name_start = tok->start;
 node->data._var_ref.name_length = tok->length;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
@@ -1778,7 +1841,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
 return node;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* drf = mod_src_parser_flo_make_node(AST_DEREF);
+AST* drf = mod_src_parser_flo_make_node(ps, AST_DEREF);
 drf->data._unary.operand = operand;
 return drf;
 }
@@ -1794,7 +1857,7 @@ if (field->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected identifier name after '.'");
 return node;
 }
-AST* dot = mod_src_parser_flo_make_node(AST_DOT_ACCESS);
+AST* dot = mod_src_parser_flo_make_node(ps, AST_DOT_ACCESS);
 dot->data._dot_access.object = node;
 dot->data._dot_access.field_start = field->start;
 dot->data._dot_access.field_length = field->length;
@@ -1810,7 +1873,7 @@ AST* idx = mod_src_parser_flo_parse_expr(ps, 0);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
 return node;
 }
-AST* sub = mod_src_parser_flo_make_node(AST_SUBSCRIPT);
+AST* sub = mod_src_parser_flo_make_node(ps, AST_SUBSCRIPT);
 sub->data._subscript.array = node;
 sub->data._subscript.index = idx;
 node = sub;
@@ -1822,33 +1885,44 @@ break;
 return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
-AST* lit = mod_src_parser_flo_make_node(AST_LITERAL);
+AST* lit = mod_src_parser_flo_make_node(ps, AST_LITERAL);
 lit->value = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
 mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FLOAT_LIT) {
-AST* lit = mod_src_parser_flo_make_node(AST_FLOAT_LIT);
+AST* lit = mod_src_parser_flo_make_node(ps, AST_FLOAT_LIT);
 lit->data._float_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
 lit->data._float_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
 mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_TRUE  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_FALSE) {
+AST* lit = mod_src_parser_flo_make_node(ps, AST_BOOL_LIT);
+int val = 0;
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_TRUE) {
+val = 1;
+}
+lit->data._bool_lit.value = val;
+mod_src_parser_flo_parser_advance(ps);
+return lit;
+}
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NULL) {
-AST* nll = mod_src_parser_flo_make_node(AST_NULL);
+AST* nll = mod_src_parser_flo_make_node(ps, AST_NULL);
 mod_src_parser_flo_parser_advance(ps);
 return nll;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRING_LIT) {
-AST* str = mod_src_parser_flo_make_node(AST_STRING_LIT);
+AST* str = mod_src_parser_flo_make_node(ps, AST_STRING_LIT);
 str->data._string.str_start = mod_src_parser_flo_parser_peek(ps)->start;
 str->data._string.str_length = mod_src_parser_flo_parser_peek(ps)->length;
+str->data._string.lower_kind = STRING_LOWER_STRING;
 mod_src_parser_flo_parser_advance(ps);
 return str;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
 mod_src_parser_flo_parser_advance(ps);
-AST* arr = mod_src_parser_flo_make_node(AST_ARRAY_LIT);
+AST* arr = mod_src_parser_flo_make_node(ps, AST_ARRAY_LIT);
 AST* elem_head = NULL;
 AST* elem_tail = NULL;
 while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACK) {
@@ -1857,6 +1931,9 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in array literal");
 return arr;
 }
 AST* elem = mod_src_parser_flo_parse_expr(ps, 0);
+if (elem == NULL) {
+return arr;
+}
 if (elem_head == NULL) {
 elem_head = elem;
 }
@@ -1867,6 +1944,10 @@ elem_tail = elem;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
 mod_src_parser_flo_parser_advance(ps);
 }
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACK) {
+mod_src_parser_flo_parser_error(ps, "Expected ',' or ']' in array literal");
+return arr;
+}
 }
 mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK);
 arr->data._array.elements = elem_head;
@@ -1874,7 +1955,7 @@ return arr;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACE) {
 mod_src_parser_flo_parser_advance(ps);
-AST* strct_lit = mod_src_parser_flo_make_node(AST_STRUCT_LIT);
+AST* strct_lit = mod_src_parser_flo_make_node(ps, AST_STRUCT_LIT);
 AST* struct_head = NULL;
 AST* struct_tail = NULL;
 while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RBRACE) {
@@ -1914,7 +1995,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'new'");
 return NULL;
 }
-AST* new_node = mod_src_parser_flo_make_node(AST_NEW);
+AST* new_node = mod_src_parser_flo_make_node(ps, AST_NEW);
 new_node->data._new_alloc.type = *(mod_src_parser_flo_parse_type(ps));
 return new_node;
 }
@@ -1925,7 +2006,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'not'");
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* unry = mod_src_parser_flo_make_node(AST_UNARY_NOT);
+AST* unry = mod_src_parser_flo_make_node(ps, AST_UNARY_NOT);
 unry->data._unary.operand = operand;
 return unry;
 }
@@ -1936,7 +2017,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after unary '-' oper
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* unry = mod_src_parser_flo_make_node(AST_UNARY_NEG);
+AST* unry = mod_src_parser_flo_make_node(ps, AST_UNARY_NEG);
 unry->data._unary.operand = operand;
 return unry;
 }
@@ -1947,7 +2028,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '@'");
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* deref = mod_src_parser_flo_make_node(AST_DEREF);
+AST* deref = mod_src_parser_flo_make_node(ps, AST_DEREF);
 deref->data._deref.operand = operand;
 return deref;
 }
@@ -1958,7 +2039,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after '&'");
 return NULL;
 }
 AST* operand = mod_src_parser_flo_parse_primary(ps);
-AST* get = mod_src_parser_flo_make_node(AST_GET_ADDR);
+AST* get = mod_src_parser_flo_make_node(ps, AST_GET_ADDR);
 get->data._get_addr.operand = operand;
 return get;
 }
@@ -1967,13 +2048,13 @@ mod_src_parser_flo_parser_advance(ps);
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_SIZEOF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_SIZEOF);
 node->data._size_of.type = *(mod_src_parser_flo_parse_type(ps));
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_CHAR_LIT) {
-AST* node = mod_src_parser_flo_make_node(AST_CHAR_LIT);
+AST* node = mod_src_parser_flo_make_node(ps, AST_CHAR_LIT);
 node->data._char_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
 node->data._char_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
 mod_src_parser_flo_parser_advance(ps);
@@ -1991,7 +2072,7 @@ AST* mod_src_parser_flo_parse_func_def(Parser* ps) {
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_FUNC))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_FUNC_DEF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FUNC_DEF);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected function name");
@@ -2054,7 +2135,7 @@ return node;
 
 
 AST* mod_src_parser_flo_parse_func_call(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_FUNC_CALL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FUNC_CALL);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._func_call.name_start = name->start;
 node->data._func_call.name_length = name->length;
@@ -2069,6 +2150,17 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function call arg
 return node;
 }
 AST* param = mod_src_parser_flo_parse_expr(ps, 0);
+if (param == NULL) {
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
+continue;
+}
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RPAREN) {
+break;
+}
+return node;
+}
 if (arg_head == NULL) {
 arg_head = param;
 }
@@ -2079,15 +2171,27 @@ arg_tail = param;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
 mod_src_parser_flo_parser_advance(ps);
 }
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+mod_src_parser_flo_parser_error(ps, "Expected ',' or ')' in function call arguments");
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
-mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+return node;
+}
+}
+}
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN))) {
+return node;
+}
 node->data._func_call.args = arg_head;
 return node;
 }
 
 
 AST* mod_src_parser_flo_parse_alias_call(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_ALIAS_CALL);
+AST* node = mod_src_parser_flo_make_node(ps, AST_ALIAS_CALL);
 Token* alias = mod_src_parser_flo_parser_advance(ps);
 node->data._alias_call.alias_start = alias->start;
 node->data._alias_call.alias_length = alias->length;
@@ -2108,6 +2212,17 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file in function alias ar
 return node;
 }
 AST* arg = mod_src_parser_flo_parse_expr(ps, 0);
+if (arg == NULL) {
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
+continue;
+}
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RPAREN) {
+break;
+}
+return node;
+}
 if (arg_head == NULL) {
 arg_head = arg;
 }
@@ -2118,15 +2233,27 @@ arg_tail = arg;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
 mod_src_parser_flo_parser_advance(ps);
 }
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+mod_src_parser_flo_parser_error(ps, "Expected ',' or ')' in function alias arguments");
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_COMMA) {
+mod_src_parser_flo_parser_advance(ps);
 }
-mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
+else if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_RPAREN) {
+return node;
+}
+}
+}
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN))) {
+return node;
+}
 node->data._alias_call.args = arg_head;
 return node;
 }
 
 
 AST* mod_src_parser_flo_parse_param(Parser* ps) {
-AST* node = mod_src_parser_flo_make_node(AST_PARAM);
+AST* node = mod_src_parser_flo_make_node(ps, AST_PARAM);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 node->data._func_params.name_start = name->start;
 node->data._func_params.name_length = name->length;
@@ -2142,7 +2269,7 @@ AST* mod_src_parser_flo_parse_struct(Parser* ps) {
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_STRUCT))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_STRUCT_DEF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_STRUCT_DEF);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected struct name");
@@ -2166,7 +2293,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in struct body");
 return node;
 }
-AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+AST* field = mod_src_parser_flo_make_node(ps, AST_STRUCT_FIELD);
 mod_src_parser_flo_parse_field_flags(ps, field);
 Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
@@ -2197,7 +2324,7 @@ AST* mod_src_parser_flo_parse_union(Parser* ps) {
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_UNION))) {
 return NULL;
 }
-AST* node = mod_src_parser_flo_make_node(AST_UNION_DEF);
+AST* node = mod_src_parser_flo_make_node(ps, AST_UNION_DEF);
 Token* name = mod_src_parser_flo_parser_advance(ps);
 if (name->kind != TOKEN_IDENTIFIER) {
 mod_src_parser_flo_parser_error(ps, "Expected union name");
@@ -2224,7 +2351,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in union body");
 return node;
 }
-AST* field = mod_src_parser_flo_make_node(AST_STRUCT_FIELD);
+AST* field = mod_src_parser_flo_make_node(ps, AST_STRUCT_FIELD);
 mod_src_parser_flo_parse_field_flags(ps, field);
 Token* fname = mod_src_parser_flo_parser_advance(ps);
 if (fname->kind != TOKEN_IDENTIFIER) {
@@ -2272,7 +2399,7 @@ return expr;
 
 AST* mod_src_parser_flo_parse_import(Parser* ps) {
 mod_src_parser_flo_parser_expect(ps, TOKEN_IMPORT);
-AST* node = mod_src_parser_flo_make_node(AST_IMPORT);
+AST* node = mod_src_parser_flo_make_node(ps, AST_IMPORT);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LT) {
 mod_src_parser_flo_parser_advance(ps);
 Token* path = mod_src_parser_flo_parser_advance(ps);
@@ -2319,7 +2446,7 @@ return node;
 
 AST* mod_src_parser_flo_parse_forward(Parser* ps) {
 mod_src_parser_flo_parser_expect(ps, TOKEN_FORWARD);
-AST* node = mod_src_parser_flo_make_node(AST_FORWARD);
+AST* node = mod_src_parser_flo_make_node(ps, AST_FORWARD);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRUCT) {
 mod_src_parser_flo_parser_advance(ps);
 Token* name = mod_src_parser_flo_parser_advance(ps);
@@ -2374,7 +2501,7 @@ mod_src_parser_flo_parser_skip_newline(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 break;
 }
-AST* node;
+AST* node = NULL;
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IMPORT) {
 node = mod_src_parser_flo_parse_import(ps);
 }
@@ -2400,7 +2527,7 @@ else {
 mod_src_parser_flo_parser_error(ps, "Expected declaration after prop");
 }
 if (decl != NULL) {
-AST* prop_node = mod_src_parser_flo_make_node(AST_PROP);
+AST* prop_node = mod_src_parser_flo_make_node(ps, AST_PROP);
 prop_node->data._prop.decl = decl;
 node = prop_node;
 }
@@ -2417,6 +2544,11 @@ node = mod_src_parser_flo_parse_forward(ps);
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER  &&  mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
 node = mod_src_parser_flo_parse_var_decl(ps);
 }
+else {
+mod_src_parser_flo_parser_error(ps, "Unexpected top-level statement or declaration");
+mod_src_parser_flo_parser_sync_until(ps, TOKEN_NEWLINE, TOKEN_EOF);
+}
+if (node != NULL) {
 if (head == NULL) {
 head = node;
 }
@@ -2424,6 +2556,7 @@ else {
 tail->next = node;
 }
 tail = node;
+}
 }
 return head;
 }
@@ -2539,7 +2672,7 @@ strcpy(out, "mod_");
 int i = 0;
 int j = 4;
 while (rel[i] != '\0'  &&  j < sizeof(out) - 1) {
-int c = rel[i];
+char c = rel[i];
 if (isalnum(c)) {
 out[j] = c;
 }
@@ -2689,7 +2822,7 @@ m->tokens = malloc(sizeof(TokenStream));
 mod_src_lexer_flo_init_token_stream(m->tokens);
 mod_src_lexer_flo_lex(m->tokens, src);
 Parser p;
-mod_src_parser_flo_init_parser(&(p), m->tokens, src, path);
+mod_src_parser_flo_init_parser(&(p), m->tokens, src, m->path);
 m->ast = mod_src_parser_flo_parse(&(p));
 mod_src_module_flo_collect_exports(m);
 set->count = set->count + 1;
@@ -2734,6 +2867,7 @@ typedef struct FuncInfo {
 char* src;
 int name_start;
 int name_length;
+AST* params;
 TypeInfo return_type;
 } FuncInfo;
 
@@ -2750,13 +2884,18 @@ int error_count;
 } TypeEnv;
 ModuleSet* active_type_modules;
 Module* current_type_module;
+TypeInfo current_return_type;
+int inside_function = 0;
 
 
 int mod_src_typecheck_flo_same_name(char* a_src, int a_start, int a_len, char* b_src, int b_start, int b_len) {
 if (a_len != b_len) {
 return 0;
 }
-return !(strncmp(a_src + a_start, b_src + b_start, a_len));
+if (!(strncmp(a_src + a_start, b_src + b_start, a_len))) {
+return 1;
+}
+return 0;
 }
 
 
@@ -2769,10 +2908,298 @@ dst->name_start = src_type->name_start;
 dst->name_length = src_type->name_length;
 dst->name_src = src_type->name_src;
 }
+int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual);
+
+
+int mod_src_typecheck_flo_is_bool_type(TypeInfo* type) {
+if (type->base == TOKEN_BOOL  &&  type->pointer_depth == 0  &&  type->array_size == 0) {
+return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_is_void_type(TypeInfo* type) {
+return type->base == TOKEN_VOID  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_null_type(TypeInfo* type) {
+return type->base == TOKEN_VOID  &&  type->pointer_depth == 1  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_integer_type(TypeInfo* type) {
+return type->base == TOKEN_INT  ||  type->base == TOKEN_CHAR  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_decimal_type(TypeInfo* type) {
+return type->base == TOKEN_FLOAT  ||  type->base == TOKEN_DOUBLE  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* type) {
+return type->pointer_depth > 0  ||  type->array_size != 0;
+}
+
+
+int mod_src_typecheck_flo_is_condition_type(TypeInfo* type) {
+return mod_src_typecheck_flo_is_bool_type(type)  ||  mod_src_typecheck_flo_is_integer_type(type)  ||  mod_src_typecheck_flo_is_pointer_like_type(type);
+}
+
+
+int mod_src_typecheck_flo_is_string_type(TypeInfo* type) {
+return type->base == TOKEN_STRING  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_cstr_type(TypeInfo* type) {
+return type->base == TOKEN_CHAR  &&  type->pointer_depth == 1  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_numeric_type(TypeInfo* type) {
+return type->base == TOKEN_INT  ||  type->base == TOKEN_FLOAT  ||  type->base == TOKEN_DOUBLE  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_numeric_rank(TypeInfo* type) {
+if (type->base == TOKEN_INT) {
+return 1;
+}
+if (type->base == TOKEN_FLOAT) {
+return 2;
+}
+if (type->base == TOKEN_DOUBLE) {
+return 3;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_can_widen_numeric(TypeInfo* expected, TypeInfo* actual) {
+if (!(mod_src_typecheck_flo_is_numeric_type(expected))  ||  !(mod_src_typecheck_flo_is_numeric_type(actual))) {
+return 0;
+}
+return mod_src_typecheck_flo_numeric_rank(actual) <= mod_src_typecheck_flo_numeric_rank(expected);
+}
+
+
+int mod_src_typecheck_flo_can_implicitly_convert(TypeInfo* expected, TypeInfo* actual) {
+if (mod_src_typecheck_flo_types_match(expected, actual)) {
+return 1;
+}
+if (mod_src_typecheck_flo_can_widen_numeric(expected, actual)) {
+return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_can_explicitly_convert(TypeInfo* target, TypeInfo* value) {
+if (mod_src_typecheck_flo_types_match(target, value)) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_numeric_type(target)  &&  mod_src_typecheck_flo_is_numeric_type(value)) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_bool_type(target)  &&  value->base == TOKEN_INT  &&  value->pointer_depth == 0  &&  value->array_size == 0) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_bool_type(value)  &&  target->base == TOKEN_INT  &&  target->pointer_depth == 0  &&  target->array_size == 0) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_string_type(target)  &&  mod_src_typecheck_flo_is_cstr_type(value)) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_cstr_type(target)  &&  mod_src_typecheck_flo_is_string_type(value)) {
+return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_can_convert_either_way(TypeInfo* left, TypeInfo* right) {
+return mod_src_typecheck_flo_can_implicitly_convert(left, right)  ||  mod_src_typecheck_flo_can_implicitly_convert(right, left);
+}
+
+
+int mod_src_typecheck_flo_allow_string_literal_for_target(AST* expr, TypeInfo* expected) {
+if (expr == NULL  ||  expr->kind != AST_STRING_LIT) {
+return 0;
+}
+if (mod_src_typecheck_flo_is_cstr_type(expected)) {
+expr->data._string.lower_kind = STRING_LOWER_CSTR;
+return 1;
+}
+if (mod_src_typecheck_flo_is_string_type(expected)) {
+expr->data._string.lower_kind = STRING_LOWER_STRING;
+return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_builtin_expects_cstr_arg(char* src, int start, int length, int index) {
+if (length == 6  &&  !(strncmp(src + start, "printf", 6))) {
+return index == 0;
+}
+else if (length == 7  &&  !(strncmp(src + start, "fprintf", 7))) {
+return index == 1;
+}
+else if (length == 8  &&  !(strncmp(src + start, "snprintf", 8))) {
+return index == 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcmp", 6))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncmp", 7))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcpy", 6))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncpy", 7))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strdup", 6))) {
+return index == 0;
+}
+else if (length == 5  &&  !(strncmp(src + start, "fopen", 5))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "system", 6))) {
+return index == 0;
+}
+else if (length == 8  &&  !(strncmp(src + start, "realpath", 8))) {
+return index == 0;
+}
+return 0;
+}
+
+
+void mod_src_typecheck_flo_annotate_builtin_cstr_args(AST* args, char* src, int start, int length) {
+AST* arg = args;
+int index = 0;
+while (arg != NULL) {
+if (mod_src_typecheck_flo_builtin_expects_cstr_arg(src, start, length, index)  &&  arg->kind == AST_STRING_LIT) {
+arg->data._string.lower_kind = STRING_LOWER_CSTR;
+}
+arg = arg->next;
+index = index + 1;
+}
+}
+
+
+int mod_src_typecheck_flo_wider_numeric_base(TypeInfo* left, TypeInfo* right) {
+if (left->base == TOKEN_DOUBLE  ||  right->base == TOKEN_DOUBLE) {
+return TOKEN_DOUBLE;
+}
+if (left->base == TOKEN_FLOAT  ||  right->base == TOKEN_FLOAT) {
+return TOKEN_FLOAT;
+}
+return TOKEN_INT;
+}
+
+
+void mod_src_typecheck_flo_set_plain_type(TypeInfo* out, int base) {
+out->base = base;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+}
+
+
+void mod_src_typecheck_flo_set_cstr_type(TypeInfo* out) {
+out->base = TOKEN_CHAR;
+out->pointer_depth = 1;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+}
+
+
+int mod_src_typecheck_flo_is_comparison_op(int kind) {
+return kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP;
+}
+
+
+int mod_src_typecheck_flo_is_logical_op(int kind) {
+return kind == TOKEN_AND  ||  kind == TOKEN_OR;
+}
+
+
+int mod_src_typecheck_flo_can_decay_array_to_pointer(TypeInfo* expected, TypeInfo* actual) {
+if (actual->array_size == 0  ||  expected->array_size != 0) {
+return 0;
+}
+if (expected->base != actual->base) {
+return 0;
+}
+if (expected->pointer_depth != actual->pointer_depth + 1) {
+return 0;
+}
+if (expected->base == TOKEN_IDENTIFIER) {
+if (!(mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length))) {
+return 0;
+}
+}
+return 1;
+}
+
+
+int mod_src_typecheck_flo_can_pass_arg(TypeInfo* expected, TypeInfo* actual) {
+if (mod_src_typecheck_flo_can_implicitly_convert(expected, actual)) {
+return 1;
+}
+if (mod_src_typecheck_flo_can_decay_array_to_pointer(expected, actual)) {
+return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual) {
+if (mod_src_typecheck_flo_is_null_type(expected)  &&  mod_src_typecheck_flo_is_pointer_like_type(actual)) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_null_type(actual)  &&  mod_src_typecheck_flo_is_pointer_like_type(expected)) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual)) {
+return 1;
+}
+if (expected->base != actual->base) {
+return 0;
+}
+if (expected->pointer_depth != actual->pointer_depth) {
+return 0;
+}
+if (expected->base == TOKEN_IDENTIFIER) {
+if (mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length)) {
+return 1;
+}
+return 0;
+}
+return 1;
+}
 
 
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message) {
+if (ast != NULL  &&  ast->src != NULL  &&  ast->filename != NULL) {
+int line = mod_include_lexer_h_flo_get_line(ast->src, ast->start);
+int col = mod_include_lexer_h_flo_get_col(ast->src, ast->start);
+printf("%s%s:%d:%d: error:%s %s\n", RED, ast->filename, line, col, RESET, message);
+}
+else {
 printf("%serror:%s %s\n", RED, RESET, message);
+}
 env->error_count = env->error_count + 1;
 }
 void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src);
@@ -2813,7 +3240,7 @@ else if (decl->kind == AST_STRUCT_DEF) {
 mod_src_typecheck_flo_register_struct(env, decl, src);
 }
 else if (decl->kind == AST_UNION_DEF) {
-mod_src_typecheck_flo_register_struct(env, decl, src);
+mod_src_typecheck_flo_register_union(env, decl, src);
 }
 }
 else if (curr->kind == AST_VAR_DECL) {
@@ -2884,6 +3311,7 @@ FuncInfo* info = env->funcs + env->func_count;
 info->src = src;
 info->name_start = ast->data._func_def.name_start;
 info->name_length = ast->data._func_def.name_length;
+info->params = ast->data._func_def.params;
 mod_src_typecheck_flo_copy_type(&(info->return_type), &(ast->data._func_def.return_type));
 env->func_count = env->func_count + 1;
 }
@@ -2921,6 +3349,9 @@ param = param->next;
 }
 int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
 int mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
+FuncInfo* mod_src_typecheck_flo_lookup_func_info(TypeEnv* env, char* src, int start, int length);
+FuncInfo* mod_src_typecheck_flo_lookup_func_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length);
+int mod_src_typecheck_flo_check_call_args(TypeEnv* env, AST* call_ast, AST* args, AST* params, char* src);
 
 
 void mod_src_typecheck_flo_resolve_expr_list(TypeEnv* env, AST* list, char* src) {
@@ -2931,6 +3362,73 @@ mod_src_typecheck_flo_resolve_expr(env, curr, tmp, src);
 free(tmp);
 curr = curr->next;
 }
+}
+
+
+int mod_src_typecheck_flo_resolve_builtin_c_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
+int start = expr->data._func_call.name_start;
+int length = expr->data._func_call.name_length;
+int return_kind = 0;
+if (length == 6  &&  !(strncmp(src + start, "printf", 6))) {
+return_kind = 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "fprintf", 7))) {
+return_kind = 1;
+}
+else if (length == 8  &&  !(strncmp(src + start, "snprintf", 8))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcmp", 6))) {
+return_kind = 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncmp", 7))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strlen", 6))) {
+return_kind = 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "tolower", 7))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "system", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "fflush", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "fclose", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcpy", 6))) {
+return_kind = 2;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncpy", 7))) {
+return_kind = 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strdup", 6))) {
+return_kind = 2;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strrchr", 7))) {
+return_kind = 2;
+}
+else if (length == 8  &&  !(strncmp(src + start, "realpath", 8))) {
+return_kind = 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "getcwd", 6))) {
+return_kind = 2;
+}
+else {
+return 0;
+}
+mod_src_typecheck_flo_annotate_builtin_cstr_args(expr->data._func_call.args, src, start, length);
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._func_call.args, src);
+if (return_kind == 1) {
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
+}
+else {
+mod_src_typecheck_flo_set_cstr_type(out);
+}
+return 1;
 }
 
 
@@ -2968,11 +3466,22 @@ else if (expr->kind == AST_DOT_ACCESS) {
 return mod_src_typecheck_flo_resolve_dot(env, expr, out, src);
 }
 else if (expr->kind == AST_FUNC_CALL) {
+if (mod_src_typecheck_flo_resolve_builtin_c_call(env, expr, out, src)) {
+return 1;
+}
+mod_src_typecheck_flo_annotate_builtin_cstr_args(expr->data._func_call.args, src, expr->data._func_call.name_start, expr->data._func_call.name_length);
+FuncInfo* info = mod_src_typecheck_flo_lookup_func_info(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length);
+if (info == NULL) {
 mod_src_typecheck_flo_resolve_expr_list(env, expr->data._func_call.args, src);
-return mod_src_typecheck_flo_lookup_func_return_type(env, src, expr->data._func_call.name_start, expr->data._func_call.name_length, out);
+return 0;
+}
+if (!(mod_src_typecheck_flo_check_call_args(env, expr, expr->data._func_call.args, info->params, src))) {
+return 0;
+}
+mod_src_typecheck_flo_copy_type(out, &(info->return_type));
+return 1;
 }
 else if (expr->kind == AST_ALIAS_CALL) {
-mod_src_typecheck_flo_resolve_expr_list(env, expr->data._alias_call.args, src);
 return mod_src_typecheck_flo_resolve_alias_call(env, expr, out, src);
 }
 else if (expr->kind == AST_SUBSCRIPT) {
@@ -2980,28 +3489,140 @@ if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, 
 return 0;
 }
 TypeInfo* idx_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.index, idx_type, src);
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.index, idx_type, src))) {
 free(idx_type);
+return 0;
+}
+free(idx_type);
+if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
+return 1;
+}
+if (out->pointer_depth > 0) {
+out->pointer_depth = out->pointer_depth - 1;
+return 1;
+}
 return 1;
 }
 else if (expr->kind == AST_BINARY_OP) {
 TypeInfo* left_type = malloc(sizeof(TypeInfo));
 TypeInfo* right_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.left, left_type, src);
-mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.right, right_type, src);
-out->base = TOKEN_INT;
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.left, left_type, src))) {
+free(left_type);
+free(right_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._binary.right, right_type, src))) {
+free(left_type);
+free(right_type);
+return 0;
+}
+if (mod_src_typecheck_flo_is_logical_op(expr->data._binary.op)) {
+if (!(mod_src_typecheck_flo_is_condition_type(left_type))  ||  !(mod_src_typecheck_flo_is_condition_type(right_type))) {
+mod_src_typecheck_flo_type_error(env, expr, "logical operators require condition-compatible operands");
+free(left_type);
+free(right_type);
+return 0;
+}
+out->base = TOKEN_BOOL;
 out->pointer_depth = 0;
 out->array_size = 0;
 out->arr_size_expr = NULL;
+}
+else if (mod_src_typecheck_flo_is_comparison_op(expr->data._binary.op)) {
+expr->data._binary.is_string_compare = 0;
+if (mod_src_typecheck_flo_is_string_type(left_type)  ||  mod_src_typecheck_flo_is_string_type(right_type)) {
+if (mod_src_typecheck_flo_is_string_type(left_type)  &&  mod_src_typecheck_flo_is_string_type(right_type)) {
+if (expr->data._binary.op == TOKEN_COMP  ||  expr->data._binary.op == TOKEN_NEQ) {
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
+expr->data._binary.is_string_compare = 1;
+}
+else {
+mod_src_typecheck_flo_type_error(env, expr, "string comparisons only support == and !=");
+free(left_type);
+free(right_type);
+return 0;
+}
+}
+else {
+mod_src_typecheck_flo_type_error(env, expr, "string comparisons require both operands to be string");
+free(left_type);
+free(right_type);
+return 0;
+}
+}
+else if (!(mod_src_typecheck_flo_can_convert_either_way(left_type, right_type))) {
+mod_src_typecheck_flo_type_error(env, expr, "comparison operands must have matching types");
+free(left_type);
+free(right_type);
+return 0;
+}
+else {
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
+}
+out->base = TOKEN_BOOL;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+}
+else {
+if (mod_src_typecheck_flo_is_bool_type(left_type)  ||  mod_src_typecheck_flo_is_bool_type(right_type)) {
+mod_src_typecheck_flo_type_error(env, expr, "arithmetic operators do not accept bool operands");
+free(left_type);
+free(right_type);
+return 0;
+}
+if (expr->data._binary.op == TOKEN_PLUS  ||  expr->data._binary.op == TOKEN_MINUS  &&  mod_src_typecheck_flo_is_pointer_like_type(left_type)  &&  mod_src_typecheck_flo_is_integer_type(right_type)) {
+mod_src_typecheck_flo_copy_type(out, left_type);
+if (out->array_size != 0) {
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->pointer_depth = out->pointer_depth + 1;
+}
+free(left_type);
+free(right_type);
+return 1;
+}
+if (expr->data._binary.op == TOKEN_PLUS  &&  mod_src_typecheck_flo_is_integer_type(left_type)  &&  mod_src_typecheck_flo_is_pointer_like_type(right_type)) {
+mod_src_typecheck_flo_copy_type(out, right_type);
+if (out->array_size != 0) {
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->pointer_depth = out->pointer_depth + 1;
+}
+free(left_type);
+free(right_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_can_convert_either_way(left_type, right_type))) {
+mod_src_typecheck_flo_type_error(env, expr, "arithmetic operands must have matching or compatible types");
+free(left_type);
+free(right_type);
+return 0;
+}
+if (mod_src_typecheck_flo_is_numeric_type(left_type)  &&  mod_src_typecheck_flo_is_numeric_type(right_type)) {
+mod_src_typecheck_flo_set_plain_type(out, mod_src_typecheck_flo_wider_numeric_base(left_type, right_type));
+}
+else {
+mod_src_typecheck_flo_copy_type(out, left_type);
+}
+}
 free(left_type);
 free(right_type);
 return 1;
 }
 else if (expr->kind == AST_UNARY_NOT) {
 TypeInfo* operand_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand_type, src);
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand_type, src))) {
+free(operand_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_is_condition_type(operand_type))) {
+mod_src_typecheck_flo_type_error(env, expr, "not requires a condition-compatible operand");
+free(operand_type);
+return 0;
+}
 free(operand_type);
 out->base = TOKEN_BOOL;
 out->pointer_depth = 0;
@@ -3015,13 +3636,32 @@ if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand
 free(operand_type);
 return 0;
 }
+if (mod_src_typecheck_flo_is_bool_type(operand_type)) {
+mod_src_typecheck_flo_type_error(env, expr, "unary minus does not accept bool");
+free(operand_type);
+return 0;
+}
 mod_src_typecheck_flo_copy_type(out, operand_type);
 free(operand_type);
 return 1;
 }
 else if (expr->kind == AST_CAST) {
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, expr->data._cast.value, value_type, src);
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._cast.value, value_type, src))) {
+free(value_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_can_explicitly_convert(&(expr->data._cast.type), value_type))) {
+mod_src_typecheck_flo_type_error(env, expr, "cast is not valid for these types");
+free(value_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_can_explicitly_convert(&(expr->data._cast.type), value_type))) {
+mod_src_typecheck_flo_type_error(env, expr, "cast is not valid for these types");
+free(value_type);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(&(expr->data._cast.value_type), value_type);
 free(value_type);
 mod_src_typecheck_flo_copy_type(out, &(expr->data._cast.type));
 return 1;
@@ -3047,6 +3687,13 @@ out->array_size = 0;
 out->arr_size_expr = NULL;
 return 1;
 }
+else if (expr->kind == AST_BOOL_LIT) {
+out->base = TOKEN_BOOL;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+return 1;
+}
 else if (expr->kind == AST_CHAR_LIT) {
 out->base = TOKEN_CHAR;
 out->pointer_depth = 0;
@@ -3055,10 +3702,7 @@ out->arr_size_expr = NULL;
 return 1;
 }
 else if (expr->kind == AST_STRING_LIT) {
-out->base = TOKEN_STRING;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_STRING);
 return 1;
 }
 else if (expr->kind == AST_NULL) {
@@ -3079,7 +3723,35 @@ mod_src_typecheck_flo_type_error(env, expr, "could not resolve object type for f
 free(object_type);
 return 0;
 }
+if (object_type->base == TOKEN_STRING) {
+if (object_type->pointer_depth == 0) {
+expr->data._dot_access.access_kind = ACCESS_DOT;
+}
+else if (object_type->pointer_depth == 1) {
+expr->data._dot_access.access_kind = ACCESS_ARROW;
+}
+else {
+mod_src_typecheck_flo_type_error(env, expr, "cannot directly access field through multi-pointer type");
+free(object_type);
+return 0;
+}
+if (expr->data._dot_access.field_length == 6  &&  !(strncmp(src + expr->data._dot_access.field_start, "length", 6))) {
+expr->data._dot_access.is_hidden = 0;
+expr->data._dot_access.is_frozen = 1;
+expr->data._dot_access.is_readonly = 1;
+expr->data._dot_access.owner_src = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
+mod_src_typecheck_flo_copy_type(&(expr->data._dot_access.resolved_type), out);
+free(object_type);
+return 1;
+}
+mod_src_typecheck_flo_type_error(env, expr, "unknown field on string");
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+free(object_type);
+return 0;
+}
 if (object_type->base != TOKEN_IDENTIFIER) {
+mod_src_typecheck_flo_type_error(env, expr, "cannot access field on non-struct type");
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
@@ -3097,12 +3769,14 @@ return 0;
 }
 StructInfo* base_struct = mod_src_typecheck_flo_lookup_struct(env, object_type->name_src, object_type->name_start, object_type->name_length);
 if (base_struct == NULL) {
+mod_src_typecheck_flo_type_error(env, expr, "unknown struct type in field access");
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
 }
 FieldInfo* field = mod_src_typecheck_flo_lookup_field(env, base_struct, src, expr->data._dot_access.field_start, expr->data._dot_access.field_length);
 if (field == NULL) {
+mod_src_typecheck_flo_type_error(env, expr, "unknown field on struct");
 expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
 free(object_type);
 return 0;
@@ -3132,17 +3806,25 @@ return 0;
 }
 Module* imported = mod_src_module_flo_find_imported_module(active_type_modules, current_type_module, src, expr->data._alias_call.alias_start, expr->data._alias_call.alias_length);
 if (imported == NULL) {
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._alias_call.args, src);
 mod_src_typecheck_flo_type_error(env, expr, "unknown module alias in function call");
 return 0;
 }
 if (!(mod_src_module_flo_module_exports_func(imported, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length))) {
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._alias_call.args, src);
 mod_src_typecheck_flo_type_error(env, expr, "function is not exported by imported module");
 return 0;
 }
-if (!(mod_src_typecheck_flo_lookup_func_return_type_in_module(env, imported->src, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length, out))) {
+FuncInfo* info = mod_src_typecheck_flo_lookup_func_in_module(env, imported->src, src, expr->data._alias_call.func_start, expr->data._alias_call.func_length);
+if (info == NULL) {
+mod_src_typecheck_flo_resolve_expr_list(env, expr->data._alias_call.args, src);
 mod_src_typecheck_flo_type_error(env, expr, "could not resolve imported function return type");
 return 0;
 }
+if (!(mod_src_typecheck_flo_check_call_args(env, expr, expr->data._alias_call.args, info->params, src))) {
+return 0;
+}
+mod_src_typecheck_flo_copy_type(out, &(info->return_type));
 return 1;
 }
 
@@ -3151,21 +3833,45 @@ void mod_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src
 if (ast->kind == AST_VAR_DECL) {
 mod_src_typecheck_flo_register_var(env, ast, src);
 if (ast->data._var_decl.value != NULL) {
-TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._var_decl.value, tmp, src);
-free(tmp);
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._var_decl.value, value_type, src)) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_decl.value, &(ast->data._var_decl.type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(ast->data._var_decl.type), value_type))) {
+mod_src_typecheck_flo_type_error(env, ast, "variable initializer does not match declared type");
+free(value_type);
+return;}
+}
+free(value_type);
 }
 }
 else if (ast->kind == AST_VAR_ASS) {
-TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._var_ass.value, tmp, src);
-free(tmp);
+TypeInfo* target_type = malloc(sizeof(TypeInfo));
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_lookup_var_type(env, src, ast->data._var_ass.name_start, ast->data._var_ass.name_length, target_type))) {
+mod_src_typecheck_flo_type_error(env, ast, "unknown variable in assignment");
+free(target_type);
+free(value_type);
+return;}
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._var_ass.value, value_type, src)) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_ass.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
+mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match variable type");
+}
+}
+free(target_type);
+free(value_type);
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
 free(tmp);
 if (ast->data._dot_access.value != NULL) {
+TypeInfo* object_type = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.object, object_type, src)) {
+if (object_type->base == TOKEN_STRING) {
+mod_src_typecheck_flo_type_error(env, ast, "string.length is readonly");
+free(object_type);
+return;}
+}
+free(object_type);
 if (current_type_module != NULL  &&  ast->data._dot_access.owner_src != NULL  &&  ast->data._dot_access.owner_src != current_type_module->src) {
 if (ast->data._dot_access.is_readonly) {
 mod_src_typecheck_flo_type_error(env, ast, "field is readonly from this scope");
@@ -3177,19 +3883,45 @@ free(value_type);
 }
 }
 else if (ast->kind == AST_IF) {
+if (ast->data._if_condition.condition != NULL) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._if_condition.condition, tmp, src);
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._if_condition.condition, tmp, src)) {
+if (!(mod_src_typecheck_flo_is_condition_type(tmp))) {
+mod_src_typecheck_flo_type_error(env, ast, "if condition must be a condition-compatible type");
+}
+}
+free(tmp);
+}
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
-free(tmp);
 }
 else if (ast->kind == AST_WHILE) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._while_loop.condition, tmp, src);
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._while_loop.condition, tmp, src)) {
+if (!(mod_src_typecheck_flo_is_condition_type(tmp))) {
+mod_src_typecheck_flo_type_error(env, ast, "while condition must be condition-compatible type");
+}
+}
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._while_loop.body, src);
 free(tmp);
 }
 else if (ast->kind == AST_FOR) {
+int saved_var_count = env->var_count;
+if (env->var_count >= 2048) {
+mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+return;}
+VarInfo* loop_var = env->vars + env->var_count;
+loop_var->src = src;
+loop_var->name_start = ast->data._for_loop.var_start;
+loop_var->name_length = ast->data._for_loop.var_length;
+loop_var->type.base = TOKEN_INT;
+loop_var->type.pointer_depth = 0;
+loop_var->type.array_size = 0;
+loop_var->type.arr_size_expr = NULL;
+loop_var->type.name_start = 0;
+loop_var->type.name_length = 0;
+loop_var->type.name_src = NULL;
+env->var_count = env->var_count + 1;
 TypeInfo* from_type = malloc(sizeof(TypeInfo));
 TypeInfo* to_type = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast->data._for_loop.from, from_type, src);
@@ -3197,15 +3929,36 @@ mod_src_typecheck_flo_resolve_expr(env, ast->data._for_loop.to, to_type, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._for_loop.body, src);
 free(from_type);
 free(to_type);
+env->var_count = saved_var_count;
 }
 else if (ast->kind == AST_FLOW_CONTROL) {
+if (ast->data._flow_ctrl.base != NULL  &&  ast->data._flow_ctrl.base->kind == TOKEN_RETURN  &&  inside_function) {
+if (ast->data._flow_ctrl.value == NULL) {
+if (!(mod_src_typecheck_flo_is_void_type(&(current_return_type)))) {
+mod_src_typecheck_flo_type_error(env, ast, "return value does not match function return type");
+}
+}
+else {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src)) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._flow_ctrl.value, &(current_return_type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(current_return_type), tmp))) {
+mod_src_typecheck_flo_type_error(env, ast, "return value does not match function return type");
+}
+}
+free(tmp);
+}
+}
+else if (ast->data._flow_ctrl.value != NULL) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src);
 free(tmp);
 }
+}
 else if (ast->kind == AST_PRINT) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._print.value, tmp, src);
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._print.value, tmp, src)) {
+mod_src_typecheck_flo_copy_type(&(ast->data._print.value_type), tmp);
+}
 free(tmp);
 }
 else if (ast->kind == AST_FUNC_CALL  ||  ast->kind == AST_ALIAS_CALL) {
@@ -3221,24 +3974,34 @@ AST* curr = ast;
 while (curr != NULL) {
 if (curr->kind == AST_FUNC_DEF) {
 int saved_var_count = env->var_count;
+inside_function = 1;
+mod_src_typecheck_flo_copy_type(&(current_return_type), &(curr->data._func_def.return_type));
 mod_src_typecheck_flo_register_params(env, curr, src);
 mod_src_typecheck_flo_walk_statement_list(env, curr->data._func_def.body, src);
 env->var_count = saved_var_count;
+inside_function = 0;
 }
 else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
 AST* decl = curr->data._prop.decl;
 if (decl->kind == AST_FUNC_DEF) {
 int saved_var_count = env->var_count;
+inside_function = 1;
+mod_src_typecheck_flo_copy_type(&(current_return_type), &(decl->data._func_def.return_type));
 mod_src_typecheck_flo_register_params(env, decl, src);
 mod_src_typecheck_flo_walk_statement_list(env, decl->data._func_def.body, src);
 env->var_count = saved_var_count;
+inside_function = 0;
 }
 }
 else if (curr->kind == AST_VAR_DECL) {
 if (curr->data._var_decl.value != NULL) {
-TypeInfo* tmp = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, tmp, src);
-free(tmp);
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, value_type, src)) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(curr->data._var_decl.value, &(curr->data._var_decl.type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(curr->data._var_decl.type), value_type))) {
+mod_src_typecheck_flo_type_error(env, curr, "variable initializer does not match declared type");
+}
+}
+free(value_type);
 }
 }
 curr = curr->next;
@@ -3306,6 +4069,58 @@ return 0;
 }
 
 
+FuncInfo* mod_src_typecheck_flo_lookup_func_info(TypeEnv* env, char* src, int start, int length) {
+int i = env->func_count - 1;
+while (i >= 0) {
+FuncInfo* info = env->funcs + i;
+if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+return info;
+}
+i = i - 1;
+}
+return NULL;
+}
+
+
+FuncInfo* mod_src_typecheck_flo_lookup_func_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length) {
+int i = env->func_count - 1;
+while (i >= 0) {
+FuncInfo* info = env->funcs + i;
+if (info->src == module_src  &&  mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, call_src, start, length)) {
+return info;
+}
+i = i - 1;
+}
+return NULL;
+}
+
+
+int mod_src_typecheck_flo_check_call_args(TypeEnv* env, AST* call_ast, AST* args, AST* params, char* src) {
+AST* arg = args;
+AST* param = params;
+while (arg != NULL  &&  param != NULL) {
+TypeInfo* arg_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_resolve_expr(env, arg, arg_type, src))) {
+free(arg_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(arg, &(param->data._func_params.type)))  &&  !(mod_src_typecheck_flo_can_pass_arg(&(param->data._func_params.type), arg_type))) {
+mod_src_typecheck_flo_type_error(env, arg, "function argument does not match parameter type");
+free(arg_type);
+return 0;
+}
+free(arg_type);
+arg = arg->next;
+param = param->next;
+}
+if (arg != NULL  ||  param != NULL) {
+mod_src_typecheck_flo_type_error(env, call_ast, "function call argument count does not match parameter count");
+return 0;
+}
+return 1;
+}
+
+
 void mod_src_typecheck_flo_walk_statement_list(TypeEnv* env, AST* list, char* src) {
 AST* curr = list;
 while (curr != NULL) {
@@ -3346,6 +4161,26 @@ int has_stdlib = 0;
 int has_stdio = 0;
 
 
+void mod_src_codegen_flo_emit_string_runtime(FILE* out) {
+fprintf(out, "#include <stdio.h>\n");
+fprintf(out, "#include <string.h>\n");
+fprintf(out, "typedef struct { char* data; int length; } flower_string;\n");
+fprintf(out, "static flower_string flower_string_from_cstr(char* s) {\n");
+fprintf(out, "  flower_string out;\n");
+fprintf(out, "  out.data = s;\n");
+fprintf(out, "  out.length = (int)strlen(s);\n");
+fprintf(out, "  return out;\n");
+fprintf(out, "}\n");
+fprintf(out, "static int flower_string_eq(flower_string a, flower_string b) {\n");
+fprintf(out, "  if (a.length != b.length) return 0;\n");
+fprintf(out, "  return !strncmp(a.data, b.data, a.length);\n");
+fprintf(out, "}\n");
+fprintf(out, "static void flower_print_string(flower_string s) {\n");
+fprintf(out, "  printf(\"%%.*s\", s.length, s.data);\n");
+fprintf(out, "}\n;\n");
+}
+
+
 void mod_src_codegen_flo_emit_includes(ModuleSet* mods, FILE* out) {
 int need_stdlib = 0;
 int need_stdio = 0;
@@ -3360,6 +4195,9 @@ has_stdlib = 1;
 if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_stdio = 1;
 }
+if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_STRING)) {
+need_string = 1;
+}
 AST* curr = m->ast;
 while (curr != NULL) {
 if (curr->kind == AST_IMPORT  &&  curr->data._import.is_system) {
@@ -3372,6 +4210,7 @@ else if (!(strcmp(name, "stdlib"))) {
 need_stdlib = 1;
 }
 else if (!(strcmp(name, "string"))) {
+need_stdio = 1;
 need_string = 1;
 }
 else if (!(strcmp(name, "ctype"))) {
@@ -3523,6 +4362,9 @@ return "ERROR";
 void mod_src_codegen_flo_typeinfo_to_string(TypeInfo* type, FILE* out, char* src) {
 if (type->base == TOKEN_IDENTIFIER) {
 fprintf(out, "%.*s", type->name_length, src + type->name_start);
+}
+else if (type->base == TOKEN_STRING) {
+fprintf(out, "flower_string");
 }
 else {
 fprintf(out, "%s", mod_src_codegen_flo_token_to_string(type->base));
@@ -3945,7 +4787,8 @@ return;}
 char raw_path[256];
 snprintf(raw_path, sizeof(raw_path), "%.*s", ast->data._import.path_length - 2, src + ast->data._import.path_start + 1);
 char* path = mod_src_globals_flo_resolve_path(current_file, raw_path);
-char alias[64] = "";
+char alias[64];
+alias[0] = '\0';
 if (ast->data._import.has_alias) {
 snprintf(alias, sizeof(alias), "%.*s", ast->data._import.alias_length, src + ast->data._import.alias_start);
 }
@@ -3977,19 +4820,53 @@ fprintf(out, "%d", ast->value);
 else if (ast->kind == AST_FLOAT_LIT) {
 fprintf(out, "%.*s", ast->data._float_lit.length, src + ast->data._float_lit.start);
 }
+else if (ast->kind == AST_BOOL_LIT) {
+fprintf(out, "%d", ast->data._bool_lit.value);
+}
+else if (ast->kind == AST_BOOL_LIT) {
+fprintf(out, "%d", ast->data._bool_lit.value);
+}
 else if (ast->kind == AST_NULL) {
 fprintf(out, "NULL");
 }
 else if (ast->kind == AST_BINARY_OP) {
+if (ast->data._binary.is_string_compare) {
+if (ast->data._binary.op == TOKEN_NEQ) {
+fprintf(out, "(!flower_string_eq(");
+}
+else {
+fprintf(out, "flower_string_eq(");
+}
+mod_src_codegen_flo_gen_expr(ast->data._binary.left, out, src);
+fprintf(out, ", ");
+mod_src_codegen_flo_gen_expr(ast->data._binary.right, out, src);
+if (ast->data._binary.op == TOKEN_NEQ) {
+fprintf(out, "))");
+}
+else {
+fprintf(out, ")");
+}
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._binary.left, out, src);
 fprintf(out, " %s ", mod_src_codegen_flo_token_to_string(ast->data._binary.op));
 mod_src_codegen_flo_gen_expr(ast->data._binary.right, out, src);
+}
 }
 else if (ast->kind == AST_FUNC_CALL) {
 mod_src_codegen_flo_gen_func_call(ast, out, src);
 }
 else if (ast->kind == AST_STRING_LIT) {
+if (ast->data._string.lower_kind == STRING_LOWER_CSTR) {
 fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
+}
+else {
+fprintf(out, "((flower_string){ ");
+fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
+fprintf(out, ", (int)(sizeof(");
+fprintf(out, "%.*s", ast->data._string.str_length, src + ast->data._string.str_start);
+fprintf(out, ") - 1) })");
+}
 }
 else if (ast->kind == AST_ARRAY_LIT) {
 fprintf(out, "{");
@@ -4016,11 +4893,28 @@ struct_elem = struct_elem->next;
 fprintf(out, "}");
 }
 else if (ast->kind == AST_CAST) {
+if (ast->data._cast.type.base == TOKEN_CHAR  &&  ast->data._cast.type.pointer_depth == 1  &&  ast->data._cast.type.array_size == 0  &&  ast->data._cast.value_type.base == TOKEN_STRING  &&  ast->data._cast.value_type.pointer_depth == 0  &&  ast->data._cast.value_type.array_size == 0) {
+fprintf(out, "(");
+mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
+fprintf(out, ").data");
+}
+else if (ast->data._cast.type.base == TOKEN_STRING  &&  ast->data._cast.type.pointer_depth == 0  &&  ast->data._cast.type.array_size == 0  &&  ast->data._cast.value_type.base == TOKEN_CHAR  &&  ast->data._cast.value_type.pointer_depth == 1  &&  ast->data._cast.value_type.array_size == 0) {
+fprintf(out, "flower_string_from_cstr(");
+mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
+fprintf(out, ")");
+}
+else if (ast->data._cast.type.base == TOKEN_BOOL  &&  ast->data._cast.type.pointer_depth == 0  &&  ast->data._cast.type.array_size == 0) {
+fprintf(out, "((");
+mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
+fprintf(out, ") != 0");
+}
+else {
 fprintf(out, "(");
 mod_src_codegen_flo_typeinfo_to_string(&(ast->data._cast.type), out, src);
 fprintf(out, ")(");
 mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
 fprintf(out, ")");
+}
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 AST* object = ast->data._dot_access.object;
@@ -4194,9 +5088,31 @@ fprintf(out, ";\n");
 }
 }
 else if (ast->kind == AST_PRINT) {
+if (ast->data._print.value_type.base == TOKEN_STRING  &&  ast->data._print.value_type.pointer_depth == 0  &&  ast->data._print.value_type.array_size == 0) {
+fprintf(out, "flower_print_string(");
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+fprintf(out, ");\n");
+}
+else if (ast->data._print.value_type.base == TOKEN_CHAR  &&  ast->data._print.value_type.pointer_depth == 1  &&  ast->data._print.value_type.array_size == 0) {
+fprintf(out, "printf(\"%%s\", ");
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+fprintf(out, ");\n");
+}
+else if (ast->data._print.value_type.base == TOKEN_CHAR  &&  ast->data._print.value_type.pointer_depth == 0) {
+fprintf(out, "printf(\"%%c\", ");
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+fprintf(out, ");\n");
+}
+else if (ast->data._print.value_type.base == TOKEN_FLOAT  ||  ast->data._print.value_type.base == TOKEN_DOUBLE) {
+fprintf(out, "printf(\"%%f\", ");
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+fprintf(out, ");\n");
+}
+else {
 fprintf(out, "printf(");
 mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
 fprintf(out, ");\n");
+}
 }
 else if (ast->kind == AST_PRUNE) {
 fprintf(out, "free(");
@@ -4257,22 +5173,22 @@ arg[i] = tolower((char)(arg[i]));
 if (!(strcmp(arg, "help"))  ||  !(strcmp(arg, "h"))) {
 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET);
 printf("%sUsage:\n%s", BLUE, RESET);
-printf("\tflower\t[options] <filepath>\n\n");
+flower_print_string(((flower_string){ "\tflower\t[options] <filepath>\n\n", (int)(sizeof("\tflower\t[options] <filepath>\n\n") - 1) }));
 printf("%sOptions:\n%s", BLUE, RESET);
-printf("\t-help,    -h\tShow this help message\n");
-printf("\t-version, -v\tShow the current version of FloC\n");
-printf("\t<filepath>\tSpecify the source code file to compile\n\n");
+flower_print_string(((flower_string){ "\t-help,    -h\tShow this help message\n", (int)(sizeof("\t-help,    -h\tShow this help message\n") - 1) }));
+flower_print_string(((flower_string){ "\t-version, -v\tShow the current version of FloC\n", (int)(sizeof("\t-version, -v\tShow the current version of FloC\n") - 1) }));
+flower_print_string(((flower_string){ "\t<filepath>\tSpecify the source code file to compile\n\n", (int)(sizeof("\t<filepath>\tSpecify the source code file to compile\n\n") - 1) }));
 printf("%sExample:\n%s", BLUE, RESET);
-printf("\tflower -help\n");
-printf("\tflower main.flo\n\n");
+flower_print_string(((flower_string){ "\tflower -help\n", (int)(sizeof("\tflower -help\n") - 1) }));
+flower_print_string(((flower_string){ "\tflower main.flo\n\n", (int)(sizeof("\tflower main.flo\n\n") - 1) }));
 printf("%sTips:\n%s", BLUE, RESET);
-printf(" - You can use any number of dashes before a flag, e.g., ---help\n");
-printf(" - Flags are case-insensitive: -HELP works too!\n\n");
+flower_print_string(((flower_string){ " - You can use any number of dashes before a flag, e.g., ---help\n", (int)(sizeof(" - You can use any number of dashes before a flag, e.g., ---help\n") - 1) }));
+flower_print_string(((flower_string){ " - Flags are case-insensitive: -HELP works too!\n\n", (int)(sizeof(" - Flags are case-insensitive: -HELP works too!\n\n") - 1) }));
 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET);
 continue;
 }
 else if (!(strcmp(arg, "version"))  ||  !(strcmp(arg, "v"))) {
-printf("Version: 0.0.4\n");
+flower_print_string(((flower_string){ "Version: 0.0.4\n", (int)(sizeof("Version: 0.0.4\n") - 1) }));
 continue;
 }
 else {
@@ -4284,14 +5200,14 @@ printf("%sCompiling file: %s%s\n", BLUE, argv[i], RESET);
 char abs_path[512];
 realpath(argv[i], abs_path);
 mod_src_globals_flo_set_current_file(abs_path);
-printf("Initializing modules..\n");
+flower_print_string(((flower_string){ "Initializing modules..\n", (int)(sizeof("Initializing modules..\n") - 1) }));
 ModuleSet* mods = malloc(sizeof(ModuleSet));
 mod_src_module_flo_init_modules(mods);
 Module* main_mod = mod_src_module_flo_load_module(mods, abs_path);
 if (main_mod == NULL) {
 return -1;
 }
-printf("Checking types..\n");
+flower_print_string(((flower_string){ "Checking types..\n", (int)(sizeof("Checking types..\n") - 1) }));
 int type_errors = mod_src_typecheck_flo_check_modules(mods);
 if (type_errors > 0) {
 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
@@ -4316,8 +5232,9 @@ if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = 1;
 }
 }
-printf("Codegen...\n");
+flower_print_string(((flower_string){ "Codegen...\n", (int)(sizeof("Codegen...\n") - 1) }));
 fflush(stdout);
+mod_src_codegen_flo_emit_string_runtime(output);
 mod_src_codegen_flo_emit_includes(mods, output);
 mod_src_codegen_flo_codegen(mods, output);
 free(mods);
@@ -4335,7 +5252,7 @@ fflush(stdout);
 snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name);
 }
 system(build_cmd);
-printf("\n");
+flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
 printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET);
 break;
 }

@@ -1,9 +1,49 @@
 import <stdio>
+import <string>
 
-prop func test(): int
-    s: string = "hello"
-    if s != null:
-        return 1
+prop func test(): bool
+    name: string = "Ivy" as string
+    raw: @char = name as @char
+    other: string = raw as string
+    empty: string = "" as string
+    literal_raw: @char = "Flower"
+
+    if name != other:
+        return false
     end
-    return 0
+
+    if name == "Nova" as string:
+        return false
+    end
+
+    if name != "Ivy" as string:
+        return false
+    end
+
+    if name.length != 3:
+        return false
+    end
+
+    if other.length != 3:
+        return false
+    end
+
+    if empty.length != 0:
+        return false
+    end
+
+    if strcmp(raw, "Ivy") != 0:
+        return false
+    end
+
+    if strcmp(literal_raw, "Flower") != 0:
+        return false
+    end
+    
+    print(name)
+    print("\n")
+    print(other)
+    print("\n")
+
+    return true
 end

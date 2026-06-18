@@ -41,6 +41,7 @@ struct FuncInfo {
     src: @char,
     name_start: int,
     name_length: int,
+    params: @AST,
     return_type: TypeInfo
 }
 
@@ -63,14 +64,21 @@ struct TypeEnv {
 active_type_modules: @ModuleSet
 current_type_module: @Module
 
+current_return_type: TypeInfo
+inside_function: int = 0
+
 // Helper Functions
 
-func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): int
+func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): bool
     if a_len != b_len:
-        return 0
+        return false
     end
 
-    return not strncmp(a_src + a_start, b_src + b_start, a_len)
+    if !strncmp(a_src + a_start, b_src + b_start, a_len):
+        return true
+    end
+
+    return false
 end
 
 func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
@@ -83,10 +91,302 @@ func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
     dst.name_src = src_type.name_src
 end
 
+forward func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
+
+func is_bool_type(type: @TypeInfo): int
+    if type.base == TOKEN_BOOL and type.pointer_depth == 0 and type.array_size == 0:
+        return 1
+    end
+
+    return 0
+end
+
+func is_void_type(type: @TypeInfo): bool
+    return type.base == TOKEN_VOID and type.pointer_depth == 0 and type.array_size == 0
+end
+
+func is_null_type(type: @TypeInfo): bool
+    return type.base == TOKEN_VOID and type.pointer_depth == 1 and type.array_size == 0
+end
+
+func is_integer_type(type: @TypeInfo): bool
+    return (type.base == TOKEN_INT or type.base == TOKEN_CHAR) and type.pointer_depth == 0 and type.array_size == 0
+end
+
+func is_decimal_type(type: @TypeInfo): bool
+    return (type.base == TOKEN_FLOAT or type.base == TOKEN_DOUBLE) and type.pointer_depth == 0 and type.array_size == 0
+end
+
+func is_pointer_like_type(type: @TypeInfo): bool
+    return type.pointer_depth > 0 or type.array_size != 0
+end
+
+func is_condition_type(type: @TypeInfo): bool
+    return is_bool_type(type) or is_integer_type(type) or is_pointer_like_type(type)
+end
+
+func is_string_type(type: @TypeInfo): bool
+    return type.base == TOKEN_STRING and type.pointer_depth == 0 and type.array_size == 0
+end
+
+func is_cstr_type(type: @TypeInfo): bool
+    return type.base == TOKEN_CHAR and type.pointer_depth == 1 and type.array_size == 0
+end
+
+func is_numeric_type(type: @TypeInfo): bool
+    return (type.base == TOKEN_INT or type.base == TOKEN_FLOAT or type.base == TOKEN_DOUBLE) and type.pointer_depth == 0 and type.array_size == 0
+end
+
+func numeric_rank(type: @TypeInfo): int
+    if type.base == TOKEN_INT:      
+        return 1 
+    end
+    if type.base == TOKEN_FLOAT:    
+        return 2 
+    end
+    if type.base == TOKEN_DOUBLE:   
+        return 3 
+    end
+    return 0
+end
+
+func can_widen_numeric(expected: @TypeInfo, actual: @TypeInfo): bool
+    if not is_numeric_type(expected) or not is_numeric_type(actual): 
+        return false 
+    end
+    return numeric_rank(actual) <= numeric_rank(expected)
+end
+
+func can_implicitly_convert(expected: @TypeInfo, actual: @TypeInfo): bool
+    if types_match(expected, actual):       
+        return true 
+    end
+    if can_widen_numeric(expected, actual): 
+        return true 
+    end
+    return false
+end
+
+func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
+    if types_match(target, value): 
+        return true 
+    end
+
+    if is_numeric_type(target) and is_numeric_type(value): 
+        return true 
+    end
+
+    if is_bool_type(target) and value.base == TOKEN_INT and value.pointer_depth == 0 and value.array_size == 0: 
+        return true
+    end
+
+    if is_bool_type(value) and target.base == TOKEN_INT and target.pointer_depth == 0 and target.array_size == 0:
+        return true
+    end
+
+    if is_string_type(target) and is_cstr_type(value):
+        return true
+    end
+
+    if is_cstr_type(target) and is_string_type(value):
+        return true
+    end
+
+    return false
+end
+
+func can_convert_either_way(left: @TypeInfo, right: @TypeInfo): bool
+    return can_implicitly_convert(left, right) or can_implicitly_convert(right, left)
+end
+
+func allow_string_literal_for_target(expr: @AST, expected: @TypeInfo): bool
+    if expr == null or expr.kind != AST_STRING_LIT:
+        return false
+    end
+
+    if is_cstr_type(expected):
+        expr.data._string.lower_kind = STRING_LOWER_CSTR
+        return true
+    end
+
+    if is_string_type(expected):
+        expr.data._string.lower_kind = STRING_LOWER_STRING
+        return true
+    end
+
+    return false
+end
+
+func builtin_expects_cstr_arg(src: @char, start: int, length: int, index: int): bool
+    if length == 6 and not strncmp(src + start, "printf", 6):
+        return index == 0
+
+    else if length == 7 and not strncmp(src + start, "fprintf", 7):
+        return index == 1
+
+    else if length == 8 and not strncmp(src + start, "snprintf", 8):
+        return index == 2
+
+    else if length == 6 and not strncmp(src + start, "strcmp", 6):
+        return index == 0 or index == 1
+
+    else if length == 7 and not strncmp(src + start, "strncmp", 7):
+        return index == 0 or index == 1
+
+    else if length == 6 and not strncmp(src + start, "strcpy", 6):
+        return index == 0 or index == 1
+
+    else if length == 7 and not strncmp(src + start, "strncpy", 7):
+        return index == 0 or index == 1
+
+    else if length == 6 and not strncmp(src + start, "strdup", 6):
+        return index == 0
+
+    else if length == 5 and not strncmp(src + start, "fopen", 5):
+        return index == 0 or index == 1
+
+    else if length == 6 and not strncmp(src + start, "system", 6):
+        return index == 0
+
+    else if length == 8 and not strncmp(src + start, "realpath", 8):
+        return index == 0
+    end
+
+    return false
+end
+
+func annotate_builtin_cstr_args(args: @AST, src: @char, start: int, length: int): void
+    arg: @AST = args
+    index: int = 0
+
+    while arg != null:
+        if builtin_expects_cstr_arg(src, start, length, index) and arg.kind == AST_STRING_LIT:
+            arg.data._string.lower_kind = STRING_LOWER_CSTR
+        end
+
+        arg = arg.next
+        index = index + 1
+    end
+end
+
+func wider_numeric_base(left: @TypeInfo, right: @TypeInfo): int
+    if left.base == TOKEN_DOUBLE or right.base == TOKEN_DOUBLE:
+        return TOKEN_DOUBLE
+    end
+
+    if left.base == TOKEN_FLOAT or right.base == TOKEN_FLOAT:
+        return TOKEN_FLOAT
+    end
+
+    return TOKEN_INT
+end
+
+func set_plain_type(out: @TypeInfo, base: int): void
+    out.base = base
+    out.pointer_depth = 0
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+end
+
+func set_cstr_type(out: @TypeInfo): void
+    out.base = TOKEN_CHAR
+    out.pointer_depth = 1
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+end
+
+func is_comparison_op(kind: int): bool
+    return kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP
+end
+
+func is_logical_op(kind: int): bool
+    return kind == TOKEN_AND or kind == TOKEN_OR
+end
+
+func can_decay_array_to_pointer(expected: @TypeInfo, actual: @TypeInfo): bool
+    if actual.array_size == 0 or expected.array_size != 0:
+        return false
+    end
+
+    if expected.base != actual.base:
+        return false
+    end
+
+    if expected.pointer_depth != actual.pointer_depth + 1:
+        return false
+    end
+
+    if expected.base == TOKEN_IDENTIFIER:
+        if not same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length):
+            return false
+        end
+    end
+
+    return true
+end
+
+func can_pass_arg(expected: @TypeInfo, actual: @TypeInfo): bool
+    if can_implicitly_convert(expected, actual):
+        return true
+    end
+
+    if can_decay_array_to_pointer(expected, actual):
+        return true
+    end
+
+    return false
+end
+
+
+func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
+    if is_null_type(expected) and is_pointer_like_type(actual):
+        return true
+    end
+
+    if is_null_type(actual) and is_pointer_like_type(expected):
+        return true
+    end
+
+    if is_decimal_type(expected) and is_decimal_type(actual):
+        return true
+    end
+
+    if expected.base != actual.base:
+        return false
+    end
+
+    if expected.pointer_depth != actual.pointer_depth:
+        return false
+    end
+
+    if expected.base == TOKEN_IDENTIFIER:
+        if same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length):
+            return true
+        end
+        return false
+    end
+
+    return true
+end
+
+
 // Utility
 
 func type_error(env: @TypeEnv, ast: @AST, message: @char): void
-    printf("%serror:%s %s\n", RED, RESET, message)
+    if ast != null and ast.src != null and ast.filename != null:
+        line: int = get_line(ast.src, ast.start)
+        col: int = get_col(ast.src, ast.start)
+        printf("%s%s:%d:%d: error:%s %s\n", RED, ast.filename, line, col, RESET, message)
+    else:
+        printf("%serror:%s %s\n", RED, RESET, message)
+    end
+    
     env.error_count = env.error_count + 1
 end
 
@@ -136,7 +436,7 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
                 register_struct(env, decl, src)
 
             else if decl.kind == AST_UNION_DEF:
-                register_struct(env, decl, src)
+                register_union(env, decl, src)
             end
 
         else if curr.kind == AST_VAR_DECL:
@@ -218,6 +518,7 @@ func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     info.src = src
     info.name_start = ast.data._func_def.name_start
     info.name_length = ast.data._func_def.name_length
+    info.params = ast.data._func_def.params
     copy_type(&info.return_type, &ast.data._func_def.return_type)
 
     env.func_count = env.func_count + 1
@@ -267,6 +568,9 @@ end
 
 forward func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 forward func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
+forward func lookup_func_info(env: @TypeEnv, src: @char, start: int, length: int): @FuncInfo
+forward func lookup_func_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int): @FuncInfo
+forward func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): int
 
 func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
     curr: @AST = list
@@ -276,6 +580,77 @@ func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
         prune tmp
         curr = curr.next
     end
+end
+
+// FOR C
+func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): bool
+    start: int = expr.data._func_call.name_start
+    length: int = expr.data._func_call.name_length
+    return_kind: int = 0    // 1 = int, 2 = @char
+
+    if length == 6 and not strncmp(src + start, "printf", 6):
+        return_kind = 1
+
+    else if length == 7 and not strncmp(src + start, "fprintf", 7):
+        return_kind = 1
+
+    else if length == 8 and not strncmp(src + start, "snprintf", 8):
+        return_kind = 1
+
+    else if length == 6 and not strncmp(src + start, "strcmp", 6):
+        return_kind = 1
+
+    else if length == 7 and not strncmp(src + start, "strncmp", 7):
+        return_kind = 1
+
+    else if length == 6 and not strncmp(src + start, "strlen", 6):
+        return_kind = 1
+    
+    else if length == 7 and not strncmp(src + start, "tolower", 7):
+        return_kind = 1
+
+    else if length == 6 and not strncmp(src + start, "system", 6):
+        return_kind = 1
+        
+    else if length == 6 and not strncmp(src + start, "fflush", 6):
+        return_kind = 1
+        
+    else if length == 6 and not strncmp(src + start, "fclose", 6):
+        return_kind = 1
+
+    
+    else if length == 6 and not strncmp(src + start, "strcpy", 6):
+        return_kind = 2
+        
+    else if length == 7 and not strncmp(src + start, "strncpy", 7):
+        return_kind = 2
+        
+    else if length == 6 and not strncmp(src + start, "strdup", 6):
+        return_kind = 2
+        
+    else if length == 7 and not strncmp(src + start, "strrchr", 7):
+        return_kind = 2
+        
+    else if length == 8 and not strncmp(src + start, "realpath", 8):
+        return_kind = 2
+        
+    else if length == 6 and not strncmp(src + start, "getcwd", 6):
+        return_kind = 2
+
+    else:
+        return false
+    end
+
+    annotate_builtin_cstr_args(expr.data._func_call.args, src, start, length)
+    resolve_expr_list(env, expr.data._func_call.args, src)
+
+    if return_kind == 1:
+        set_plain_type(out, TOKEN_INT)
+    else:
+        set_cstr_type(out)
+    end
+
+    return true
 end
 
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
@@ -318,11 +693,26 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return resolve_dot(env, expr, out, src)
 
     else if expr.kind == AST_FUNC_CALL:
-        resolve_expr_list(env, expr.data._func_call.args, src)
-        return lookup_func_return_type(env, src, expr.data._func_call.name_start, expr.data._func_call.name_length, out)
+        if resolve_builtin_c_call(env, expr, out, src):
+            return 1
+        end
+        
+        annotate_builtin_cstr_args(expr.data._func_call.args, src, expr.data._func_call.name_start, expr.data._func_call.name_length)
+
+        info: @FuncInfo = lookup_func_info(env, src, expr.data._func_call.name_start, expr.data._func_call.name_length)
+        if info == null:
+            resolve_expr_list(env, expr.data._func_call.args, src)
+            return 0
+        end
+
+        if not check_call_args(env, expr, expr.data._func_call.args, info.params, src):
+            return 0
+        end
+
+        copy_type(out, &info.return_type)
+        return 1
 
     else if expr.kind == AST_ALIAS_CALL:
-        resolve_expr_list(env, expr.data._alias_call.args, src)
         return resolve_alias_call(env, expr, out, src)
 
     else if expr.kind == AST_SUBSCRIPT:
@@ -331,24 +721,137 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
 
         idx_type: @TypeInfo = new TypeInfo
-        resolve_expr(env, expr.data._subscript.index, idx_type, src)
+        if !resolve_expr(env, expr.data._subscript.index, idx_type, src):
+            prune idx_type
+            return 0
+        end
         prune idx_type
 
-        out.array_size = 0
-        out.arr_size_expr = null
+        if out.array_size != 0:
+            out.array_size = 0
+            out.arr_size_expr = null
+            return 1
+        end
+
+        if out.pointer_depth > 0:
+            out.pointer_depth = out.pointer_depth - 1
+            return 1
+        end
+
         return 1
 
     else if expr.kind == AST_BINARY_OP:
         left_type: @TypeInfo = new TypeInfo
         right_type: @TypeInfo = new TypeInfo
 
-        resolve_expr(env, expr.data._binary.left, left_type, src)
-        resolve_expr(env, expr.data._binary.right, right_type, src)
+        if !resolve_expr(env, expr.data._binary.left, left_type, src):
+            prune left_type
+            prune right_type
+            return 0
+        end
 
-        out.base = TOKEN_INT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        if !resolve_expr(env, expr.data._binary.right, right_type, src):
+            prune left_type
+            prune right_type
+            return 0
+        end
+
+        if is_logical_op(expr.data._binary.op):
+            if !is_condition_type(left_type) or !is_condition_type(right_type):
+                type_error(env, expr, "logical operators require condition-compatible operands")
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            out.base = TOKEN_BOOL
+            out.pointer_depth = 0
+            out.array_size = 0
+            out.arr_size_expr = null
+
+        else if is_comparison_op(expr.data._binary.op):
+            expr.data._binary.is_string_compare = 0
+
+            if is_string_type(left_type) or is_string_type(right_type):
+                if is_string_type(left_type) and is_string_type(right_type):
+                    if expr.data._binary.op == TOKEN_COMP or expr.data._binary.op == TOKEN_NEQ:
+                        set_plain_type(out, TOKEN_BOOL)
+                        expr.data._binary.is_string_compare = 1
+                    else:
+                        type_error(env, expr, "string comparisons only support == and !=")
+                        prune left_type
+                        prune right_type
+                        return 0
+                    end
+                else:
+                    type_error(env, expr, "string comparisons require both operands to be string")
+                    prune left_type
+                    prune right_type
+                    return 0
+                end
+            else if not can_convert_either_way(left_type, right_type):
+                type_error(env, expr, "comparison operands must have matching types")
+                prune left_type
+                prune right_type
+                return 0
+            else:
+                set_plain_type(out, TOKEN_BOOL)
+            end
+
+            out.base = TOKEN_BOOL
+            out.pointer_depth = 0
+            out.array_size = 0
+            out.arr_size_expr = null
+
+        else:
+            if is_bool_type(left_type) or is_bool_type(right_type):
+                type_error(env, expr, "arithmetic operators do not accept bool operands")
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            if (expr.data._binary.op == TOKEN_PLUS or expr.data._binary.op == TOKEN_MINUS) and is_pointer_like_type(left_type) and is_integer_type(right_type):
+                copy_type(out, left_type)
+
+                if out.array_size != 0:
+                    out.array_size = 0
+                    out.arr_size_expr = null
+                    out.pointer_depth = out.pointer_depth + 1
+                end
+                
+                prune left_type
+                prune right_type
+                return 1
+            end
+
+            if expr.data._binary.op == TOKEN_PLUS and is_integer_type(left_type) and is_pointer_like_type(right_type):
+                copy_type(out, right_type)
+
+                if out.array_size != 0:
+                    out.array_size = 0
+                    out.arr_size_expr = null
+                    out.pointer_depth = out.pointer_depth + 1
+                end
+
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            if not can_convert_either_way(left_type, right_type):
+                type_error(env, expr, "arithmetic operands must have matching or compatible types")
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            if is_numeric_type(left_type) and is_numeric_type(right_type):
+                set_plain_type(out, wider_numeric_base(left_type, right_type))
+            else:
+                copy_type(out, left_type)
+            end
+        end
 
         prune left_type
         prune right_type
@@ -356,7 +859,18 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     else if expr.kind == AST_UNARY_NOT:
         operand_type: @TypeInfo = new TypeInfo
-        resolve_expr(env, expr.data._unary.operand, operand_type, src)
+
+        if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+            prune operand_type
+            return 0
+        end
+
+        if !is_condition_type(operand_type):
+            type_error(env, expr, "not requires a condition-compatible operand")
+            prune operand_type
+            return 0
+        end
+
         prune operand_type
 
         out.base = TOKEN_BOOL
@@ -367,7 +881,14 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     else if expr.kind == AST_UNARY_NEG:
         operand_type: @TypeInfo = new TypeInfo
+
         if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+            prune operand_type
+            return 0
+        end
+
+        if is_bool_type(operand_type):
+            type_error(env, expr, "unary minus does not accept bool")
             prune operand_type
             return 0
         end
@@ -378,9 +899,25 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     else if expr.kind == AST_CAST:
         value_type: @TypeInfo = new TypeInfo
-        resolve_expr(env, expr.data._cast.value, value_type, src)
-        prune value_type
+        if not resolve_expr(env, expr.data._cast.value, value_type, src):
+            prune value_type
+            return 0
+        end
 
+        if not can_explicitly_convert(&expr.data._cast.type, value_type):
+            type_error(env, expr, "cast is not valid for these types")
+            prune value_type
+            return 0
+        end
+
+        if not can_explicitly_convert(&expr.data._cast.type, value_type):
+            type_error(env, expr, "cast is not valid for these types")
+            prune value_type
+            return 0
+        end
+        
+        copy_type(&expr.data._cast.value_type, value_type)
+        prune value_type
         copy_type(out, &expr.data._cast.type)
         return 1
 
@@ -405,6 +942,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         out.arr_size_expr = null
         return 1
 
+    else if expr.kind == AST_BOOL_LIT:
+        out.base = TOKEN_BOOL
+        out.pointer_depth = 0
+        out.array_size = 0
+        out.arr_size_expr = null
+        return 1
+
     else if expr.kind == AST_CHAR_LIT:
         out.base = TOKEN_CHAR
         out.pointer_depth = 0
@@ -413,10 +957,15 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_STRING_LIT:
-        out.base = TOKEN_STRING
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        // STRING SETTING— UNNUSED UNTIL COMPILER IS UPDATED
+        set_plain_type(out, TOKEN_STRING)
+        // out.base = TOKEN_CHAR
+        // out.pointer_depth = 1
+        // out.array_size = 0
+        // out.arr_size_expr = null
+        // out.name_start = 0
+        // out.name_length = 0
+        // out.name_src = null
         return 1
 
     else if expr.kind == AST_NULL:
@@ -433,14 +982,43 @@ end
 func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     object_type: @TypeInfo = new TypeInfo
     
-    if !resolve_expr(env, expr.data._dot_access.object, object_type, src):
+    if not resolve_expr(env, expr.data._dot_access.object, object_type, src):
         type_error(env, expr, "could not resolve object type for field access")
         prune object_type
         return 0
     end
 
+    if object_type.base == TOKEN_STRING:
+        if object_type.pointer_depth == 0:
+            expr.data._dot_access.access_kind = ACCESS_DOT
+        else if object_type.pointer_depth == 1:
+            expr.data._dot_access.access_kind = ACCESS_ARROW
+        else:
+            type_error(env, expr, "cannot directly access field through multi-pointer type")
+            prune object_type
+            return 0
+        end
+
+        if expr.data._dot_access.field_length == 6 and not strncmp(src + expr.data._dot_access.field_start, "length", 6):
+            expr.data._dot_access.is_hidden = 0
+            expr.data._dot_access.is_frozen = 1
+            expr.data._dot_access.is_readonly = 1
+            expr.data._dot_access.owner_src = null
+
+            set_plain_type(out, TOKEN_INT)
+            copy_type(&expr.data._dot_access.resolved_type, out)
+            prune object_type
+            return 1
+        end
+
+        type_error(env, expr, "unknown field on string")
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+        prune object_type
+        return 0
+    end
+
     if object_type.base != TOKEN_IDENTIFIER:
-        // type_error(env, expr, "cannot access field on non-struct type")
+        type_error(env, expr, "cannot access field on non-struct type")
         expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0
@@ -458,7 +1036,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     base_struct: @StructInfo = lookup_struct(env, object_type.name_src, object_type.name_start, object_type.name_length)
     if base_struct == null:
-        // type_error(env, expr, "unknown struct type in field access")
+        type_error(env, expr, "unknown struct type in field access")
         expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0
@@ -466,7 +1044,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     field: @FieldInfo = lookup_field(env, base_struct, src, expr.data._dot_access.field_start, expr.data._dot_access.field_length)
     if field == null:
-        // type_error(env, expr, "unknown field on struct")
+        type_error(env, expr, "unknown field on struct")
         expr.data._dot_access.access_kind = ACCESS_UNKNOWN
         prune object_type
         return 0
@@ -499,42 +1077,85 @@ func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): 
 
     imported: @Module = find_imported_module(active_type_modules, current_type_module, src, expr.data._alias_call.alias_start, expr.data._alias_call.alias_length)
     if imported == null:
+        resolve_expr_list(env, expr.data._alias_call.args, src)
         type_error(env, expr, "unknown module alias in function call")
         return 0
     end
 
-    if !module_exports_func(imported, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length):
+    if not module_exports_func(imported, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length):
+        resolve_expr_list(env, expr.data._alias_call.args, src)
         type_error(env, expr, "function is not exported by imported module")
         return 0
     end
 
-    if !lookup_func_return_type_in_module(env, imported.src, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length, out):
+    info: @FuncInfo = lookup_func_in_module(env, imported.src, src, expr.data._alias_call.func_start, expr.data._alias_call.func_length)
+    if info == null:
+        resolve_expr_list(env, expr.data._alias_call.args, src)
         type_error(env, expr, "could not resolve imported function return type")
         return 0
     end
 
+    if not check_call_args(env, expr, expr.data._alias_call.args, info.params, src):
+        return 0
+    end
+
+    copy_type(out, &info.return_type)
     return 1
 end
 
 func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast, src)
+
         if ast.data._var_decl.value != null:
-            tmp: @TypeInfo = new TypeInfo
-            resolve_expr(env, ast.data._var_decl.value, tmp, src)
-            prune tmp
+            value_type: @TypeInfo = new TypeInfo
+
+            if resolve_expr(env, ast.data._var_decl.value, value_type, src):
+                if not allow_string_literal_for_target(ast.data._var_decl.value, &ast.data._var_decl.type) and not can_implicitly_convert(&ast.data._var_decl.type, value_type):
+                    type_error(env, ast, "variable initializer does not match declared type")
+                    prune value_type
+                    return
+                end
+            end
+
+            prune value_type
         end
 
     else if ast.kind == AST_VAR_ASS:
-        tmp: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._var_ass.value, tmp, src)
-        prune tmp
+        target_type: @TypeInfo = new TypeInfo
+        value_type: @TypeInfo = new TypeInfo
+
+        if !lookup_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
+            type_error(env, ast, "unknown variable in assignment")
+            prune target_type
+            prune value_type
+            return
+        end
+
+        if resolve_expr(env, ast.data._var_ass.value, value_type, src):
+            if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
+                type_error(env, ast, "assigned value does not match variable type")
+            end
+        end
+
+        prune target_type
+        prune value_type
 
     else if ast.kind == AST_DOT_ACCESS:
         tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast, tmp, src)
         prune tmp
         if ast.data._dot_access.value != null:
+            object_type: @TypeInfo = new TypeInfo
+            if resolve_expr(env, ast.data._dot_access.object, object_type, src):
+                if object_type.base == TOKEN_STRING:
+                    type_error(env, ast, "string.length is readonly")
+                    prune object_type
+                    return
+                end
+            end
+            prune object_type
+
             if current_type_module != null and ast.data._dot_access.owner_src != null and ast.data._dot_access.owner_src != current_type_module.src:
                 if ast.data._dot_access.is_readonly:
                     type_error(env, ast, "field is readonly from this scope")
@@ -548,19 +1169,51 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         end
 
     else if ast.kind == AST_IF:
-        tmp: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._if_condition.condition, tmp, src)
+        if ast.data._if_condition.condition != null:
+            tmp: @TypeInfo = new TypeInfo
+            if resolve_expr(env, ast.data._if_condition.condition, tmp, src):
+                if !is_condition_type(tmp):
+                    type_error(env, ast, "if condition must be a condition-compatible type")
+                end
+            end
+            prune tmp
+        end
+        
         walk_statement_list(env, ast.data._if_condition.body, src)
         walk_statement_list(env, ast.data._if_condition.else_branch, src)
-        prune tmp
 
     else if ast.kind == AST_WHILE:
         tmp: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._while_loop.condition, tmp, src)
+        if resolve_expr(env, ast.data._while_loop.condition, tmp, src):
+            if !is_condition_type(tmp):
+                type_error(env, ast, "while condition must be condition-compatible type")
+            end
+        end
         walk_statement_list(env, ast.data._while_loop.body, src)
         prune tmp
 
     else if ast.kind == AST_FOR:
+        saved_var_count: int = env.var_count
+
+        if env.var_count >= 2048:
+            type_error(env, ast, "type environment struct table overflow")
+            return
+        end
+
+        loop_var: @VarInfo = env.vars + env.var_count
+        loop_var.src = src
+        loop_var.name_start = ast.data._for_loop.var_start
+        loop_var.name_length = ast.data._for_loop.var_length
+        loop_var.type.base = TOKEN_INT
+        loop_var.type.pointer_depth = 0
+        loop_var.type.array_size = 0
+        loop_var.type.arr_size_expr = null
+        loop_var.type.name_start = 0
+        loop_var.type.name_length = 0
+        loop_var.type.name_src = null
+
+        env.var_count = env.var_count + 1
+
         from_type: @TypeInfo = new TypeInfo
         to_type: @TypeInfo = new TypeInfo
         resolve_expr(env, ast.data._for_loop.from, from_type, src)
@@ -568,15 +1221,35 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         walk_statement_list(env, ast.data._for_loop.body, src)
         prune from_type
         prune to_type
+
+        env.var_count = saved_var_count
     
     else if ast.kind == AST_FLOW_CONTROL:
-        tmp: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._flow_ctrl.value, tmp, src)
-        prune tmp
+        if ast.data._flow_ctrl.base != null and ast.data._flow_ctrl.base.kind == TOKEN_RETURN and inside_function:
+            if ast.data._flow_ctrl.value == null:
+                if !is_void_type(&current_return_type):
+                    type_error(env, ast, "return value does not match function return type")
+                end
+            else:
+                tmp: @TypeInfo = new TypeInfo
+                if resolve_expr(env, ast.data._flow_ctrl.value, tmp, src):
+                    if not allow_string_literal_for_target(ast.data._flow_ctrl.value, &current_return_type) and not can_implicitly_convert(&current_return_type, tmp):
+                        type_error(env, ast, "return value does not match function return type")
+                    end
+                end
+                prune tmp
+            end
+        else if ast.data._flow_ctrl.value != null:
+            tmp: @TypeInfo = new TypeInfo
+            resolve_expr(env, ast.data._flow_ctrl.value, tmp, src)
+            prune tmp
+        end
 
     else if ast.kind == AST_PRINT:
         tmp: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._print.value, tmp, src)
+        if resolve_expr(env, ast.data._print.value, tmp, src):
+            copy_type(&ast.data._print.value_type, tmp)
+        end
         prune tmp
     
     else if ast.kind == AST_FUNC_CALL or ast.kind == AST_ALIAS_CALL:
@@ -591,25 +1264,37 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
     while curr != null:
         if curr.kind == AST_FUNC_DEF:
             saved_var_count: int = env.var_count
+            inside_function = 1
+            copy_type(&current_return_type, &curr.data._func_def.return_type)
             register_params(env, curr, src)
             walk_statement_list(env, curr.data._func_def.body, src)
             env.var_count = saved_var_count
+            inside_function = 0
 
         else if curr.kind == AST_PROP and curr.data._prop.decl != null:
             decl: @AST = curr.data._prop.decl
 
             if decl.kind == AST_FUNC_DEF:
                 saved_var_count: int = env.var_count
+                inside_function = 1
+                copy_type(&current_return_type, &decl.data._func_def.return_type)
                 register_params(env, decl, src)
                 walk_statement_list(env, decl.data._func_def.body, src)
                 env.var_count = saved_var_count
+                inside_function = 0
             end
         
         else if curr.kind == AST_VAR_DECL:
             if curr.data._var_decl.value != null:
-                tmp: @TypeInfo = new TypeInfo
-                resolve_expr(env, curr.data._var_decl.value, tmp, src)
-                prune tmp
+                value_type: @TypeInfo = new TypeInfo
+
+                if resolve_expr(env, curr.data._var_decl.value, value_type, src):
+                    if not allow_string_literal_for_target(curr.data._var_decl.value, &curr.data._var_decl.type) and not can_implicitly_convert(&curr.data._var_decl.type, value_type):
+                        type_error(env, curr, "variable initializer does not match declared type")
+                    end
+                end
+
+                prune value_type
             end
         end
         curr = curr.next
@@ -682,6 +1367,61 @@ func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_sr
     end
 
     return 0
+end
+
+func lookup_func_info(env: @TypeEnv, src: @char, start: int, length: int): @FuncInfo
+    i: int = env.func_count - 1
+    while i >= 0:
+        info: @FuncInfo = env.funcs + i
+        if same_name(info.src, info.name_start, info.name_length, src, start, length):
+            return info
+        end
+        i = i - 1
+    end
+    return null
+end
+
+func lookup_func_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int): @FuncInfo
+    i: int = env.func_count - 1
+    while i >= 0:
+        info: @FuncInfo = env.funcs + i
+        if info.src == module_src and same_name(info.src, info.name_start, info.name_length, call_src, start, length):
+            return info
+        end
+        i = i - 1
+    end
+    return null
+end
+
+func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): int
+    arg: @AST = args
+    param: @AST = params
+
+    while arg != null and param != null:
+        arg_type: @TypeInfo = new TypeInfo
+
+        if not resolve_expr(env, arg, arg_type, src):
+            prune arg_type
+            return 0
+        end
+
+        if not allow_string_literal_for_target(arg, &param.data._func_params.type) and not can_pass_arg(&param.data._func_params.type, arg_type):
+            type_error(env, arg, "function argument does not match parameter type")
+            prune arg_type
+            return 0
+        end
+
+        prune arg_type
+        arg = arg.next
+        param = param.next
+    end
+
+    if arg != null or param != null:
+        type_error(env, call_ast, "function call argument count does not match parameter count")
+        return 0
+    end
+
+    return 1
 end
 
 // Walk statement

@@ -1,9 +1,6 @@
 import <stdio>
 
-prop func test(): int
+prop func test(): bool
     c: char = 'a'
-    if c == 'a':
-        return 1
-    end
-    return 0
+    return c == 'a'
 end

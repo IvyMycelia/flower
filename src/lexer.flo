@@ -159,6 +159,8 @@ prop func lex(ts: @TokenStream, src: @char): void
                 add_token(ts, TOKEN_PROP, start, length)
             else if length == 4 and not strncmp(src + start, "func", 4):
                 add_token(ts, TOKEN_FUNC, start, length)
+            else if length == 4 and not strncmp(src + start, "true", 4):
+                add_token(ts, TOKEN_TRUE, start, length)
 
             else if length == 5 and not strncmp(src + start, "union", 5):
                 add_token(ts, TOKEN_UNION, start, length)
@@ -172,6 +174,8 @@ prop func lex(ts: @TokenStream, src: @char): void
                 add_token(ts, TOKEN_FLOAT, start, length)
             else if length == 5 and not strncmp(src + start, "break", 5):
                 add_token(ts, TOKEN_BREAK, start, length)
+            else if length == 5 and not strncmp(src + start, "false", 5):
+                add_token(ts, TOKEN_FALSE, start, length)
 
             else if length == 6 and not strncmp(src + start, "return", 6):
                 add_token(ts, TOKEN_RETURN, start, length)
@@ -324,6 +328,8 @@ func token_kind_name(kind: int): @char
 
     else if kind == TOKEN_STRING_LIT:   return "TOKEN_STRING_LIT"
     else if kind == TOKEN_CHAR_LIT:     return "TOKEN_CHAR_LIT"
+    else if kind == TOKEN_TRUE:         return "TOKEN_TRUE"
+    else if kind == TOKEN_FALSE:        return "TOKEN_FALSE"
 
         // Identifiers 
     else if kind == TOKEN_STRUCT:       return "TOKEN_STRUCT"

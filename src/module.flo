@@ -106,7 +106,7 @@ func build_symbol_prefix(path: @char): @char
     i: int = 0
     j: int = 4
     while rel[i] != '\0' and j < sizeof(out) - 1:
-        c: int = rel[i]
+        c: char = rel[i]
 
         if isalnum(c):
             out[j] = c
@@ -168,7 +168,7 @@ func module_defines_func(module: @Module, src: @char, start: int, length: int): 
     return 0
 end
 
-func module_exports_func(module: @Module, src: @char, start: int, length: int): int
+func module_exports_func(module: @Module, src: @char, start: int, length: int): bool
     return find_export(module, src, start, length, EXPORT_FUNC) != null
 end
 
@@ -272,7 +272,7 @@ func load_module(set: @ModuleSet, path: @char): @Module
     lexer.lex(m.tokens, src)
 
     p: Parser
-    parser.init_parser(&p, m.tokens, src, path)
+    parser.init_parser(&p, m.tokens, src, m.path)
     m.ast = parser.parse(&p)
     
     collect_exports(m)

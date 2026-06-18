@@ -8,13 +8,13 @@ import "examples/control/unary_neg.flo" as unary_neg
 import "examples/control/binary_ops.flo" as binary_ops
 import "examples/control/functions.flo" as functions_test
 
-prop func test(): int
+prop func test(): bool
     total: int = 0
     pass: int = 0
 
     print("  if/else... ")
     total = total + 1
-    if if_else.test() == 1:
+    if if_else.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -23,7 +23,7 @@ prop func test(): int
 
     print("  while... ")
     total = total + 1
-    if while_test.test() == 1:
+    if while_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -32,7 +32,7 @@ prop func test(): int
 
     print("  for... ")
     total = total + 1
-    if for_test.test() == 1:
+    if for_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -41,7 +41,7 @@ prop func test(): int
 
     print("  not... ")
     total = total + 1
-    if not_test.test() == 1:
+    if not_test.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -50,7 +50,7 @@ prop func test(): int
 
     print("  unary neg... ")
     total = total + 1
-    if unary_neg.test() == 1:
+    if unary_neg.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -59,7 +59,7 @@ prop func test(): int
 
     print("  binary ops... ")
     total = total + 1
-    if binary_ops.test() == 1:
+    if binary_ops.test():
         pass = pass + 1
         print("OK\n")
     else:
@@ -68,7 +68,7 @@ prop func test(): int
 
     print("  functions... ")
     total = total + 1
-    if functions_test.test() == 1:
+    if functions_test.test():
         pass = pass + 1
         print("OK\n")
     else:
