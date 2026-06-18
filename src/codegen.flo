@@ -11,7 +11,6 @@ has_stdio: int = 0
 
 func emit_string_runtime(out: @FILE): void
     fprintf(out, "#include <stdio.h>\n")
-    fprintf(out, "#include <string.h>\n")
 
     fprintf(out, "typedef struct { char* data; int length; } flower_string;\n")
 
@@ -51,7 +50,7 @@ end
 func emit_includes(mods: @ModuleSet, out: @FILE): void
     need_stdlib: int = 0
     need_stdio: int = 0
-    need_string: int = 0
+    need_string_h: int = 0
     need_ctype: int = 0
     need_unistd: int = 0
 
@@ -66,10 +65,6 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
             has_stdio = 1
         end
 
-        if token_stream_contains(m.tokens, TOKEN_STRING):
-            need_string = 1
-        end
-
         curr: @AST = m.ast
         while curr != null:
             if curr.kind == AST_IMPORT and curr.data._import.is_system:
@@ -81,8 +76,7 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
                 else if cstr.eq(name, "stdlib"):
                     need_stdlib = 1
                 else if cstr.eq(name, "string"):
-                    need_stdio = 1
-                    need_string = 1
+                    need_string_h = 1
                 else if cstr.eq(name, "ctype"):
                     need_ctype = 1
                 else if cstr.eq(name, "unistd"):
@@ -99,7 +93,7 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
     if need_stdio:
         fprintf(out, "#include <stdio.h>\n")
     end
-    if need_string:
+    if need_string_h:
         fprintf(out, "#include <string.h>\n")
     end
     if need_ctype:
@@ -428,7 +422,7 @@ func gen_struct(ast: @AST, out: @FILE, src: @char): void
     end
     fprintf(out, "} %.*s;\n", ast.data._struct_def.name_length, src + ast.data._struct_def.name_start)
 
-    defined_structs[defined_count].name = strndup(src + ast.data._struct_def.name_start, ast.data._struct_def.name_length)
+    defined_structs[defined_count].name = cstr.dup_n(src + ast.data._struct_def.name_start, ast.data._struct_def.name_length)
     defined_structs[defined_count].length = ast.data._struct_def.name_length
     defined_count = defined_count + 1
 end
@@ -467,7 +461,7 @@ func gen_union(ast: @AST, out: @FILE, src: @char): void
     end
     fprintf(out, "} %.*s;\n", ast.data._union_def.name_length, src + ast.data._union_def.name_start)
 
-    defined_unions[defined_union_count].name = strndup(src + ast.data._union_def.name_start, ast.data._union_def.name_length)
+    defined_unions[defined_union_count].name = cstr.dup_n(src + ast.data._union_def.name_start, ast.data._union_def.name_length)
     defined_unions[defined_union_count].length = ast.data._union_def.name_length
     defined_union_count = defined_union_count + 1
 end

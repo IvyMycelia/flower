@@ -76,6 +76,13 @@ prop func dup(src: @char): @char
     return out
 end
 
+prop func dup_n(src: @char, n: int): @char
+    out: @char = new char[n + 1]
+    copy_n(out, src, n)
+    out[n] = '\0'
+    return out
+end
+
 prop func find_last(src: @char, ch: char): @char
     if src == null:
         return null
