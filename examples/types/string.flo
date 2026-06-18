@@ -1,5 +1,4 @@
 import <stdio>
-import <string>
 
 prop func test(): bool
     name: string = "Ivy" as string

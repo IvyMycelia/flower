@@ -5234,10 +5234,11 @@ if (arg[0] == '-') {
 while (arg[0] == '-') {
 arg = arg + 1;
 }
-for (int i = 0; ((0) > (strlen(arg))) ? i > (strlen(arg)) : i < (strlen(arg)); ((0) > (strlen(arg))) ? i-- : i++) {
+flower_string flag = flower_string_from_cstr(arg);
+for (int i = 0; ((0) > (flag.length)) ? i > (flag.length) : i < (flag.length); ((0) > (flag.length)) ? i-- : i++) {
 arg[i] = (char)(tolower((char)(arg[i])));
 }
-if (!(strcmp(arg, "help"))  ||  !(strcmp(arg, "h"))) {
+if (flower_string_eq(flag, ((flower_string){ "help", (int)(sizeof("help") - 1) }))  ||  flower_string_eq(flag, ((flower_string){ "h", (int)(sizeof("h") - 1) }))) {
 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET);
 printf("%sUsage:\n%s", BLUE, RESET);
 flower_print_string(((flower_string){ "\tflower\t[options] <filepath>\n\n", (int)(sizeof("\tflower\t[options] <filepath>\n\n") - 1) }));
@@ -5254,7 +5255,7 @@ flower_print_string(((flower_string){ " - Flags are case-insensitive: -HELP work
 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET);
 continue;
 }
-else if (!(strcmp(arg, "version"))  ||  !(strcmp(arg, "v"))) {
+else if (flower_string_eq(flag, ((flower_string){ "version", (int)(sizeof("version") - 1) }))  ||  flower_string_eq(flag, ((flower_string){ "v", (int)(sizeof("v") - 1) }))) {
 flower_print_string(((flower_string){ "Version: 0.0.4\n", (int)(sizeof("Version: 0.0.4\n") - 1) }));
 continue;
 }
