@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 typedef struct { char* data; int length; } flower_string;
 static int flower_cstr_len(char* s) {
   int i = 0;
@@ -31,7 +30,6 @@ static void flower_print_string(flower_string s) {
 }
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <ctype.h>
 #include <unistd.h>
 
@@ -107,6 +105,14 @@ char* mod_src_stdlib_cstr_flo_dup(char* src) {
 int n = mod_src_stdlib_cstr_flo_len(src);
 char* out = malloc(sizeof(char) * (n + 1));
 mod_src_stdlib_cstr_flo_copy(out, src);
+return out;
+}
+
+
+char* mod_src_stdlib_cstr_flo_dup_n(char* src, int n) {
+char* out = malloc(sizeof(char) * (n + 1));
+mod_src_stdlib_cstr_flo_copy_n(out, src, n);
+out[n] = '\0';
 return out;
 }
 
@@ -4260,7 +4266,6 @@ int has_stdio = 0;
 
 void mod_src_codegen_flo_emit_string_runtime(FILE* out) {
 fprintf(out, "#include <stdio.h>\n");
-fprintf(out, "#include <string.h>\n");
 fprintf(out, "typedef struct { char* data; int length; } flower_string;\n");
 fprintf(out, "static int flower_cstr_len(char* s) {\n");
 fprintf(out, "  int i = 0;\n");
@@ -4296,7 +4301,7 @@ fprintf(out, "}\n");
 void mod_src_codegen_flo_emit_includes(ModuleSet* mods, FILE* out) {
 int need_stdlib = 0;
 int need_stdio = 0;
-int need_string = 0;
+int need_string_h = 0;
 int need_ctype = 0;
 int need_unistd = 0;
 for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
@@ -4306,9 +4311,6 @@ has_stdlib = 1;
 }
 if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_stdio = 1;
-}
-if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_STRING)) {
-need_string = 1;
 }
 AST* curr = m->ast;
 while (curr != NULL) {
@@ -4322,8 +4324,7 @@ else if (mod_src_stdlib_cstr_flo_eq(name, "stdlib")) {
 need_stdlib = 1;
 }
 else if (mod_src_stdlib_cstr_flo_eq(name, "string")) {
-need_stdio = 1;
-need_string = 1;
+need_string_h = 1;
 }
 else if (mod_src_stdlib_cstr_flo_eq(name, "ctype")) {
 need_ctype = 1;
@@ -4341,7 +4342,7 @@ fprintf(out, "#include <stdlib.h>\n");
 if (need_stdio) {
 fprintf(out, "#include <stdio.h>\n");
 }
-if (need_string) {
+if (need_string_h) {
 fprintf(out, "#include <string.h>\n");
 }
 if (need_ctype) {
@@ -4652,7 +4653,7 @@ fprintf(out, ";\n");
 field = field->next;
 }
 fprintf(out, "} %.*s;\n", ast->data._struct_def.name_length, src + ast->data._struct_def.name_start);
-defined_structs[defined_count].name = strndup(src + ast->data._struct_def.name_start, ast->data._struct_def.name_length);
+defined_structs[defined_count].name = mod_src_stdlib_cstr_flo_dup_n(src + ast->data._struct_def.name_start, ast->data._struct_def.name_length);
 defined_structs[defined_count].length = ast->data._struct_def.name_length;
 defined_count = defined_count + 1;
 }
@@ -4691,7 +4692,7 @@ fprintf(out, ";\n");
 field = field->next;
 }
 fprintf(out, "} %.*s;\n", ast->data._union_def.name_length, src + ast->data._union_def.name_start);
-defined_unions[defined_union_count].name = strndup(src + ast->data._union_def.name_start, ast->data._union_def.name_length);
+defined_unions[defined_union_count].name = mod_src_stdlib_cstr_flo_dup_n(src + ast->data._union_def.name_start, ast->data._union_def.name_length);
 defined_unions[defined_union_count].length = ast->data._union_def.name_length;
 defined_union_count = defined_union_count + 1;
 }
