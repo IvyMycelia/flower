@@ -4,7 +4,7 @@ Minimalistic expressive programming language for systems programming, where cont
 
 ## Philosophy
 
-The anti-thesis of modern-day programming languages. 
+The anti-thesis of modern-day programming languages.
 
 Corpo-slop, governance, abstraction maximilism; all things that modern systems have drifted towards for its own sake. A machine-based ecosystem in a machine-based world, where people are no longer at the center. Flower exists as a rejection to that trajectory.
 
@@ -17,7 +17,7 @@ Uniformity and obscurity are broing. Flower embraces clarity over ceremony, cont
 
 ## What Flower Is
 
-A compiled, self-hosting language that targets to C (ignore the irony in it being "born from the ashes"). You write Flower, FloC generates C (for now..), you get a binary. No runtimes, no VMs, and no magic other than the feeling of euphoria it gives off.
+A compiled, self-hosting language that targets to C (ignore the irony in it being "born from the ashes"). You write Flower, FloC generates C (for now..), Clang builds it, you get a native binary. No runtimes, no VMs, and no magic other than the feeling of euphoria it gives off.
 
 **Self-Hosting**: The Flower Compiler (FloC) is written in Flower, though the original FloC is written in C (can be accessed under `vendor/flower_c_reference/`).
 
@@ -74,7 +74,9 @@ end
 
 ## Building
 
-Preamble: You will need to compile [`bin/Flower.c`](https://github.com/IvyMycelia/flower/blob/main/bin/Flower.c) or download the latest [`Flower`](https://github.com/IvyMycelia/flower/releases/tag/Stable) release first to get the executable.
+You need a working Flower binary first. The repo keeps a bootstrap C snapshot in `bin/Flower.c`:
+
+Compile [`bin/Flower.c`](https://github.com/IvyMycelia/flower/blob/main/bin/Flower.c) or download the latest [`Flower`](https://github.com/IvyMycelia/flower/releases/tag/Stable) release first to get the executable.
 
 ```bash
 make build      # Compiles from .flo source and creates new Flower binary under `bin/` if there's no errors
@@ -85,21 +87,22 @@ make test       # Run the test suite with `/bin/Flower`
 ## Using Flower
 
 ```bash
-./bin/Flower program.flo output_file
-./output_file
+./bin/Flower program.flo
+./output/out
 ```
 
 Flower generates C code, compiles it with Clang, and produces a binary. It will run the binary if there's any output (this is for development purposes).
 
 ## Language Features
 
-- **Variables & Types**: `int`, `float`, `double`, `char`, `string`, ~~`bool`~~ (BOOL NOT IMPLEMENTED YET)
+- **Variables & Types**: `int`, `float`, `double`, `char`, `string`, `bool`
 - **Pointers**: `@int` for pointer to int, `&x` for address-of, `@x` for dereference
 - **Control Flow**: `if` / `else`, `while`, `for`, `continue`, `break`, `return`
 - **Functions**: Named parameters, explicit types, no overloading (YET)
 - **Structs & Unions**: Group data, no methods (use functions instead)
 - **Memory**: `new` allocates, `prune` frees
-- **Imports**: Load other files, aliases, organize code into modules, exports via prop, private-by-default top-level declarations
+- **Strings**: Equality / inequality, `.length`, indexing and explicit casts to / from `@char`
+- **Imports**: Module aliases, exports via prop, private-by-default top-level declarations
 
 ## Experimentation & Contribution
 
@@ -117,19 +120,17 @@ Current experiments welcome. See [Docs/CONTRIBUTING.md](Docs/CONTRIBUTING.md) fo
 
 ## Project Status
 
-- **v1.0.0**: First self-hosted release
-- **Stable enough to use**, still volatile enough for major changes
-- Core language mostly stable; stdlib still growing
-- Compiler works; error messages ~~could~~ WILL improve
+- **v1.3.0**: Strings & Bools
+- Self-hosting compiler with module-aware typechecking
+- Core language is usable; stdlib is still intentionally small
+- Current backend targets C; non-C codegen is planned for `v2.0.0`
 
 ## Next
 
-- ~~Error Recovery (better compiler feedback, non-terminating parser)~~
-- ~~More in-depth context-aware type tracking system~~
-- String operations
-- Standard library creation / expansion
-- Performance optimizations
-- Proper compilation (not just C transpiling)
+- `v1.4.0` Better Types
+- `v1.5.0` Documentation
+- `v1.6.0` Standard Library expansion
+- `v2.0.0` Non-C codegen
 
 See [Docs/ROADMAP.md](Docs/ROADMAP.md) for more
 
@@ -143,7 +144,3 @@ You want a language that:
 - Doesn't try to appeal explicitly to machines
 
 Flower is that, and much much more
-
----
-
-**Getting Started**: Read[]()

@@ -5297,22 +5297,25 @@ arg[i] = (char)(tolower((char)(arg[i])));
 if (flower_string_eq(flag, ((flower_string){ "help", (int)(sizeof("help") - 1) }))  ||  flower_string_eq(flag, ((flower_string){ "h", (int)(sizeof("h") - 1) }))) {
 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET);
 printf("%sUsage:\n%s", BLUE, RESET);
-flower_print_string(((flower_string){ "\tflower\t[options] <filepath>\n\n", (int)(sizeof("\tflower\t[options] <filepath>\n\n") - 1) }));
+flower_print_string(((flower_string){ "\tflower\t[options] <filepath> [output_path]\n\n", (int)(sizeof("\tflower\t[options] <filepath> [output_path]\n\n") - 1) }));
 printf("%sOptions:\n%s", BLUE, RESET);
 flower_print_string(((flower_string){ "\t-help,    -h\tShow this help message\n", (int)(sizeof("\t-help,    -h\tShow this help message\n") - 1) }));
 flower_print_string(((flower_string){ "\t-version, -v\tShow the current version of FloC\n", (int)(sizeof("\t-version, -v\tShow the current version of FloC\n") - 1) }));
-flower_print_string(((flower_string){ "\t<filepath>\tSpecify the source code file to compile\n\n", (int)(sizeof("\t<filepath>\tSpecify the source code file to compile\n\n") - 1) }));
+flower_print_string(((flower_string){ "\t<filepath>\tSpecify the source file to compile", (int)(sizeof("\t<filepath>\tSpecify the source file to compile") - 1) }));
+flower_print_string(((flower_string){ "\t[output_path]\tOptional output binary path\n\n", (int)(sizeof("\t[output_path]\tOptional output binary path\n\n") - 1) }));
 printf("%sExample:\n%s", BLUE, RESET);
 flower_print_string(((flower_string){ "\tflower -help\n", (int)(sizeof("\tflower -help\n") - 1) }));
-flower_print_string(((flower_string){ "\tflower main.flo\n\n", (int)(sizeof("\tflower main.flo\n\n") - 1) }));
+flower_print_string(((flower_string){ "\tflower main.flo build/demo\n\n", (int)(sizeof("\tflower main.flo build/demo\n\n") - 1) }));
 printf("%sTips:\n%s", BLUE, RESET);
+flower_print_string(((flower_string){ " - Omit output_path to emit `output/out.c` and `output/out`\n", (int)(sizeof(" - Omit output_path to emit `output/out.c` and `output/out`\n") - 1) }));
+flower_print_string(((flower_string){ " - When output_path is omitted, Flower auto-runs binaries that use `print`\n", (int)(sizeof(" - When output_path is omitted, Flower auto-runs binaries that use `print`\n") - 1) }));
 flower_print_string(((flower_string){ " - You can use any number of dashes before a flag, e.g., ---help\n", (int)(sizeof(" - You can use any number of dashes before a flag, e.g., ---help\n") - 1) }));
 flower_print_string(((flower_string){ " - Flags are case-insensitive: -HELP works too!\n\n", (int)(sizeof(" - Flags are case-insensitive: -HELP works too!\n\n") - 1) }));
 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET);
 continue;
 }
 else if (flower_string_eq(flag, ((flower_string){ "version", (int)(sizeof("version") - 1) }))  ||  flower_string_eq(flag, ((flower_string){ "v", (int)(sizeof("v") - 1) }))) {
-flower_print_string(((flower_string){ "Version: 0.0.4\n", (int)(sizeof("Version: 0.0.4\n") - 1) }));
+flower_print_string(((flower_string){ "Version: 1.3.0\n", (int)(sizeof("Version: 1.3.0\n") - 1) }));
 continue;
 }
 else {
