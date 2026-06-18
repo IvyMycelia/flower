@@ -37,9 +37,9 @@ Core feature: Proper String and Boolean support.
 
 - [x] Real `string` type support
 - [x] Boolean support distinct from `1` and `0`
-- [ ] String operations
-- [ ] Examples and tests
-- [ ] Standard library basics
+- [x] String operations
+- [x] Examples and tests
+- [x] Standard library basics
 
 **Why String Operations and Booleans first?** Many programs need them. Current work arounds are verbose.
 
