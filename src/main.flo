@@ -29,11 +29,12 @@ func main(argc: int, argv: @char[]): int
                 arg = arg + 1
             end
 
-            for i in 0..strlen(arg):
+            flag: string = arg as string
+            for i in 0..flag.length:
                 arg[i] = tolower(arg[i] as char) as char
             end
 
-            if not strcmp(arg, "help") or not strcmp(arg, "h"):
+            if flag == "help" or flag == "h":
                 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET)
         
                 printf("%sUsage:\n%s", BLUE, RESET)
@@ -54,7 +55,7 @@ func main(argc: int, argv: @char[]): int
         
                 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET)
                 continue
-            else if not strcmp(arg, "version") or not strcmp(arg, "v"):
+            else if flag == "version" or flag == "v":
                 print("Version: 0.0.4\n")
                 continue
             else:
