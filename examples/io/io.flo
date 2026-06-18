@@ -2,14 +2,14 @@ import <stdio>
 
 import "examples/io/print.flo" as prints
 
-prop func test(): int
+prop func test(): bool
     total: int = 0
     pass: int = 0
 
     print("  print... ")
     total = total + 1
     print("\'")
-    if prints.test() == 1:
+    if prints.test():
         print("\' ")
         pass = pass + 1
         print("OK\n")

@@ -1,9 +1,103 @@
-import <stdio>
+import "src/stdlib/string.flo" as strings
 
-prop func test(): int
-    s: string = "hello"
-    if s != null:
-        return 1
+
+prop func test(): bool
+    name: string = "Ivy" as string
+    raw: @char = name as @char
+    other: string = raw as string
+    empty: string = "" as string
+    literal_raw: @char = "Flower"
+    literal_string: string = literal_raw as string
+
+    first: char = name[0]
+    second: char = name[1]
+    raw_last: char = raw[2]
+
+    raw_string: string = raw as string
+
+    if name != other:
+        return false
     end
-    return 0
+
+    if name == "Nova":
+        return false
+    end
+
+    if name != "Ivy":
+        return false
+    end
+
+    if name.length != 3:
+        return false
+    end
+
+    if other.length != 3:
+        return false
+    end
+
+    if empty.length != 0:
+        return false
+    end
+
+    if first != 'I':
+        return false
+    end
+
+    if second != 'v':
+        return false
+    end
+
+    if raw_last != 'y':
+        return false
+    end
+
+    if raw_string != "Ivy":
+        return false
+    end
+
+    if literal_string != "Flower":
+        return false
+    end
+
+    if not strings.is_empty(empty):
+        return false
+    end
+
+    if strings.is_empty(name):
+        return false
+    end
+
+    if not strings.starts_with(name, "Iv"):
+        return false
+    end
+
+    if strings.starts_with(name, "vy"):
+        return false
+    end
+
+    if not strings.ends_with(name, "vy"):
+        return false
+    end
+
+    if strings.ends_with(name, "Iv"):
+        return false
+    end
+
+    if strings.find_char(name, 'v') != 1:
+        return false
+    end
+
+    if strings.find_char(name, 'z') != -1:
+        return false
+    end
+
+    if not strings.starts_with(literal_string, "Flow"):
+        return false
+    end
+
+    if not strings.ends_with(literal_string, "wer"):
+        return false
+    end
+
+    return true
 end

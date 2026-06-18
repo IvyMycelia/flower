@@ -1,3 +1,5 @@
+import "src/stdlib/cstr.flo" as cstr
+
 struct Parser {
     ts: @TokenStream,
     src: @char,
@@ -11,14 +13,17 @@ struct Parser {
     error_count: int
 }
 
+forward func parser_peek(ps: @Parser): @Token
 
 // === SETUP ===
 
-func make_node(kind: int): @AST
+func make_node(ps: @Parser, kind: int): @AST
     node: @AST = calloc(1, sizeof(AST))
     node.kind = kind
     node.value = 0
-
+    node.src = ps.src
+    node.start = parser_peek(ps).start
+    node.filename = ps.filename
     return node
 end
 
@@ -32,6 +37,7 @@ prop func init_parser(ps: @Parser, ts: @TokenStream, src: @char, filename: @char
 end
 
 forward func parser_error(ps: @Parser, message: @char): void
+forward func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
 
 forward func parse_var_decl(ps: @Parser):               @AST
 forward func parse_var_ass(ps: @Parser):                @AST
@@ -160,15 +166,15 @@ end
 
 func get_precedence(kind: int): int
     if kind == TOKEN_STAR or kind == TOKEN_SLASH:
+        return 5
+    else if kind == TOKEN_PLUS or kind == TOKEN_MINUS:
+        return 4
+    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP:
         return 3
-    else if kind == TOKEN_AND or kind == TOKEN_PLUS or kind == TOKEN_MINUS:
+    else if kind == TOKEN_AND:
         return 2
-    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_OR or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP:
+    else if kind == TOKEN_OR:
         return 1
-    else if kind == TOKEN_DOTDOT:
-        return 0
-    else if kind == TOKEN_DOTDOTEQ:
-        return 0
     else:
         return 0
     end
@@ -186,7 +192,7 @@ end
 
 func is_alias(ps: @Parser, tok: @Token): int
     for i in 0..ps.alias_count:
-        if ps.alias_lengths[i] == tok.length and !strncmp(ps.src + ps.alias_start[i], ps.src + tok.start, tok.length):
+        if ps.alias_lengths[i] == tok.length and cstr.eq_n(ps.src + ps.alias_start[i], ps.src + tok.start, tok.length):
             return 1
         end
     end
@@ -202,8 +208,18 @@ func parser_error(ps: @Parser, message: @char): void
     ps.error_count = ps.error_count + 1
 end
 
+func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
+    while parser_peek(ps).kind != TOKEN_EOF and parser_peek(ps).kind != TOKEN_NEWLINE and parser_peek(ps).kind != stop_a and parser_peek(ps).kind != stop_b:
+        parser_advance(ps)
+    end
+end
+
 func is_field_flag(kind: int): int
-    return kind == TOKEN_HIDDEN or kind == TOKEN_READONLY or kind == TOKEN_FROZEN
+    if kind == TOKEN_HIDDEN or kind == TOKEN_READONLY or kind == TOKEN_FROZEN:
+        return 1
+    end
+
+    return 0
 end
 
 func parse_field_flags(ps: @Parser, field: @AST): void
@@ -228,7 +244,7 @@ end
 // === VARIABLES ===
 
 func parse_var_decl(ps: @Parser): @AST
-    node: @AST = make_node(AST_VAR_DECL)
+    node: @AST = make_node(ps, AST_VAR_DECL)
 
     tok: @Token = parser_advance(ps)
 
@@ -266,7 +282,7 @@ func parse_var_decl(ps: @Parser): @AST
 end
 
 func parse_var_ass(ps: @Parser): @AST
-    node: @AST = make_node(AST_VAR_ASS)
+    node: @AST = make_node(ps, AST_VAR_ASS)
 
     tok: @Token = parser_advance(ps)
 
@@ -295,7 +311,7 @@ end
 func parse_subscript_ass(ps: @Parser): @AST
     name: @Token = parser_advance(ps)
 
-    arr_ref: @AST = make_node(AST_VAR_REF)
+    arr_ref: @AST = make_node(ps, AST_VAR_REF)
     
     arr_ref.data._var_ref.name_start = name.start
     arr_ref.data._var_ref.name_length = name.length
@@ -326,7 +342,7 @@ func parse_subscript_ass(ps: @Parser): @AST
 
     val: @AST = parse_expr(ps, 0)
 
-    sub: @AST = make_node(AST_SUBSCRIPT)
+    sub: @AST = make_node(ps, AST_SUBSCRIPT)
 
     sub.data._subscript.array = arr_ref
     sub.data._subscript.index = idx
@@ -340,7 +356,7 @@ end
 // === CONTROL FLOW ===
 
 func parse_return(ps: @Parser): @AST
-    node: @AST = make_node(AST_FLOW_CONTROL)
+    node: @AST = make_node(ps, AST_FLOW_CONTROL)
 
     node.data._flow_ctrl.base = parser_peek(ps)
 
@@ -357,7 +373,7 @@ func parse_return(ps: @Parser): @AST
 end
 
 func parse_continue(ps: @Parser): @AST
-    node: @AST = make_node(AST_FLOW_CONTROL)
+    node: @AST = make_node(ps, AST_FLOW_CONTROL)
 
     node.data._flow_ctrl.value = null
     node.data._flow_ctrl.base = parser_peek(ps)
@@ -372,7 +388,7 @@ func parse_continue(ps: @Parser): @AST
 end
 
 func parse_break(ps: @Parser): @AST
-    node: @AST = make_node(AST_FLOW_CONTROL)
+    node: @AST = make_node(ps, AST_FLOW_CONTROL)
 
     node.data._flow_ctrl.value = null
     node.data._flow_ctrl.base = parser_peek(ps)
@@ -387,7 +403,7 @@ func parse_break(ps: @Parser): @AST
 end
 
 func parse_while(ps: @Parser): @AST
-    node: @AST = make_node(AST_WHILE)
+    node: @AST = make_node(ps, AST_WHILE)
 
     if !parser_expect(ps, TOKEN_WHILE):
         return node
@@ -430,7 +446,7 @@ func parse_while(ps: @Parser): @AST
 end
 
 func parse_if(ps: @Parser, is_elf_if: int): @AST
-    node: @AST = make_node(AST_IF)
+    node: @AST = make_node(ps, AST_IF)
 
     if !parser_expect(ps, TOKEN_IF):
         return node
@@ -473,7 +489,7 @@ func parse_if(ps: @Parser, is_elf_if: int): @AST
         if parser_peek(ps).kind == TOKEN_IF:
             node.data._if_condition.else_branch = parse_if(ps, 1)
         else:
-            else_node: @AST = make_node(AST_IF)
+            else_node: @AST = make_node(ps, AST_IF)
             else_node.data._if_condition.condition = null
 
             if !parser_expect(ps, TOKEN_COLON):
@@ -519,7 +535,7 @@ func parse_if(ps: @Parser, is_elf_if: int): @AST
 end
 
 func parse_for(ps: @Parser): @AST
-    node: @AST = make_node(AST_FOR)
+    node: @AST = make_node(ps, AST_FOR)
 
     if !parser_expect(ps, TOKEN_FOR):
         return node
@@ -612,7 +628,7 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
             return null
         end
 
-        cast: @AST = make_node(AST_CAST)
+        cast: @AST = make_node(ps, AST_CAST)
 
         cast.data._cast.value = left
         cast.data._cast.type = @parse_type(ps)
@@ -638,7 +654,7 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
             return left
         end
 
-        bin: @AST = make_node(AST_BINARY_OP)
+        bin: @AST = make_node(ps, AST_BINARY_OP)
 
         bin.data._binary.left = left
         bin.data._binary.right = right
@@ -707,7 +723,7 @@ func parse_statement(ps: @Parser): @AST
     else if parser_peek(ps).kind ==  TOKEN_PRINT:
         parser_advance(ps)
 
-        node: @AST = make_node(AST_PRINT)
+        node: @AST = make_node(ps, AST_PRINT)
 
         if !parser_expect(ps, TOKEN_LPAREN):
             return node
@@ -727,7 +743,7 @@ func parse_statement(ps: @Parser): @AST
     else if parser_peek(ps).kind ==  TOKEN_PRUNE:
         parser_advance(ps)
 
-        node: @AST = make_node(AST_PRUNE)
+        node: @AST = make_node(ps, AST_PRUNE)
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in prune statement")
@@ -741,7 +757,7 @@ func parse_statement(ps: @Parser): @AST
     else if parser_peek(ps).kind ==  TOKEN_AT:
         parser_advance(ps)
 
-        node: @AST = make_node(AST_DEREF_ASS)
+        node: @AST = make_node(ps, AST_DEREF_ASS)
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in dereference statement")
@@ -775,6 +791,7 @@ func parse_statement(ps: @Parser): @AST
         message: char[128]
         snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", token_kind_name(parser_peek(ps).kind))
         parser_error(ps, message)
+        parser_advance(ps)
         return null
     end
 end
@@ -804,7 +821,7 @@ func parse_primary(ps: @Parser): @AST
                     return node
                 end
 
-                dot: @AST = make_node(AST_DOT_ACCESS)
+                dot: @AST = make_node(ps, AST_DOT_ACCESS)
 
                 dot.data._dot_access.object = node
                 dot.data._dot_access.field_length = field.length
@@ -823,7 +840,7 @@ func parse_primary(ps: @Parser): @AST
         tok: @Token = parser_peek(ps)
         parser_advance(ps)
 
-        node: @AST = make_node(AST_VAR_REF)
+        node: @AST = make_node(ps, AST_VAR_REF)
 
         node.data._var_ref.name_start = tok.start
         node.data._var_ref.name_length = tok.length
@@ -838,7 +855,7 @@ func parse_primary(ps: @Parser): @AST
 
             operand: @AST = parse_primary(ps)
 
-            drf: @AST = make_node(AST_DEREF)
+            drf: @AST = make_node(ps, AST_DEREF)
             drf.data._unary.operand = operand
 
             return drf
@@ -860,7 +877,7 @@ func parse_primary(ps: @Parser): @AST
                     return node
                 end
 
-                dot: @AST = make_node(AST_DOT_ACCESS)
+                dot: @AST = make_node(ps, AST_DOT_ACCESS)
 
                 dot.data._dot_access.object = node
                 dot.data._dot_access.field_start = field.start
@@ -882,7 +899,7 @@ func parse_primary(ps: @Parser): @AST
                     return node
                 end
 
-                sub: @AST = make_node(AST_SUBSCRIPT)
+                sub: @AST = make_node(ps, AST_SUBSCRIPT)
 
                 sub.data._subscript.array = node
                 sub.data._subscript.index = idx
@@ -896,7 +913,7 @@ func parse_primary(ps: @Parser): @AST
         return node
 
     else if parser_peek(ps).kind == TOKEN_NUMBER:
-        lit: @AST = make_node(AST_LITERAL)
+        lit: @AST = make_node(ps, AST_LITERAL)
 
         lit.value = atoi(ps.src + parser_peek(ps).start)
 
@@ -905,7 +922,7 @@ func parse_primary(ps: @Parser): @AST
         return lit
 
     else if parser_peek(ps).kind == TOKEN_FLOAT_LIT:
-        lit: @AST = make_node(AST_FLOAT_LIT)
+        lit: @AST = make_node(ps, AST_FLOAT_LIT)
 
         lit.data._float_lit.start = parser_peek(ps).start
         lit.data._float_lit.length = parser_peek(ps).length
@@ -914,18 +931,33 @@ func parse_primary(ps: @Parser): @AST
 
         return lit
 
+    else if parser_peek(ps).kind == TOKEN_TRUE or parser_peek(ps).kind == TOKEN_FALSE:
+        lit: @AST = make_node(ps, AST_BOOL_LIT)
+
+        val: int = 0
+        if parser_peek(ps).kind == TOKEN_TRUE:
+            val = 1
+        end
+        lit.data._bool_lit.value = val
+        
+        parser_advance(ps)
+
+        return lit
+
     else if parser_peek(ps).kind == TOKEN_NULL:
-        nll: @AST = make_node(AST_NULL)
+        nll: @AST = make_node(ps, AST_NULL)
 
         parser_advance(ps)
 
         return nll
 
     else if parser_peek(ps).kind == TOKEN_STRING_LIT:
-        str: @AST = make_node(AST_STRING_LIT)
+        str: @AST = make_node(ps, AST_STRING_LIT)
 
         str.data._string.str_start = parser_peek(ps).start
         str.data._string.str_length = parser_peek(ps).length
+
+        str.data._string.lower_kind = STRING_LOWER_STRING
 
         parser_advance(ps)
 
@@ -934,7 +966,7 @@ func parse_primary(ps: @Parser): @AST
     else if parser_peek(ps).kind == TOKEN_LBRACK:
         parser_advance(ps)
 
-        arr: @AST = make_node(AST_ARRAY_LIT)
+        arr: @AST = make_node(ps, AST_ARRAY_LIT)
 
         elem_head: @AST = null
         elem_tail: @AST = null
@@ -947,6 +979,10 @@ func parse_primary(ps: @Parser): @AST
 
             elem: @AST = parse_expr(ps, 0)
 
+            if elem == null:
+                return arr
+            end
+
             if elem_head == null:
                 elem_head = elem
             else:
@@ -956,6 +992,9 @@ func parse_primary(ps: @Parser): @AST
 
             if parser_peek(ps).kind == TOKEN_COMMA:
                 parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RBRACK:
+                parser_error(ps, "Expected ',' or ']' in array literal")
+                return arr
             end
         end
 
@@ -968,7 +1007,7 @@ func parse_primary(ps: @Parser): @AST
     else if parser_peek(ps).kind == TOKEN_LBRACE:
         parser_advance(ps)
 
-        strct_lit: @AST = make_node(AST_STRUCT_LIT)
+        strct_lit: @AST = make_node(ps, AST_STRUCT_LIT)
 
         struct_head: @AST = null
         struct_tail: @AST = null
@@ -1021,7 +1060,7 @@ func parse_primary(ps: @Parser): @AST
             return null
         end
 
-        new_node: @AST = make_node(AST_NEW)
+        new_node: @AST = make_node(ps, AST_NEW)
 
         new_node.data._new_alloc.type = @parse_type(ps)
 
@@ -1037,7 +1076,7 @@ func parse_primary(ps: @Parser): @AST
 
         operand: @AST = parse_primary(ps)
 
-        unry: @AST = make_node(AST_UNARY_NOT)
+        unry: @AST = make_node(ps, AST_UNARY_NOT)
         unry.data._unary.operand = operand
 
         return unry
@@ -1052,7 +1091,7 @@ func parse_primary(ps: @Parser): @AST
 
         operand: @AST = parse_primary(ps)
 
-        unry: @AST = make_node(AST_UNARY_NEG)
+        unry: @AST = make_node(ps, AST_UNARY_NEG)
         unry.data._unary.operand = operand
 
         return unry
@@ -1067,7 +1106,7 @@ func parse_primary(ps: @Parser): @AST
 
         operand: @AST = parse_primary(ps)
 
-        deref: @AST = make_node(AST_DEREF)
+        deref: @AST = make_node(ps, AST_DEREF)
         deref.data._deref.operand = operand
 
         return deref
@@ -1082,7 +1121,7 @@ func parse_primary(ps: @Parser): @AST
 
         operand: @AST = parse_primary(ps)
 
-        get: @AST = make_node(AST_GET_ADDR)
+        get: @AST = make_node(ps, AST_GET_ADDR)
         get.data._get_addr.operand = operand
 
         return get
@@ -1094,7 +1133,7 @@ func parse_primary(ps: @Parser): @AST
             return null
         end
 
-        node: @AST = make_node(AST_SIZEOF)
+        node: @AST = make_node(ps, AST_SIZEOF)
 
         node.data._size_of.type = @parse_type(ps)
 
@@ -1103,7 +1142,7 @@ func parse_primary(ps: @Parser): @AST
         return node
 
     else if parser_peek(ps).kind == TOKEN_CHAR_LIT:
-        node: @AST = make_node(AST_CHAR_LIT)
+        node: @AST = make_node(ps, AST_CHAR_LIT)
 
         node.data._char_lit.start = parser_peek(ps).start
         node.data._char_lit.length = parser_peek(ps).length
@@ -1128,7 +1167,7 @@ func parse_func_def(ps: @Parser): @AST
         return null
     end
 
-    node: @AST = make_node(AST_FUNC_DEF)
+    node: @AST = make_node(ps, AST_FUNC_DEF)
 
     name: @Token = parser_advance(ps)
     if name.kind != TOKEN_IDENTIFIER:
@@ -1212,7 +1251,7 @@ func parse_func_def(ps: @Parser): @AST
 end
 
 func parse_func_call(ps: @Parser): @AST
-    node: @AST = make_node(AST_FUNC_CALL)
+    node: @AST = make_node(ps, AST_FUNC_CALL)
 
     name: @Token = parser_advance(ps)
     node.data._func_call.name_start = name.start
@@ -1233,27 +1272,51 @@ func parse_func_call(ps: @Parser): @AST
 
         param: @AST = parse_expr(ps, 0)
 
-        if arg_head == null:
+        if param == null:
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps) continue
+            end
+
+            if parser_peek(ps).kind == TOKEN_RPAREN:
+                break
+            end
+
+            return node
+        end
+
+        if arg_head == null: 
             arg_head = param
-        else:
+        else: 
             arg_tail.next = param
         end
         arg_tail = param
 
         if parser_peek(ps).kind == TOKEN_COMMA:
             parser_advance(ps)
+        else if parser_peek(ps).kind != TOKEN_RPAREN:
+            parser_error(ps, "Expected ',' or ')' in function call arguments")
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RPAREN:
+                return node
+            end
         end
     end
 
-    parser_expect(ps, TOKEN_RPAREN)
+    if !parser_expect(ps, TOKEN_RPAREN):
+        return node
+    end
 
     node.data._func_call.args = arg_head
-
     return node
 end
 
 func parse_alias_call(ps: @Parser): @AST
-    node: @AST = make_node(AST_ALIAS_CALL)
+    node: @AST = make_node(ps, AST_ALIAS_CALL)
 
     alias: @Token = parser_advance(ps)
     node.data._alias_call.alias_start = alias.start
@@ -1281,6 +1344,22 @@ func parse_alias_call(ps: @Parser): @AST
         end
 
         arg: @AST = parse_expr(ps, 0)
+
+        if arg == null:
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+                continue
+            end
+
+            if parser_peek(ps).kind == TOKEN_RPAREN:
+                break
+            end
+
+            return node
+        end
+
         if arg_head == null:
             arg_head = arg
         else:
@@ -1290,18 +1369,28 @@ func parse_alias_call(ps: @Parser): @AST
 
         if parser_peek(ps).kind == TOKEN_COMMA:
             parser_advance(ps)
+        else if parser_peek(ps).kind != TOKEN_RPAREN:
+            parser_error(ps, "Expected ',' or ')' in function alias arguments")
+            parser_sync_until(ps, TOKEN_COMMA, TOKEN_RPAREN)
+
+            if parser_peek(ps).kind == TOKEN_COMMA:
+                parser_advance(ps)
+            else if parser_peek(ps).kind != TOKEN_RPAREN:
+                return node
+            end
         end
     end
 
-    parser_expect(ps, TOKEN_RPAREN)
+    if !parser_expect(ps, TOKEN_RPAREN):
+        return node
+    end
 
     node.data._alias_call.args = arg_head
-
     return node
 end
 
 func parse_param(ps: @Parser): @AST
-    node: @AST = make_node(AST_PARAM)
+    node: @AST = make_node(ps, AST_PARAM)
 
     name: @Token = parser_advance(ps)
     node.data._func_params.name_start = name.start
@@ -1325,7 +1414,7 @@ func parse_struct(ps: @Parser): @AST
         return null
     end
 
-    node: @AST = make_node(AST_STRUCT_DEF)
+    node: @AST = make_node(ps, AST_STRUCT_DEF)
 
     name: @Token = parser_advance(ps)
 
@@ -1357,7 +1446,7 @@ func parse_struct(ps: @Parser): @AST
             return node
         end
 
-        field: @AST = make_node(AST_STRUCT_FIELD)
+        field: @AST = make_node(ps, AST_STRUCT_FIELD)
         parse_field_flags(ps, field)
 
         fname: @Token = parser_advance(ps)
@@ -1397,7 +1486,7 @@ func parse_union(ps: @Parser): @AST
         return null
     end
 
-    node: @AST = make_node(AST_UNION_DEF)
+    node: @AST = make_node(ps, AST_UNION_DEF)
 
     name: @Token = parser_advance(ps)
 
@@ -1432,7 +1521,7 @@ func parse_union(ps: @Parser): @AST
             return node
         end
 
-        field: @AST = make_node(AST_STRUCT_FIELD)
+        field: @AST = make_node(ps, AST_STRUCT_FIELD)
         parse_field_flags(ps, field)
 
         fname: @Token = parser_advance(ps)
@@ -1490,7 +1579,7 @@ end
 
 func parse_import(ps: @Parser): @AST
     parser_expect(ps, TOKEN_IMPORT)
-    node: @AST = make_node(AST_IMPORT)
+    node: @AST = make_node(ps, AST_IMPORT)
 
     if parser_peek(ps).kind == TOKEN_LT:
         // system import: `import <stdlib>`
@@ -1542,7 +1631,7 @@ end
 
 func parse_forward(ps: @Parser): @AST
     parser_expect(ps, TOKEN_FORWARD)
-    node: @AST = make_node(AST_FORWARD)
+    node: @AST = make_node(ps, AST_FORWARD)
 
     if parser_peek(ps).kind == TOKEN_STRUCT:
         parser_advance(ps)
@@ -1606,7 +1695,7 @@ prop func parse(ps: @Parser): @AST
             break
         end
 
-        node: @AST
+        node: @AST = null
         if parser_peek(ps).kind == TOKEN_IMPORT:
             node = parse_import(ps)
 
@@ -1635,7 +1724,7 @@ prop func parse(ps: @Parser): @AST
             end
 
             if decl != null:
-                prop_node: @AST = make_node(AST_PROP)
+                prop_node: @AST = make_node(ps, AST_PROP)
                 prop_node.data._prop.decl = decl
                 node = prop_node
             else:
@@ -1650,14 +1739,20 @@ prop func parse(ps: @Parser): @AST
 
         else if parser_peek(ps).kind == TOKEN_IDENTIFIER and peek(ps.ts, ps.pos + 1).kind == TOKEN_COLON:
             node = parse_var_decl(ps)
+        
+        else:
+            parser_error(ps, "Unexpected top-level statement or declaration")
+            parser_sync_until(ps, TOKEN_NEWLINE, TOKEN_EOF)
         end
 
-        if head == null:
-            head = node
-        else:
-            tail.next = node
+        if node != null:
+            if head == null:
+                head = node
+            else:
+                tail.next = node
+            end
+            tail = node
         end
-        tail = node
     end
 
     return head

@@ -1,6 +1,8 @@
 import "src/lexer.flo" as lexer
 import "src/parser.flo" as parser
 import "src/file.flo" as file
+import "src/stdlib/cstr.flo" as cstr
+
 
 // Modules
 forward struct Module
@@ -54,7 +56,7 @@ forward func find_function_module(set: @ModuleSet, src: @char, start: int, lengt
 func find_module(set: @ModuleSet, path: @char): @Module
     for i in 0..set.count:
         m: @Module = set.modules + i
-        if not strcmp(m.path, path):
+        if cstr.eq(m.path, path):
             return m
         end
     end
@@ -69,7 +71,7 @@ func find_export(module: @Module, src: @char, start: int, length: int, kind: int
             continue
         end
 
-        if info.name_length == length and not strncmp(info.name_src + info.name_start, src + start, length):
+        if info.name_length == length and cstr.eq_n(info.name_src + info.name_start, src + start, length):
             return info
         end
     end
@@ -81,8 +83,8 @@ end
 func build_symbol_prefix(path: @char): @char
     rel: @char = path
 
-    root_len: int = strlen(project_root)
-    if root_len > 0 and not strncmp(path, project_root, root_len):
+    root_len: int = cstr.len(project_root)
+    if root_len > 0 and cstr.eq_n(path, project_root, root_len):
         rel = path + root_len
         if rel[0] == '/':
             rel = rel + 1
@@ -94,19 +96,19 @@ func build_symbol_prefix(path: @char): @char
     else:
         // Fallback for paths outside the project root:
         // use basename only rather than leaking full absolute paths...
-        slash: @char = strrchr(path, '/')
+        slash: @char = cstr.find_last(path, '/')
         if slash != null:
             rel = slash + 1
         end
     end
 
     out: char[512]
-    strcpy(out, "mod_")
+    cstr.copy(out, "mod_")
 
     i: int = 0
     j: int = 4
     while rel[i] != '\0' and j < sizeof(out) - 1:
-        c: int = rel[i]
+        c: char = rel[i]
 
         if isalnum(c):
             out[j] = c
@@ -119,7 +121,7 @@ func build_symbol_prefix(path: @char): @char
     end
 
     out[j] = '\0'
-    return strdup(out)
+    return cstr.dup(out)
 end
 
 func find_imported_module(set: @ModuleSet, module: @Module, src: @char, start: int, length: int): @Module
@@ -127,7 +129,7 @@ func find_imported_module(set: @ModuleSet, module: @Module, src: @char, start: i
 
     while curr != null:
         if curr.kind == AST_IMPORT and curr.data._import.has_alias:
-            if curr.data._import.alias_length == length and not strncmp(module.src + curr.data._import.alias_start, src + start, length):
+            if curr.data._import.alias_length == length and cstr.eq_n(module.src + curr.data._import.alias_start, src + start, length):
                 path: @char = import_path_from_ast(curr, module.src, module.path)
                 if path == null:
                     return null
@@ -150,13 +152,13 @@ func module_defines_func(module: @Module, src: @char, start: int, length: int): 
 
     while curr != null:
         if curr.kind == AST_FUNC_DEF:
-            if curr.data._func_def.name_length == length and not strncmp(module.src + curr.data._func_def.name_start, src + start, length):
+            if curr.data._func_def.name_length == length and cstr.eq_n(module.src + curr.data._func_def.name_start, src + start, length):
                 return 1
             end
 
         else if curr.kind == AST_PROP and curr.data._prop.decl != null:
             if curr.data._prop.decl.kind == AST_FUNC_DEF:
-                if curr.data._prop.decl.data._func_def.name_length == length and not strncmp(module.src + curr.data._prop.decl.data._func_def.name_start, src + start, length):
+                if curr.data._prop.decl.data._func_def.name_length == length and cstr.eq_n(module.src + curr.data._prop.decl.data._func_def.name_start, src + start, length):
                     return 1
                 end
             end
@@ -168,7 +170,7 @@ func module_defines_func(module: @Module, src: @char, start: int, length: int): 
     return 0
 end
 
-func module_exports_func(module: @Module, src: @char, start: int, length: int): int
+func module_exports_func(module: @Module, src: @char, start: int, length: int): bool
     return find_export(module, src, start, length, EXPORT_FUNC) != null
 end
 
@@ -262,7 +264,7 @@ func load_module(set: @ModuleSet, path: @char): @Module
     end
 
     m: @Module = set.modules + set.count
-    m.path = strdup(path)
+    m.path = cstr.dup(path)
     m.src = src
     m.symbol_prefix = build_symbol_prefix(path)
     m.export_count = 0
@@ -272,7 +274,7 @@ func load_module(set: @ModuleSet, path: @char): @Module
     lexer.lex(m.tokens, src)
 
     p: Parser
-    parser.init_parser(&p, m.tokens, src, path)
+    parser.init_parser(&p, m.tokens, src, m.path)
     m.ast = parser.parse(&p)
     
     collect_exports(m)

@@ -1,136 +1,25 @@
 #include <stdio.h>
+#include <string.h>
 typedef struct { char* data; int length; } flower_string;
-static int flower_cstr_len(char* s) {
-  int i = 0;
-  if (s == NULL) return 0;
-  while (s[i] != '\0') i++;
-  return i;
-}
 static flower_string flower_string_from_cstr(char* s) {
   flower_string out;
   out.data = s;
-  out.length = (int)flower_cstr_len(s);
+  out.length = (int)strlen(s);
   return out;
 }
 static int flower_string_eq(flower_string a, flower_string b) {
-  int i = 0;
   if (a.length != b.length) return 0;
-  while (i < a.length) {
-      if (a.data[i] != b.data[i]) return 0;
-      i++;
-  }
-  return 1;
+  return !strncmp(a.data, b.data, a.length);
 }
 static void flower_print_string(flower_string s) {
-  int i = 0;
-  while (i < s.length) {
-      putchar(s.data[i]);
-      i++;
-  }
+  printf("%.*s", s.length, s.data);
 }
+;
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-
-
-int mod_src_stdlib_cstr_flo_len(char* s) {
-if (s == NULL) {
-return 0;
-}
-int i = 0;
-while (s[i] != '\0') {
-i = i + 1;
-}
-return i;
-}
-
-
-int mod_src_stdlib_cstr_flo_eq(char* a, char* b) {
-if (a == NULL  ||  b == NULL) {
-return a == b;
-}
-int i = 0;
-while (a[i] != '\0'  &&  b[i] != '\0') {
-if (a[i] != b[i]) {
-return 0;
-}
-i = i + 1;
-}
-return a[i] == b[i];
-}
-
-
-int mod_src_stdlib_cstr_flo_eq_n(char* a, char* b, int n) {
-if (a == NULL  ||  b == NULL) {
-return a == b  &&  n == 0;
-}
-for (int i = 0; ((0) > (n)) ? i > (n) : i < (n); ((0) > (n)) ? i-- : i++) {
-if (a[i] != b[i]) {
-return 0;
-}
-if (a[i] == '\0') {
-return 1;
-}
-}
-return 1;
-}
-
-
-char* mod_src_stdlib_cstr_flo_copy(char* dst, char* src) {
-int i = 0;
-while (src[i] != '\0') {
-dst[i] = src[i];
-i = i + 1;
-}
-dst[i] = '\0';
-return dst;
-}
-
-
-char* mod_src_stdlib_cstr_flo_copy_n(char* dst, char* src, int n) {
-int i = 0;
-while (i < n  &&  src[i] != '\0') {
-dst[i] = src[i];
-i = i + 1;
-}
-if (i < n) {
-dst[i] = '\0';
-}
-return dst;
-}
-
-
-char* mod_src_stdlib_cstr_flo_dup(char* src) {
-int n = mod_src_stdlib_cstr_flo_len(src);
-char* out = malloc(sizeof(char) * (n + 1));
-mod_src_stdlib_cstr_flo_copy(out, src);
-return out;
-}
-
-
-char* mod_src_stdlib_cstr_flo_dup_n(char* src, int n) {
-char* out = malloc(sizeof(char) * (n + 1));
-mod_src_stdlib_cstr_flo_copy_n(out, src, n);
-out[n] = '\0';
-return out;
-}
-
-
-char* mod_src_stdlib_cstr_flo_find_last(char* src, char ch) {
-if (src == NULL) {
-return NULL;
-}
-char* last = NULL;
-int i = 0;
-while (src[i] != '\0') {
-if (src[i] == ch) {
-last = src + i;
-}
-i = i + 1;
-}
-return last;
-}
 char project_root[512];
 char* current_file;
 
@@ -153,17 +42,17 @@ return NULL;
 char resolved[1024];
 if (import_path[0] == '.'  &&  import_path[1] == '/'  ||  import_path[0] == '.'  &&  import_path[1] == '.'  &&  import_path[2] == '/') {
 char dir[1024];
-mod_src_stdlib_cstr_flo_copy_n(dir, importing_file, sizeof(dir) - 1);
+strncpy(dir, importing_file, sizeof(dir) - 1);
 dir[sizeof(dir) - 1] = '\0';
-char* last_slash = mod_src_stdlib_cstr_flo_find_last(dir, '/');
+char* last_slash = strrchr(dir, '/');
 if (last_slash) {
 last_slash = last_slash + 1;
 *last_slash = '\0';
 }
 else {
-mod_src_stdlib_cstr_flo_copy(dir, "./");
+strcpy(dir, "./");
 }
-if (mod_src_stdlib_cstr_flo_len(dir) + mod_src_stdlib_cstr_flo_len(import_path) + 1 > sizeof(resolved)) {
+if (strlen(dir) + strlen(import_path) + 1 > sizeof(resolved)) {
 printf("%sPath too long: %s%s%s\n", RED, dir, import_path, RESET);
 return NULL;
 }
@@ -172,7 +61,7 @@ snprintf(resolved, sizeof(resolved), "%s%s", dir, import_path + 2);
 else {
 snprintf(resolved, sizeof(resolved), "%s/%s", project_root, import_path);
 }
-return mod_src_stdlib_cstr_flo_dup(resolved);
+return strdup(resolved);
 }
 int TOKEN_INT = 1;
 int TOKEN_FLOAT = 2;
@@ -381,112 +270,112 @@ while (isalnum(src[i])  ||  src[i] == '_') {
 i = i + 1;
 }
 int length = i - start;
-if (length == 2  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "if", 2)) {
+if (length == 2  &&  !(strncmp(src + start, "if", 2))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_IF, start, length);
 }
-else if (length == 2  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "as", 2)) {
+else if (length == 2  &&  !(strncmp(src + start, "as", 2))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_AS, start, length);
 }
-else if (length == 2  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "in", 2)) {
+else if (length == 2  &&  !(strncmp(src + start, "in", 2))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_IN, start, length);
 }
-else if (length == 2  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "or", 2)) {
+else if (length == 2  &&  !(strncmp(src + start, "or", 2))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_OR, start, length);
 }
-else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "int", 3)) {
+else if (length == 3  &&  !(strncmp(src + start, "int", 3))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_INT, start, length);
 }
-else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "end", 3)) {
+else if (length == 3  &&  !(strncmp(src + start, "end", 3))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_END, start, length);
 }
-else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "new", 3)) {
+else if (length == 3  &&  !(strncmp(src + start, "new", 3))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_NEW, start, length);
 }
-else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "not", 3)) {
+else if (length == 3  &&  !(strncmp(src + start, "not", 3))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_NOT, start, length);
 }
-else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "and", 3)) {
+else if (length == 3  &&  !(strncmp(src + start, "and", 3))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_AND, start, length);
 }
-else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "for", 3)) {
+else if (length == 3  &&  !(strncmp(src + start, "for", 3))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FOR, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "null", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "null", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_NULL, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "char", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "char", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_CHAR, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "bool", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "bool", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_BOOL, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "else", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "else", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_ELSE, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "void", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "void", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_VOID, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "prop", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "prop", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_PROP, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "func", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "func", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FUNC, start, length);
 }
-else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "true", 4)) {
+else if (length == 4  &&  !(strncmp(src + start, "true", 4))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_TRUE, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "union", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "union", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_UNION, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "while", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "while", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_WHILE, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "prune", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "prune", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_PRUNE, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "print", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "print", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_PRINT, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "float", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "float", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FLOAT, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "break", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "break", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_BREAK, start, length);
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "false", 5)) {
+else if (length == 5  &&  !(strncmp(src + start, "false", 5))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FALSE, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "return", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "return", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_RETURN, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "string", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "string", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_STRING, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "sizeof", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "sizeof", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_SIZEOF, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "struct", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "struct", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_STRUCT, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "import", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "import", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_IMPORT, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "double", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "double", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_DOUBLE, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "hidden", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "hidden", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_HIDDEN, start, length);
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "frozen", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "frozen", 6))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FROZEN, start, length);
 }
-else if (length == 7  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "forward", 7)) {
+else if (length == 7  &&  !(strncmp(src + start, "forward", 7))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_FORWARD, start, length);
 }
-else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "continue", 8)) {
+else if (length == 8  &&  !(strncmp(src + start, "continue", 8))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_CONTINUE, start, length);
 }
-else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "readonly", 8)) {
+else if (length == 8  &&  !(strncmp(src + start, "readonly", 8))) {
 mod_src_lexer_flo_add_token(ts, TOKEN_READONLY, start, length);
 }
 else {
@@ -989,7 +878,6 @@ typedef struct subscript {
 AST* array;
 AST* index;
 AST* value;
-int is_string;
 } subscript;
 
 
@@ -1422,7 +1310,7 @@ return 0;
 
 int mod_src_parser_flo_is_alias(Parser* ps, Token* tok) {
 for (int i = 0; ((0) > (ps->alias_count)) ? i > (ps->alias_count) : i < (ps->alias_count); ((0) > (ps->alias_count)) ? i-- : i++) {
-if (ps->alias_lengths[i] == tok->length  &&  mod_src_stdlib_cstr_flo_eq_n(ps->src + ps->alias_start[i], ps->src + tok->start, tok->length)) {
+if (ps->alias_lengths[i] == tok->length  &&  !(strncmp(ps->src + ps->alias_start[i], ps->src + tok->start, tok->length))) {
 return 1;
 }
 }
@@ -2739,7 +2627,7 @@ Module* mod_src_module_flo_find_function_module(ModuleSet* set, char* src, int s
 Module* mod_src_module_flo_find_module(ModuleSet* set, char* path) {
 for (int i = 0; ((0) > (set->count)) ? i > (set->count) : i < (set->count); ((0) > (set->count)) ? i-- : i++) {
 Module* m = set->modules + i;
-if (mod_src_stdlib_cstr_flo_eq(m->path, path)) {
+if (!(strcmp(m->path, path))) {
 return m;
 }
 }
@@ -2753,7 +2641,7 @@ ExportInfo* info = module->exports + i;
 if (kind != 0  &&  info->kind != kind) {
 continue;
 }
-if (info->name_length == length  &&  mod_src_stdlib_cstr_flo_eq_n(info->name_src + info->name_start, src + start, length)) {
+if (info->name_length == length  &&  !(strncmp(info->name_src + info->name_start, src + start, length))) {
 return info;
 }
 }
@@ -2763,8 +2651,8 @@ return NULL;
 
 char* mod_src_module_flo_build_symbol_prefix(char* path) {
 char* rel = path;
-int root_len = mod_src_stdlib_cstr_flo_len(project_root);
-if (root_len > 0  &&  mod_src_stdlib_cstr_flo_eq_n(path, project_root, root_len)) {
+int root_len = strlen(project_root);
+if (root_len > 0  &&  !(strncmp(path, project_root, root_len))) {
 rel = path + root_len;
 if (rel[0] == '/') {
 rel = rel + 1;
@@ -2774,13 +2662,13 @@ else if (path[0] == '.'  &&  path[1] == '/') {
 rel = path + 2;
 }
 else {
-char* slash = mod_src_stdlib_cstr_flo_find_last(path, '/');
+char* slash = strrchr(path, '/');
 if (slash != NULL) {
 rel = slash + 1;
 }
 }
 char out[512];
-mod_src_stdlib_cstr_flo_copy(out, "mod_");
+strcpy(out, "mod_");
 int i = 0;
 int j = 4;
 while (rel[i] != '\0'  &&  j < sizeof(out) - 1) {
@@ -2795,7 +2683,7 @@ i = i + 1;
 j = j + 1;
 }
 out[j] = '\0';
-return mod_src_stdlib_cstr_flo_dup(out);
+return strdup(out);
 }
 
 
@@ -2803,7 +2691,7 @@ Module* mod_src_module_flo_find_imported_module(ModuleSet* set, Module* module, 
 AST* curr = module->ast;
 while (curr != NULL) {
 if (curr->kind == AST_IMPORT  &&  curr->data._import.has_alias) {
-if (curr->data._import.alias_length == length  &&  mod_src_stdlib_cstr_flo_eq_n(module->src + curr->data._import.alias_start, src + start, length)) {
+if (curr->data._import.alias_length == length  &&  !(strncmp(module->src + curr->data._import.alias_start, src + start, length))) {
 char* path = mod_src_module_flo_import_path_from_ast(curr, module->src, module->path);
 if (path == NULL) {
 return NULL;
@@ -2823,13 +2711,13 @@ int mod_src_module_flo_module_defines_func(Module* module, char* src, int start,
 AST* curr = module->ast;
 while (curr != NULL) {
 if (curr->kind == AST_FUNC_DEF) {
-if (curr->data._func_def.name_length == length  &&  mod_src_stdlib_cstr_flo_eq_n(module->src + curr->data._func_def.name_start, src + start, length)) {
+if (curr->data._func_def.name_length == length  &&  !(strncmp(module->src + curr->data._func_def.name_start, src + start, length))) {
 return 1;
 }
 }
 else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
 if (curr->data._prop.decl->kind == AST_FUNC_DEF) {
-if (curr->data._prop.decl->data._func_def.name_length == length  &&  mod_src_stdlib_cstr_flo_eq_n(module->src + curr->data._prop.decl->data._func_def.name_start, src + start, length)) {
+if (curr->data._prop.decl->data._func_def.name_length == length  &&  !(strncmp(module->src + curr->data._prop.decl->data._func_def.name_start, src + start, length))) {
 return 1;
 }
 }
@@ -2926,7 +2814,7 @@ printf("%sCould not import file: %s%s\n", RED, path, RESET);
 return NULL;
 }
 Module* m = set->modules + set->count;
-m->path = mod_src_stdlib_cstr_flo_dup(path);
+m->path = strdup(path);
 m->src = src;
 m->symbol_prefix = mod_src_module_flo_build_symbol_prefix(path);
 m->export_count = 0;
@@ -3004,7 +2892,7 @@ int mod_src_typecheck_flo_same_name(char* a_src, int a_start, int a_len, char* b
 if (a_len != b_len) {
 return 0;
 }
-if (mod_src_stdlib_cstr_flo_eq_n(a_src + a_start, b_src + b_start, a_len)) {
+if (!(strncmp(a_src + a_start, b_src + b_start, a_len))) {
 return 1;
 }
 return 0;
@@ -3113,7 +3001,7 @@ int mod_src_typecheck_flo_can_explicitly_convert(TypeInfo* target, TypeInfo* val
 if (mod_src_typecheck_flo_types_match(target, value)) {
 return 1;
 }
-if (mod_src_typecheck_flo_is_integer_type(target)  ||  mod_src_typecheck_flo_is_decimal_type(target)  &&  mod_src_typecheck_flo_is_integer_type(value)  ||  mod_src_typecheck_flo_is_decimal_type(value)) {
+if (mod_src_typecheck_flo_is_numeric_type(target)  &&  mod_src_typecheck_flo_is_numeric_type(value)) {
 return 1;
 }
 if (mod_src_typecheck_flo_is_bool_type(target)  &&  value->base == TOKEN_INT  &&  value->pointer_depth == 0  &&  value->array_size == 0) {
@@ -3154,22 +3042,37 @@ return 0;
 
 
 int mod_src_typecheck_flo_builtin_expects_cstr_arg(char* src, int start, int length, int index) {
-if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "printf", 6)) {
+if (length == 6  &&  !(strncmp(src + start, "printf", 6))) {
 return index == 0;
 }
-else if (length == 7  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "fprintf", 7)) {
+else if (length == 7  &&  !(strncmp(src + start, "fprintf", 7))) {
 return index == 1;
 }
-else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "snprintf", 8)) {
+else if (length == 8  &&  !(strncmp(src + start, "snprintf", 8))) {
 return index == 2;
 }
-else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "fopen", 5)) {
+else if (length == 6  &&  !(strncmp(src + start, "strcmp", 6))) {
 return index == 0  ||  index == 1;
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "system", 6)) {
+else if (length == 7  &&  !(strncmp(src + start, "strncmp", 7))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcpy", 6))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strncpy", 7))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strdup", 6))) {
 return index == 0;
 }
-else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "realpath", 8)) {
+else if (length == 5  &&  !(strncmp(src + start, "fopen", 5))) {
+return index == 0  ||  index == 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "system", 6))) {
+return index == 0;
+}
+else if (length == 8  &&  !(strncmp(src + start, "realpath", 8))) {
 return index == 0;
 }
 return 0;
@@ -3466,31 +3369,52 @@ int mod_src_typecheck_flo_resolve_builtin_c_call(TypeEnv* env, AST* expr, TypeIn
 int start = expr->data._func_call.name_start;
 int length = expr->data._func_call.name_length;
 int return_kind = 0;
-if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "printf", 6)) {
+if (length == 6  &&  !(strncmp(src + start, "printf", 6))) {
 return_kind = 1;
 }
-else if (length == 7  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "fprintf", 7)) {
+else if (length == 7  &&  !(strncmp(src + start, "fprintf", 7))) {
 return_kind = 1;
 }
-else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "snprintf", 8)) {
+else if (length == 8  &&  !(strncmp(src + start, "snprintf", 8))) {
 return_kind = 1;
 }
-else if (length == 7  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "tolower", 7)) {
+else if (length == 6  &&  !(strncmp(src + start, "strcmp", 6))) {
 return_kind = 1;
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "system", 6)) {
+else if (length == 7  &&  !(strncmp(src + start, "strncmp", 7))) {
 return_kind = 1;
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "fflush", 6)) {
+else if (length == 6  &&  !(strncmp(src + start, "strlen", 6))) {
 return_kind = 1;
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "fclose", 6)) {
+else if (length == 7  &&  !(strncmp(src + start, "tolower", 7))) {
 return_kind = 1;
 }
-else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "realpath", 8)) {
+else if (length == 6  &&  !(strncmp(src + start, "system", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "fflush", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "fclose", 6))) {
+return_kind = 1;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strcpy", 6))) {
 return_kind = 2;
 }
-else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "getcwd", 6)) {
+else if (length == 7  &&  !(strncmp(src + start, "strncpy", 7))) {
+return_kind = 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "strdup", 6))) {
+return_kind = 2;
+}
+else if (length == 7  &&  !(strncmp(src + start, "strrchr", 7))) {
+return_kind = 2;
+}
+else if (length == 8  &&  !(strncmp(src + start, "realpath", 8))) {
+return_kind = 2;
+}
+else if (length == 6  &&  !(strncmp(src + start, "getcwd", 6))) {
 return_kind = 2;
 }
 else {
@@ -3564,18 +3488,12 @@ else if (expr->kind == AST_SUBSCRIPT) {
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
 return 0;
 }
-expr->data._subscript.is_string = 0;
 TypeInfo* idx_type = malloc(sizeof(TypeInfo));
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.index, idx_type, src))) {
 free(idx_type);
 return 0;
 }
 free(idx_type);
-if (mod_src_typecheck_flo_is_string_type(out)) {
-expr->data._subscript.is_string = 1;
-mod_src_typecheck_flo_set_plain_type(out, TOKEN_CHAR);
-return 1;
-}
 if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
@@ -3585,8 +3503,7 @@ if (out->pointer_depth > 0) {
 out->pointer_depth = out->pointer_depth - 1;
 return 1;
 }
-mod_src_typecheck_flo_type_error(env, expr, "cannot subscript non-indexable type");
-return 0;
+return 1;
 }
 else if (expr->kind == AST_BINARY_OP) {
 TypeInfo* left_type = malloc(sizeof(TypeInfo));
@@ -3818,7 +3735,7 @@ mod_src_typecheck_flo_type_error(env, expr, "cannot directly access field throug
 free(object_type);
 return 0;
 }
-if (expr->data._dot_access.field_length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + expr->data._dot_access.field_start, "length", 6)) {
+if (expr->data._dot_access.field_length == 6  &&  !(strncmp(src + expr->data._dot_access.field_start, "length", 6))) {
 expr->data._dot_access.is_hidden = 0;
 expr->data._dot_access.is_frozen = 1;
 expr->data._dot_access.is_readonly = 1;
@@ -3941,26 +3858,6 @@ mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match variab
 }
 free(target_type);
 free(value_type);
-}
-else if (ast->kind == AST_SUBSCRIPT) {
-TypeInfo* target_type = malloc(sizeof(TypeInfo));
-if (!(mod_src_typecheck_flo_resolve_expr(env, ast, target_type, src))) {
-free(target_type);
-return;}
-if (ast->data._subscript.value != NULL) {
-if (ast->data._subscript.is_string) {
-mod_src_typecheck_flo_type_error(env, ast, "string indexing is readonly");
-free(target_type);
-return;}
-TypeInfo* value_type = malloc(sizeof(TypeInfo));
-if (mod_src_typecheck_flo_resolve_expr(env, ast->data._subscript.value, value_type, src)) {
-if (!(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
-mod_src_typecheck_flo_type_error(env, ast, "subscript assignment value does not match element type");
-}
-}
-free(value_type);
-}
-free(target_type);
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
@@ -4266,42 +4163,28 @@ int has_stdio = 0;
 
 void mod_src_codegen_flo_emit_string_runtime(FILE* out) {
 fprintf(out, "#include <stdio.h>\n");
+fprintf(out, "#include <string.h>\n");
 fprintf(out, "typedef struct { char* data; int length; } flower_string;\n");
-fprintf(out, "static int flower_cstr_len(char* s) {\n");
-fprintf(out, "  int i = 0;\n");
-fprintf(out, "  if (s == NULL) return 0;\n");
-fprintf(out, "  while (s[i] != '\\0') i++;\n");
-fprintf(out, "  return i;\n");
-fprintf(out, "}\n");
 fprintf(out, "static flower_string flower_string_from_cstr(char* s) {\n");
 fprintf(out, "  flower_string out;\n");
 fprintf(out, "  out.data = s;\n");
-fprintf(out, "  out.length = (int)flower_cstr_len(s);\n");
+fprintf(out, "  out.length = (int)strlen(s);\n");
 fprintf(out, "  return out;\n");
 fprintf(out, "}\n");
 fprintf(out, "static int flower_string_eq(flower_string a, flower_string b) {\n");
-fprintf(out, "  int i = 0;\n");
 fprintf(out, "  if (a.length != b.length) return 0;\n");
-fprintf(out, "  while (i < a.length) {\n");
-fprintf(out, "      if (a.data[i] != b.data[i]) return 0;\n");
-fprintf(out, "      i++;\n");
-fprintf(out, "  }\n");
-fprintf(out, "  return 1;\n");
+fprintf(out, "  return !strncmp(a.data, b.data, a.length);\n");
 fprintf(out, "}\n");
 fprintf(out, "static void flower_print_string(flower_string s) {\n");
-fprintf(out, "  int i = 0;\n");
-fprintf(out, "  while (i < s.length) {\n");
-fprintf(out, "      putchar(s.data[i]);\n");
-fprintf(out, "      i++;\n");
-fprintf(out, "  }\n");
-fprintf(out, "}\n");
+fprintf(out, "  printf(\"%%.*s\", s.length, s.data);\n");
+fprintf(out, "}\n;\n");
 }
 
 
 void mod_src_codegen_flo_emit_includes(ModuleSet* mods, FILE* out) {
 int need_stdlib = 0;
 int need_stdio = 0;
-int need_string_h = 0;
+int need_string = 0;
 int need_ctype = 0;
 int need_unistd = 0;
 for (int i = 0; ((0) > (mods->count)) ? i > (mods->count) : i < (mods->count); ((0) > (mods->count)) ? i-- : i++) {
@@ -4312,24 +4195,28 @@ has_stdlib = 1;
 if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_stdio = 1;
 }
+if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_STRING)) {
+need_string = 1;
+}
 AST* curr = m->ast;
 while (curr != NULL) {
 if (curr->kind == AST_IMPORT  &&  curr->data._import.is_system) {
 char name[64];
 snprintf(name, sizeof(name), "%.*s", curr->data._import.path_length, m->src + curr->data._import.path_start);
-if (mod_src_stdlib_cstr_flo_eq(name, "stdio")) {
+if (!(strcmp(name, "stdio"))) {
 need_stdio = 1;
 }
-else if (mod_src_stdlib_cstr_flo_eq(name, "stdlib")) {
+else if (!(strcmp(name, "stdlib"))) {
 need_stdlib = 1;
 }
-else if (mod_src_stdlib_cstr_flo_eq(name, "string")) {
-need_string_h = 1;
+else if (!(strcmp(name, "string"))) {
+need_stdio = 1;
+need_string = 1;
 }
-else if (mod_src_stdlib_cstr_flo_eq(name, "ctype")) {
+else if (!(strcmp(name, "ctype"))) {
 need_ctype = 1;
 }
-else if (mod_src_stdlib_cstr_flo_eq(name, "unistd")) {
+else if (!(strcmp(name, "unistd"))) {
 need_unistd = 1;
 }
 }
@@ -4342,7 +4229,7 @@ fprintf(out, "#include <stdlib.h>\n");
 if (need_stdio) {
 fprintf(out, "#include <stdio.h>\n");
 }
-if (need_string_h) {
+if (need_string) {
 fprintf(out, "#include <string.h>\n");
 }
 if (need_ctype) {
@@ -4630,7 +4517,7 @@ int defined_count = 0;
 
 void mod_src_codegen_flo_gen_struct(AST* ast, FILE* out, char* src) {
 for (int i = 0; ((0) > (defined_count)) ? i > (defined_count) : i < (defined_count); ((0) > (defined_count)) ? i-- : i++) {
-if (defined_structs[i].length == ast->data._struct_def.name_length  &&  mod_src_stdlib_cstr_flo_eq_n(defined_structs[i].name, src + ast->data._struct_def.name_start, ast->data._struct_def.name_length)) {
+if (defined_structs[i].length == ast->data._struct_def.name_length  &&  !(strncmp(defined_structs[i].name, ast->data._struct_def.name_start + src, ast->data._struct_def.name_length))) {
 return;}
 }
 fprintf(out, "\n\ntypedef struct %.*s {\n", ast->data._struct_def.name_length, src + ast->data._struct_def.name_start);
@@ -4653,7 +4540,7 @@ fprintf(out, ";\n");
 field = field->next;
 }
 fprintf(out, "} %.*s;\n", ast->data._struct_def.name_length, src + ast->data._struct_def.name_start);
-defined_structs[defined_count].name = mod_src_stdlib_cstr_flo_dup_n(src + ast->data._struct_def.name_start, ast->data._struct_def.name_length);
+defined_structs[defined_count].name = strndup(src + ast->data._struct_def.name_start, ast->data._struct_def.name_length);
 defined_structs[defined_count].length = ast->data._struct_def.name_length;
 defined_count = defined_count + 1;
 }
@@ -4669,7 +4556,7 @@ int defined_union_count = 0;
 
 void mod_src_codegen_flo_gen_union(AST* ast, FILE* out, char* src) {
 for (int i = 0; ((0) > (defined_union_count)) ? i > (defined_union_count) : i < (defined_union_count); ((0) > (defined_union_count)) ? i-- : i++) {
-if (defined_unions[i].length == ast->data._union_def.name_length  &&  mod_src_stdlib_cstr_flo_eq_n(defined_unions[i].name, src + ast->data._union_def.name_start, ast->data._union_def.name_length)) {
+if (defined_unions[i].length == ast->data._union_def.name_length  &&  !(strncmp(defined_unions[i].name, ast->data._union_def.name_start + src, ast->data._union_def.name_length))) {
 return;}
 }
 fprintf(out, "\n\ntypedef union %.*s {\n", ast->data._union_def.name_length, src + ast->data._union_def.name_start);
@@ -4692,7 +4579,7 @@ fprintf(out, ";\n");
 field = field->next;
 }
 fprintf(out, "} %.*s;\n", ast->data._union_def.name_length, src + ast->data._union_def.name_start);
-defined_unions[defined_union_count].name = mod_src_stdlib_cstr_flo_dup_n(src + ast->data._union_def.name_start, ast->data._union_def.name_length);
+defined_unions[defined_union_count].name = strndup(src + ast->data._union_def.name_start, ast->data._union_def.name_length);
 defined_unions[defined_union_count].length = ast->data._union_def.name_length;
 defined_union_count = defined_union_count + 1;
 }
@@ -4754,7 +4641,7 @@ fprintf(out, "}\n");
 void mod_src_codegen_flo_emit_lowered_func_name(Module* mod, FILE* out, char* src, int start, int length) {
 if (mod != NULL) {
 Module* root = active_modules->modules + 0;
-if (mod_src_stdlib_cstr_flo_eq(mod->path, root->path)  &&  length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "main", 4)) {
+if (!(strcmp(mod->path, root->path))  &&  length == 4  &&  !(strncmp(src + start, "main", 4))) {
 fprintf(out, "main");
 return;}
 fprintf(out, "%s_%.*s", mod->symbol_prefix, length, src + start);
@@ -4906,7 +4793,7 @@ if (ast->data._import.has_alias) {
 snprintf(alias, sizeof(alias), "%.*s", ast->data._import.alias_length, src + ast->data._import.alias_start);
 }
 for (int i = 0; ((0) > (emitted_count)) ? i > (emitted_count) : i < (emitted_count); ((0) > (emitted_count)) ? i-- : i++) {
-if (mod_src_stdlib_cstr_flo_eq(emitted_imports[i].path, path)) {
+if (!(strcmp(emitted_imports[i].path, path))) {
 free(path);
 return;}
 }
@@ -4915,8 +4802,8 @@ if (imported == NULL) {
 printf("%sCould not find loaded import module: %s%s", RED, RESET, path);
 free(path);
 return;}
-emitted_imports[emitted_count].path = mod_src_stdlib_cstr_flo_dup(path);
-emitted_imports[emitted_count].alias = mod_src_stdlib_cstr_flo_dup(alias);
+emitted_imports[emitted_count].path = strdup(path);
+emitted_imports[emitted_count].alias = strdup(alias);
 emitted_count = emitted_count + 1;
 mod_src_codegen_flo_emit_module(imported, out, "", 0, 0);
 free(path);
@@ -5077,7 +4964,7 @@ if (imported != NULL) {
 mod_src_codegen_flo_emit_lowered_func_name(imported, out, src, ast->data._alias_call.func_start, ast->data._alias_call.func_length);
 }
 else {
-fprintf(out, "%.*s_%.*s", ast->data._alias_call.alias_length, src + ast->data._alias_call.alias_start, ast->data._alias_call.func_length, src + ast->data._alias_call.func_start);
+fprintf(out, "%.*s_%.*s", ast->data._alias_call.alias_length, ast->data._alias_call.alias_start + src, ast->data._alias_call.func_length, src + ast->data._alias_call.func_start);
 }
 fprintf(out, "(");
 AST* arg = ast->data._alias_call.args;
@@ -5115,16 +5002,11 @@ mod_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.type), out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_CHAR_LIT) {
-fprintf(out, "%.*s", ast->data._char_lit.length, src + ast->data._char_lit.start);
+fprintf(out, "%.*s", ast->data._char_lit.length, ast->data._char_lit.start + src);
 }
 else if (ast->kind == AST_SUBSCRIPT) {
 mod_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
-if (ast->data._subscript.is_string) {
-fprintf(out, ".data[");
-}
-else {
 fprintf(out, "[");
-}
 mod_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
 fprintf(out, "]");
 }
@@ -5244,12 +5126,7 @@ fprintf(out, ";\n");
 }
 else if (ast->kind == AST_SUBSCRIPT) {
 mod_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
-if (ast->data._subscript.is_string) {
-fprintf(out, ".data[");
-}
-else {
 fprintf(out, "[");
-}
 mod_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
 fprintf(out, "]");
 if (ast->data._subscript.value != NULL) {
@@ -5290,32 +5167,28 @@ if (arg[0] == '-') {
 while (arg[0] == '-') {
 arg = arg + 1;
 }
-flower_string flag = flower_string_from_cstr(arg);
-for (int i = 0; ((0) > (flag.length)) ? i > (flag.length) : i < (flag.length); ((0) > (flag.length)) ? i-- : i++) {
-arg[i] = (char)(tolower((char)(arg[i])));
+for (int i = 0; ((0) > (strlen(arg))) ? i > (strlen(arg)) : i < (strlen(arg)); ((0) > (strlen(arg))) ? i-- : i++) {
+arg[i] = tolower((char)(arg[i]));
 }
-if (flower_string_eq(flag, ((flower_string){ "help", (int)(sizeof("help") - 1) }))  ||  flower_string_eq(flag, ((flower_string){ "h", (int)(sizeof("h") - 1) }))) {
+if (!(strcmp(arg, "help"))  ||  !(strcmp(arg, "h"))) {
 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET);
 printf("%sUsage:\n%s", BLUE, RESET);
-flower_print_string(((flower_string){ "\tflower\t[options] <filepath> [output_path]\n\n", (int)(sizeof("\tflower\t[options] <filepath> [output_path]\n\n") - 1) }));
+flower_print_string(((flower_string){ "\tflower\t[options] <filepath>\n\n", (int)(sizeof("\tflower\t[options] <filepath>\n\n") - 1) }));
 printf("%sOptions:\n%s", BLUE, RESET);
 flower_print_string(((flower_string){ "\t-help,    -h\tShow this help message\n", (int)(sizeof("\t-help,    -h\tShow this help message\n") - 1) }));
 flower_print_string(((flower_string){ "\t-version, -v\tShow the current version of FloC\n", (int)(sizeof("\t-version, -v\tShow the current version of FloC\n") - 1) }));
-flower_print_string(((flower_string){ "\t<filepath>\tSpecify the source file to compile", (int)(sizeof("\t<filepath>\tSpecify the source file to compile") - 1) }));
-flower_print_string(((flower_string){ "\t[output_path]\tOptional output binary path\n\n", (int)(sizeof("\t[output_path]\tOptional output binary path\n\n") - 1) }));
+flower_print_string(((flower_string){ "\t<filepath>\tSpecify the source code file to compile\n\n", (int)(sizeof("\t<filepath>\tSpecify the source code file to compile\n\n") - 1) }));
 printf("%sExample:\n%s", BLUE, RESET);
 flower_print_string(((flower_string){ "\tflower -help\n", (int)(sizeof("\tflower -help\n") - 1) }));
-flower_print_string(((flower_string){ "\tflower main.flo build/demo\n\n", (int)(sizeof("\tflower main.flo build/demo\n\n") - 1) }));
+flower_print_string(((flower_string){ "\tflower main.flo\n\n", (int)(sizeof("\tflower main.flo\n\n") - 1) }));
 printf("%sTips:\n%s", BLUE, RESET);
-flower_print_string(((flower_string){ " - Omit output_path to emit `output/out.c` and `output/out`\n", (int)(sizeof(" - Omit output_path to emit `output/out.c` and `output/out`\n") - 1) }));
-flower_print_string(((flower_string){ " - When output_path is omitted, Flower auto-runs binaries that use `print`\n", (int)(sizeof(" - When output_path is omitted, Flower auto-runs binaries that use `print`\n") - 1) }));
 flower_print_string(((flower_string){ " - You can use any number of dashes before a flag, e.g., ---help\n", (int)(sizeof(" - You can use any number of dashes before a flag, e.g., ---help\n") - 1) }));
 flower_print_string(((flower_string){ " - Flags are case-insensitive: -HELP works too!\n\n", (int)(sizeof(" - Flags are case-insensitive: -HELP works too!\n\n") - 1) }));
 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET);
 continue;
 }
-else if (flower_string_eq(flag, ((flower_string){ "version", (int)(sizeof("version") - 1) }))  ||  flower_string_eq(flag, ((flower_string){ "v", (int)(sizeof("v") - 1) }))) {
-flower_print_string(((flower_string){ "Version: 1.3.0\n", (int)(sizeof("Version: 1.3.0\n") - 1) }));
+else if (!(strcmp(arg, "version"))  ||  !(strcmp(arg, "v"))) {
+flower_print_string(((flower_string){ "Version: 0.0.4\n", (int)(sizeof("Version: 0.0.4\n") - 1) }));
 continue;
 }
 else {
@@ -5341,17 +5214,11 @@ printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
 return -1;
 }
 char out_c[512];
-int explicit_output = 0;
 if (i + 1 < argc  &&  argv[i + 1][0] != '-') {
-explicit_output = 1;
 snprintf(out_c, sizeof(out_c), "%s.c", argv[i + 1]);
 }
 else {
-if (system("mkdir -p output") != 0) {
-printf("%sFailed to create output directory\n%s", RED, RESET);
-return -1;
-}
-snprintf(out_c, sizeof(out_c), "output/out.c");
+snprintf(out_c, sizeof(out_c), "output.c");
 }
 FILE* output = fopen(out_c, "w");
 if (!(output)) {
@@ -5365,10 +5232,6 @@ if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = 1;
 }
 }
-int should_run = 0;
-if (has_output  &&  !(explicit_output)) {
-should_run = 1;
-}
 flower_print_string(((flower_string){ "Codegen...\n", (int)(sizeof("Codegen...\n") - 1) }));
 fflush(stdout);
 mod_src_codegen_flo_emit_string_runtime(output);
@@ -5377,26 +5240,18 @@ mod_src_codegen_flo_codegen(mods, output);
 free(mods);
 fclose(output);
 char bin_name[512];
-snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(mod_src_stdlib_cstr_flo_len(out_c) - 2), out_c);
+snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(strlen(out_c) - 2), out_c);
 char build_cmd[1024];
 snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name);
-int build_status = system(build_cmd);
-if (build_status != 0) {
-printf("%sFailed to compile generated C outputs%s\n", RED, RESET);
-return -1;
-}
-if (should_run) {
+system(build_cmd);
+if (has_output) {
 printf("%s\nOUTPUT:\n", YELLOW);
 fflush(stdout);
 printf("%s", RESET);
 fflush(stdout);
 snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name);
-int run_status = system(build_cmd);
-if (run_status != 0) {
-printf("%sFailed to run generated binary%s\n", RED, RESET);
-return -1;
 }
-}
+system(build_cmd);
 flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
 printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET);
 break;

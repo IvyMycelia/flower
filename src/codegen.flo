@@ -2,16 +2,55 @@ import "src/lexer.flo" as lexer
 import "src/parser.flo" as parser
 import "src/file.flo" as file
 import "src/module.flo" as module
+import "src/stdlib/cstr.flo" as cstr
 
 has_stdlib: int = 0
 has_stdio: int = 0
 
 // === UTILITIES ===
 
+func emit_string_runtime(out: @FILE): void
+    fprintf(out, "#include <stdio.h>\n")
+
+    fprintf(out, "typedef struct { char* data; int length; } flower_string;\n")
+
+    fprintf(out, "static int flower_cstr_len(char* s) {\n")
+    fprintf(out, "  int i = 0;\n")
+    fprintf(out, "  if (s == NULL) return 0;\n")
+    fprintf(out, "  while (s[i] != '\\0') i++;\n")
+    fprintf(out, "  return i;\n")
+    fprintf(out, "}\n")
+
+    fprintf(out, "static flower_string flower_string_from_cstr(char* s) {\n")
+    fprintf(out, "  flower_string out;\n")
+    fprintf(out, "  out.data = s;\n")
+    fprintf(out, "  out.length = (int)flower_cstr_len(s);\n")
+    fprintf(out, "  return out;\n")
+    fprintf(out, "}\n")
+
+    fprintf(out, "static int flower_string_eq(flower_string a, flower_string b) {\n")
+    fprintf(out, "  int i = 0;\n")
+    fprintf(out, "  if (a.length != b.length) return 0;\n")
+    fprintf(out, "  while (i < a.length) {\n")
+    fprintf(out, "      if (a.data[i] != b.data[i]) return 0;\n")
+    fprintf(out, "      i++;\n")
+    fprintf(out, "  }\n")
+    fprintf(out, "  return 1;\n")
+    fprintf(out, "}\n")
+
+    fprintf(out, "static void flower_print_string(flower_string s) {\n")
+    fprintf(out, "  int i = 0;\n")
+    fprintf(out, "  while (i < s.length) {\n")
+    fprintf(out, "      putchar(s.data[i]);\n")
+    fprintf(out, "      i++;\n")
+    fprintf(out, "  }\n")
+    fprintf(out, "}\n")
+end
+
 func emit_includes(mods: @ModuleSet, out: @FILE): void
     need_stdlib: int = 0
     need_stdio: int = 0
-    need_string: int = 0
+    need_string_h: int = 0
     need_ctype: int = 0
     need_unistd: int = 0
 
@@ -32,15 +71,15 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
                 name: char[64]
                 snprintf(name, sizeof(name), "%.*s", curr.data._import.path_length, m.src + curr.data._import.path_start)
 
-                if not strcmp(name, "stdio"):
+                if cstr.eq(name, "stdio"):
                     need_stdio = 1
-                else if not strcmp(name, "stdlib"):
+                else if cstr.eq(name, "stdlib"):
                     need_stdlib = 1
-                else if not strcmp(name, "string"):
-                    need_string = 1
-                else if not strcmp(name, "ctype"):
+                else if cstr.eq(name, "string"):
+                    need_string_h = 1
+                else if cstr.eq(name, "ctype"):
                     need_ctype = 1
-                else if not strcmp(name, "unistd"):
+                else if cstr.eq(name, "unistd"):
                     need_unistd = 1
                 end
             end
@@ -54,7 +93,7 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
     if need_stdio:
         fprintf(out, "#include <stdio.h>\n")
     end
-    if need_string:
+    if need_string_h:
         fprintf(out, "#include <string.h>\n")
     end
     if need_ctype:
@@ -64,6 +103,7 @@ func emit_includes(mods: @ModuleSet, out: @FILE): void
         fprintf(out, "#include <unistd.h>\n")
     end
 end
+
 
 func token_to_string(kind: int): @char
     if kind == TOKEN_INT:
@@ -189,6 +229,8 @@ end
 func typeinfo_to_string(type: @TypeInfo, out: @FILE, src: @char): void
     if type.base == TOKEN_IDENTIFIER:
         fprintf(out, "%.*s", type.name_length, src + type.name_start)
+    else if type.base == TOKEN_STRING:
+        fprintf(out, "flower_string")
     else:
         fprintf(out, "%s", token_to_string(type.base))
     end
@@ -355,7 +397,7 @@ defined_count: int = 0
 
 func gen_struct(ast: @AST, out: @FILE, src: @char): void
     for i in 0..defined_count:
-        if defined_structs[i].length == ast.data._struct_def.name_length and not strncmp(defined_structs[i].name, ast.data._struct_def.name_start + src, ast.data._struct_def.name_length):
+        if defined_structs[i].length == ast.data._struct_def.name_length and cstr.eq_n(defined_structs[i].name, src + ast.data._struct_def.name_start, ast.data._struct_def.name_length):
             return
         end
     end
@@ -380,7 +422,7 @@ func gen_struct(ast: @AST, out: @FILE, src: @char): void
     end
     fprintf(out, "} %.*s;\n", ast.data._struct_def.name_length, src + ast.data._struct_def.name_start)
 
-    defined_structs[defined_count].name = strndup(src + ast.data._struct_def.name_start, ast.data._struct_def.name_length)
+    defined_structs[defined_count].name = cstr.dup_n(src + ast.data._struct_def.name_start, ast.data._struct_def.name_length)
     defined_structs[defined_count].length = ast.data._struct_def.name_length
     defined_count = defined_count + 1
 end
@@ -394,7 +436,7 @@ defined_union_count: int = 0
 
 func gen_union(ast: @AST, out: @FILE, src: @char): void
     for i in 0..defined_union_count:
-        if defined_unions[i].length == ast.data._union_def.name_length and not strncmp(defined_unions[i].name, ast.data._union_def.name_start + src, ast.data._union_def.name_length):
+        if defined_unions[i].length == ast.data._union_def.name_length and cstr.eq_n(defined_unions[i].name, src + ast.data._union_def.name_start, ast.data._union_def.name_length):
             return
         end
     end
@@ -419,7 +461,7 @@ func gen_union(ast: @AST, out: @FILE, src: @char): void
     end
     fprintf(out, "} %.*s;\n", ast.data._union_def.name_length, src + ast.data._union_def.name_start)
 
-    defined_unions[defined_union_count].name = strndup(src + ast.data._union_def.name_start, ast.data._union_def.name_length)
+    defined_unions[defined_union_count].name = cstr.dup_n(src + ast.data._union_def.name_start, ast.data._union_def.name_length)
     defined_unions[defined_union_count].length = ast.data._union_def.name_length
     defined_union_count = defined_union_count + 1
 end
@@ -494,7 +536,7 @@ func emit_lowered_func_name(mod: @Module, out: @FILE, src: @char, start: int, le
     if mod != null:
         root: @Module = active_modules.modules + 0
 
-        if not strcmp(mod.path, root.path) and length == 4 and not strncmp(src + start, "main", 4):
+        if cstr.eq(mod.path, root.path) and length == 4 and cstr.eq_n(src + start, "main", 4):
             fprintf(out, "main")
             return
         end
@@ -660,14 +702,16 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     
     path: @char = resolve_path(current_file, raw_path)
 
-    alias: char[64] = ""
+    alias: char[64]
+    alias[0] = '\0'
+
     if ast.data._import.has_alias:
-        snprintf(alias, sizeof(alias), "%.*s", ast.data._import.alias_length, src + ast.data._import.alias_start )
+        snprintf(alias, sizeof(alias), "%.*s", ast.data._import.alias_length, src + ast.data._import.alias_start)
     end
 
     // Check if this exact path+alias combo already emitted
     for i in 0..emitted_count:
-        if not strcmp(emitted_imports[i].path, path):
+        if cstr.eq(emitted_imports[i].path, path):
             prune path
             return
         end
@@ -682,7 +726,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     end
 
     // // Mark as in progress
-    // in_progress[in_progress_count] = strdup(path)
+    // in_progress[in_progress_count] = cstr.dup(path)
     // in_progress_count = in_progress_count + 1
 
     // // Check cache for already-parsed AST
@@ -691,7 +735,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     // cached_ts: @TokenStream = null
 
     // for i in 0..cache_count:
-    //     if not strcmp(import_cache[i].path, path):
+    //     if cstr.eq(import_cache[i].path, path):
     //         imported_ast = import_cache[i].ast
     //         imported_src = import_cache[i].src
     //         break
@@ -713,7 +757,7 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     //     lexer.init_token_stream(ts)
     //     lexer.lex(ts, imported_src)
         
-    //     if strcmp(path, "PATH") == 0:
+    //     if cstr.eq(path, "PATH") == 0:
     //         lexer.print_all_tokens(ts, imported_src)
     //     end
 
@@ -731,15 +775,15 @@ func gen_import(ast: @AST, out: @FILE, src: @char): void
     //     imported_ast = parser.parse(&p)
 
     //     // Store in cache
-    //     import_cache[cache_count].path = strdup(path)
+    //     import_cache[cache_count].path = cstr.dup(path)
     //     import_cache[cache_count].ast = imported_ast
     //     import_cache[cache_count].src = imported_src
     //     cache_count = cache_count + 1
     // end
 
     // Record this path+alias as emitted
-    emitted_imports[emitted_count].path = strdup(path)
-    emitted_imports[emitted_count].alias = strdup(alias)
+    emitted_imports[emitted_count].path = cstr.dup(path)
+    emitted_imports[emitted_count].alias = cstr.dup(alias)
     emitted_count = emitted_count + 1
 
     emit_module(imported, out, "", 0, 0)
@@ -790,20 +834,59 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
 
     else if ast.kind == AST_FLOAT_LIT:
         fprintf(out, "%.*s", ast.data._float_lit.length, src + ast.data._float_lit.start)
+
+    else if ast.kind == AST_BOOL_LIT:
+        fprintf(out, "%d", ast.data._bool_lit.value)
         
+    else if ast.kind == AST_BOOL_LIT:
+        fprintf(out, "%d", ast.data._bool_lit.value)
+
     else if ast.kind == AST_NULL:
         fprintf(out, "NULL")
         
     else if ast.kind == AST_BINARY_OP: 
-        gen_expr(ast.data._binary.left, out, src)
-        fprintf(out, " %s ", token_to_string(ast.data._binary.op))
-        gen_expr(ast.data._binary.right, out, src)
+        if ast.data._binary.is_string_compare:
+            if ast.data._binary.op == TOKEN_NEQ:
+                fprintf(out, "(!flower_string_eq(")
+            else:
+                fprintf(out, "flower_string_eq(")
+            end
+
+            gen_expr(ast.data._binary.left, out, src)
+            fprintf(out, ", ")
+            gen_expr(ast.data._binary.right, out, src)
+
+            if ast.data._binary.op == TOKEN_NEQ:
+                fprintf(out, "))")
+            else:
+                fprintf(out, ")")
+            end
+        else:
+            gen_expr(ast.data._binary.left, out, src)
+            fprintf(out, " %s ", token_to_string(ast.data._binary.op))
+            gen_expr(ast.data._binary.right, out, src)
+        end
         
     else if ast.kind == AST_FUNC_CALL: 
         gen_func_call(ast, out, src)
         
     else if ast.kind == AST_STRING_LIT:
-        fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+        // PROPER STRING LOWERING — UNNUSED UNTIL COMPILER IS UPDATED
+        // fprintf(out, "flowe_string_from_cst(")
+        // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+        // fprintf(out, ")")
+
+        // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+
+        if ast.data._string.lower_kind == STRING_LOWER_CSTR:
+            fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+        else:
+            fprintf(out, "((flower_string){ ")
+            fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+            fprintf(out, ", (int)(sizeof(")
+            fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+            fprintf(out, ") - 1) })")
+        end
         
     else if ast.kind == AST_ARRAY_LIT:
         fprintf(out, "{")
@@ -830,11 +913,28 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "}")
         
     else if ast.kind == AST_CAST:
-        fprintf(out, "(")
-        typeinfo_to_string(&ast.data._cast.type, out, src)
-        fprintf(out, ")(")
-        gen_expr(ast.data._cast.value, out, src)
-        fprintf(out, ")")
+        if ast.data._cast.type.base == TOKEN_CHAR and ast.data._cast.type.pointer_depth == 1 and ast.data._cast.type.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
+            fprintf(out, "(")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ").data")
+
+        else if ast.data._cast.type.base == TOKEN_STRING and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0 and ast.data._cast.value_type.base == TOKEN_CHAR and ast.data._cast.value_type.pointer_depth == 1 and ast.data._cast.value_type.array_size == 0:
+            fprintf(out, "flower_string_from_cstr(")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ")")
+
+        else if ast.data._cast.type.base == TOKEN_BOOL and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0:
+            fprintf(out, "((")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ") != 0")
+
+        else:
+            fprintf(out, "(")
+            typeinfo_to_string(&ast.data._cast.type, out, src)
+            fprintf(out, ")(")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ")")
+        end
         
     else if ast.kind == AST_DOT_ACCESS:
         object: @AST = ast.data._dot_access.object
@@ -881,7 +981,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         if imported != null:
             emit_lowered_func_name(imported, out, src, ast.data._alias_call.func_start, ast.data._alias_call.func_length)
         else:
-            fprintf(out, "%.*s_%.*s", ast.data._alias_call.alias_length, ast.data._alias_call.alias_start + src, ast.data._alias_call.func_length, src + ast.data._alias_call.func_start)
+            fprintf(out, "%.*s_%.*s", ast.data._alias_call.alias_length, src + ast.data._alias_call.alias_start, ast.data._alias_call.func_length, src + ast.data._alias_call.func_start)
         end
 
         fprintf(out, "(")
@@ -921,11 +1021,15 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
         
     else if ast.kind == AST_CHAR_LIT:
-        fprintf(out, "%.*s", ast.data._char_lit.length, ast.data._char_lit.start + src)
+        fprintf(out, "%.*s", ast.data._char_lit.length, src + ast.data._char_lit.start)
         
     else if ast.kind == AST_SUBSCRIPT:
         gen_expr(ast.data._subscript.array, out, src)
-        fprintf(out, "[")
+        if ast.data._subscript.is_string:
+            fprintf(out, ".data[")
+        else:
+            fprintf(out, "[")
+        end
         gen_expr(ast.data._subscript.index, out, src)
         fprintf(out, "]")
 
@@ -1001,9 +1105,31 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
         end
 
     else if ast.kind == AST_PRINT:
-        fprintf(out, "printf(")
-        gen_expr(ast.data._print.value, out, src)
-        fprintf(out, ");\n")
+        if ast.data._print.value_type.base == TOKEN_STRING and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
+            fprintf(out, "flower_print_string(")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_CHAR and ast.data._print.value_type.pointer_depth == 1 and ast.data._print.value_type.array_size == 0:
+            fprintf(out, "printf(\"%%s\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_CHAR and ast.data._print.value_type.pointer_depth == 0:
+            fprintf(out, "printf(\"%%c\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_FLOAT or ast.data._print.value_type.base == TOKEN_DOUBLE:
+            fprintf(out, "printf(\"%%f\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+            
+        else:
+            fprintf(out, "printf(")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
+        end
                 
     else if ast.kind == AST_PRUNE:
         fprintf(out, "free(")
@@ -1017,7 +1143,11 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_SUBSCRIPT:
         gen_expr(ast.data._subscript.array, out, src)
-        fprintf(out, "[")
+        if ast.data._subscript.is_string:
+            fprintf(out, ".data[")
+        else:
+            fprintf(out, "[")
+        end
         gen_expr(ast.data._subscript.index, out, src)
         fprintf(out, "]")
 
@@ -1025,6 +1155,7 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, " = ")
             gen_expr(ast.data._subscript.value, out, src)
         end
+            
         fprintf(out, ";\n")
         
     else if ast.kind == AST_ALIAS_CALL:

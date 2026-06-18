@@ -1,13 +1,13 @@
 import <stdio>
 import <stdlib>
 
-prop func test(): int
+prop func test(): bool
     arr: @int = new int
     arr = realloc(arr, 10 * sizeof(int))
     if arr != null:
         prune arr
-        return 1
+        return true
     end
     prune arr
-    return 0
+    return false
 end

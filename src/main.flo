@@ -1,9 +1,9 @@
 import <stdio>
-import <string>
 import <ctype>
 import <stdlib>
 import <unistd>
 
+import "src/stdlib/cstr.flo" as cstr
 import "src/globals.flo" as globals
 import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
@@ -29,33 +29,37 @@ func main(argc: int, argv: @char[]): int
                 arg = arg + 1
             end
 
-            for i in 0..strlen(arg):
-                arg[i] = tolower(arg[i] as char)
+            flag: string = arg as string
+            for i in 0..flag.length:
+                arg[i] = tolower(arg[i] as char) as char
             end
 
-            if not strcmp(arg, "help") or not strcmp(arg, "h"):
+            if flag == "help" or flag == "h":
                 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET)
         
                 printf("%sUsage:\n%s", BLUE, RESET)
-                print("\tflower\t[options] <filepath>\n\n")
+                print("\tflower\t[options] <filepath> [output_path]\n\n")
 
                 printf("%sOptions:\n%s", BLUE, RESET)
                 print("\t-help,    -h\tShow this help message\n")
                 print("\t-version, -v\tShow the current version of FloC\n")
-                print("\t<filepath>\tSpecify the source code file to compile\n\n")
+                print("\t<filepath>\tSpecify the source file to compile")
+                print("\t[output_path]\tOptional output binary path\n\n")
         
                 printf("%sExample:\n%s", BLUE, RESET)
                 print("\tflower -help\n")
-                print("\tflower main.flo\n\n")
+                print("\tflower main.flo build/demo\n\n")
         
                 printf("%sTips:\n%s", BLUE, RESET)
+                print(" - Omit output_path to emit `output/out.c` and `output/out`\n")
+                print(" - When output_path is omitted, Flower auto-runs binaries that use `print`\n")
                 print(" - You can use any number of dashes before a flag, e.g., ---help\n")
                 print(" - Flags are case-insensitive: -HELP works too!\n\n")
         
                 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET)
                 continue
-            else if not strcmp(arg, "version") or not strcmp(arg, "v"):
-                print("Version: 0.0.4\n")
+            else if flag == "version" or flag == "v":
+                print("Version: 1.3.0\n")
                 continue
             else:
                 printf("%sUnrecognized flag argument! Use -help for more information.\n%s", RED, RESET)
@@ -66,34 +70,6 @@ func main(argc: int, argv: @char[]): int
             abs_path: char[512]
             realpath(argv[i], abs_path)
             set_current_file(abs_path)
-
-            // file: @char = file.read_file(argv[i])
-            // if not file:
-            //     return -1
-            // end
-
-            // // Initialize token handling
-            // tokens: @TokenStream = new TokenStream
-            // lexer.init_token_stream(tokens)
-
-            // // Lexer
-            // print("Lexing...\n"); fflush(stdout)
-            // lexer.lex(tokens, file)
-            // // lexer.print_all_tokens(tokens, file)
-
-            // // printf("sizeof AST: %d\n", sizeof(AST))
-            // // printf("sizeof Token: %d\n", sizeof(Token))
-            // // printf("sizeof TokenStream: %d\n", sizeof(TokenStream))
-
-            // // Parser
-            // print("Parsing...\n"); fflush(stdout)
-            // tree: Parser;
-            // parser.init_parser(&tree, tokens, file, argv[i])
-            // ast: @AST = parser.parse(&tree)
-
-            // // Typecheck
-            // print("Checking types...\n");
-            
 
             print("Initializing modules..\n")
             mods: @ModuleSet = new ModuleSet
@@ -113,10 +89,18 @@ func main(argc: int, argv: @char[]): int
 
             // Codegen
             out_c: char[512]
+            explicit_output: bool = false
+            
             if i + 1 < argc and argv[i + 1][0] != '-':
+                explicit_output = true
                 snprintf(out_c, sizeof(out_c), "%s.c", argv[i + 1])
             else:
-                snprintf(out_c, sizeof(out_c), "output.c")
+                if system("mkdir -p output") != 0:
+                    printf("%sFailed to create output directory\n%s", RED, RESET)
+                    return -1
+                end
+
+                snprintf(out_c, sizeof(out_c), "output/out.c")
             end
 
             output: @FILE = fopen(out_c, "w")
@@ -133,34 +117,45 @@ func main(argc: int, argv: @char[]): int
                 end
             end
 
+            should_run: bool = false
+            if has_output and not explicit_output:
+                should_run = true
+            end
+
             print("Codegen...\n"); fflush(stdout)
+            emit_string_runtime(output)
             emit_includes(mods, output)
-            // fprintf(output, "typedef struct { char* value; int length; } string;\n\n")
             codegen(mods, output)
 
-            // free_token_stream(tokens)
-            // prune tokens
-            // prune file
             prune mods
             fclose(output)
 
             bin_name: char[512]
-            snprintf(bin_name, sizeof(bin_name), "%.*s", (strlen(out_c) - 2) as int, out_c)
+            snprintf(bin_name, sizeof(bin_name), "%.*s", (cstr.len(out_c) - 2) as int, out_c)
 
             build_cmd: char[1024]
             snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name)
 
-            system(build_cmd)
+            build_status: int = system(build_cmd)
+            if build_status != 0:
+                printf("%sFailed to compile generated C outputs%s\n", RED, RESET)
+                return -1
+            end
 
-            if has_output:
+            if should_run:
                 printf("%s\nOUTPUT:\n", YELLOW)
                 fflush(stdout)
                 printf("%s", RESET)
                 fflush(stdout)
                 snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name)
+
+                run_status: int = system(build_cmd)
+                if run_status != 0:
+                    printf("%sFailed to run generated binary%s\n", RED, RESET)
+                    return -1
+                end
             end
 
-            system(build_cmd)
             print("\n")
             printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET)
             break

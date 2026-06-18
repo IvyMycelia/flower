@@ -1,9 +1,9 @@
 import <stdio>
 import <stdlib>
 
-prop func test(): int
+prop func test(): bool
     arr: @int = new int
     y: int = @(arr + 1)
     prune arr
-    return 1
+    return true
 end

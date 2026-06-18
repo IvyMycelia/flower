@@ -8,13 +8,13 @@ func multiply(a: int, b: int): int
     return a * b
 end
 
-prop func test(): int
+prop func test(): bool
     x: int = add(1, 2)
     if x == 3:
         y: int = multiply(3, 4)
         if y == 12:
-            return 1
+            return true
         end
     end
-    return 0
+    return false
 end

@@ -1,10 +1,7 @@
 import <stdio>
 import <stdlib>
 
-prop func test(): int
+prop func test(): bool
     ptr: @int = null
-    if ptr == null:
-        return 1
-    end
-    return 0
+    return ptr == null
 end

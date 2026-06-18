@@ -7,13 +7,10 @@ help:
 	@echo "\tmake test\t:   Run test suite"
 	@echo "\tmake clean\t:   Remove build artifacts"
 
-build: bin/Flower
-
-bin/Flower: 
-	src/*.flo
-	./bin/Flower ./src/main.flo ./bin/Flower.c
-	gcc ./bin/Flower.c -o bin/Flower.new
-	mv bin/Flower.new bin/Flower
+# build: 
+# 	./bin/Flower ./src/main.flo ./bin/Flower.c
+# 	gcc ./bin/Flower.c -o bin/Flower.new
+# 	mv bin/Flower.new bin/Flower
 
 bootstrap:
 	./scripts/build.sh
@@ -24,7 +21,9 @@ rebuild:
 	@echo "Clean rebuild complete"
 
 test:
+	mkdir -p output
 	./bin/Flower ./examples/test.flo ./output/out
+	./output/out
 
 clean:
 	rm -rf build/ output/

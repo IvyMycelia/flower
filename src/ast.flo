@@ -4,53 +4,54 @@
 AST_FLOW_CONTROL:   int = 0     // return, break, continue
 AST_LITERAL:        int = 1     // A value
 AST_FLOAT_LIT:      int = 2     // A decimal value
-AST_CAST:           int = 3     // Cast a type
-AST_NULL:           int = 4     // An empty value
-AST_STRING_LIT:     int = 5     // A string "Hello, World!"
-AST_ARRAY_LIT:      int = 6     // Array literal [0, 1, 2 ..]
-AST_SUBSCRIPT:      int = 7     // arr[1]
-AST_STRUCT_LIT:     int = 8     // Struct literal {0, 1, 2 ..}
-AST_CHAR_LIT:       int = 9     // char literal 'a' 'B'
-AST_STRUCT_DEF:     int = 10    // Struct declaration
-AST_UNION_DEF:      int = 11
-AST_STRUCT_FIELD:   int = 12    // Struct field
-AST_DOT_ACCESS:     int = 13    // Struct access
-AST_BINARY_OP:      int = 14    // 0 + 0
+AST_BOOL_LIT:       int = 3
+AST_CAST:           int = 4     // Cast a type
+AST_NULL:           int = 5     // An empty value
+AST_STRING_LIT:     int = 6     // A string "Hello, World!"
+AST_ARRAY_LIT:      int = 7     // Array literal [0, 1, 2 ..]
+AST_SUBSCRIPT:      int = 8     // arr[1]
+AST_STRUCT_LIT:     int = 9     // Struct literal {0, 1, 2 ..}
+AST_CHAR_LIT:       int = 10     // char literal 'a' 'B'
+AST_STRUCT_DEF:     int = 11    // Struct declaration
+AST_UNION_DEF:      int = 12
+AST_STRUCT_FIELD:   int = 13    // Struct field
+AST_DOT_ACCESS:     int = 14    // Struct access
+AST_BINARY_OP:      int = 15    // 0 + 0
 
     //     === Unary ===
 
-AST_UNARY_NOT:      int = 15    // not x
-AST_UNARY_NEG:      int = 16    // *-1
+AST_UNARY_NOT:      int = 16    // not x
+AST_UNARY_NEG:      int = 17    // *-1
 
     // === Memory Management ===
 
-AST_NEW:            int = 17    // malloc(sizeof(t))
-AST_PRUNE:          int = 18    // free(mem)
-AST_SIZEOF:         int = 19    // sizeof(x)
-AST_DEREF_ASS:      int = 20    // @ptr = 42
-AST_DEREF:          int = 21    // @ptr
-AST_GET_ADDR:       int = 22    // &ptr
+AST_NEW:            int = 18    // malloc(sizeof(t))
+AST_PRUNE:          int = 19    // free(mem)
+AST_SIZEOF:         int = 20    // sizeof(x)
+AST_DEREF_ASS:      int = 21    // @ptr = 42
+AST_DEREF:          int = 22    // @ptr
+AST_GET_ADDR:       int = 23    // &ptr
 
     //  === Import System ===
 
-AST_IMPORT:         int = 23    // import "custom.flo"
-AST_PROP:           int = 24    // prop <top-level declaration>
-AST_FORWARD:        int = 25    // forward <struct || func>
-AST_ALIAS_CALL:     int = 26    // Alias call: math.sqrt()
+AST_IMPORT:         int = 24    // import "custom.flo"
+AST_PROP:           int = 25    // prop <top-level declaration>
+AST_FORWARD:        int = 26    // forward <struct || func>
+AST_ALIAS_CALL:     int = 27    // Alias call: math.sqrt()
 
-AST_VAR_DECL:       int = 27    // a: int
-AST_VAR_ASS:        int = 28    // a = temp
-AST_VAR_REF:        int = 29    // Reading a variable's value
-AST_FUNC_DEF:       int = 30    // int fib(n: int)
-AST_FUNC_CALL:      int = 31    // fib(5)
-AST_WHILE:          int = 32    // while i < n:
-AST_FOR:            int = 33    // for i in 0..=10
-AST_IF:             int = 34    // if conidtion
-AST_PARAM:          int = 35    // n: int in function signatures
+AST_VAR_DECL:       int = 28    // a: int
+AST_VAR_ASS:        int = 29    // a = temp
+AST_VAR_REF:        int = 30    // Reading a variable's value
+AST_FUNC_DEF:       int = 31    // int fib(n: int)
+AST_FUNC_CALL:      int = 32    // fib(5)
+AST_WHILE:          int = 33    // while i < n:
+AST_FOR:            int = 34    // for i in 0..=10
+AST_IF:             int = 35    // if conidtion
+AST_PARAM:          int = 36    // n: int in function signatures
     
     //     === stdio ===
     
-AST_PRINT:          int = 36    // print()
+AST_PRINT:          int = 37    // print()
 
 
 // FIELDS
@@ -61,8 +62,11 @@ FIELD_TRUE:  int = 1
 // FIELD_READONLY: int = 2
 // FIELD_FROZEN:   int = 4
 
-forward struct AST
+// Constants for Strings
+STRING_LOWER_STRING: int = 0
+STRING_LOWER_CSTR:   int = 1
 
+forward struct AST
 
 struct TypeInfo {
     base: int,
@@ -77,12 +81,17 @@ struct TypeInfo {
     // === Type Casting ===
 struct cast {
     value: @AST,
-    type: TypeInfo
+    type: TypeInfo,
+    value_type: TypeInfo
 }
 
 struct float_lit {
     start: int,
     length: int
+}
+
+struct bool_lit {
+    value: int
 }
 
 struct char_lit {
@@ -93,7 +102,8 @@ struct char_lit {
     // === Strings ===
 struct strng {
     str_start: int,
-    str_length: int
+    str_length: int,
+    lower_kind: int,
 }
 
     // === Arrays ===
@@ -105,7 +115,8 @@ struct array {
 struct subscript {
     array: @AST,
     index: @AST,
-    value: @AST
+    value: @AST,
+    is_string: int,
 }
 
     // === Unary Operations ===
@@ -144,6 +155,7 @@ struct get_addr {
     // === stdio ===
 struct prnt {
     value: @AST,
+    value_type: TypeInfo
 }
 
 
@@ -235,6 +247,7 @@ struct binary {
     left: @AST,   // left binary-op
     right: @AST,  // right bin-op
     op: int,
+    is_string_compare: int,
 }
 
     // === Variables ===
@@ -310,6 +323,7 @@ struct if_condition {
 union NodeData {
     _cast:          cast,
     _float_lit:     float_lit,
+    _bool_lit:      bool_lit,
     _char_lit:      char_lit,
     _string:        strng,
     _array:         array,
@@ -348,5 +362,10 @@ struct AST {
     kind: int,
     next: @AST,     // Next statement,
     value: int,     // For vals
+
+    src: @char,
+    filename: @char,
+    start: int,
+
     data: NodeData
 }
