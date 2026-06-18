@@ -97,7 +97,7 @@ dst[i] = src[i];
 i = i + 1;
 }
 if (i < n) {
-dst[i] = '\n';
+dst[i] = '\0';
 }
 return dst;
 }
