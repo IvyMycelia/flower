@@ -199,6 +199,76 @@ func can_convert_either_way(left: @TypeInfo, right: @TypeInfo): bool
     return can_implicitly_convert(left, right) or can_implicitly_convert(right, left)
 end
 
+func allow_string_literal_for_target(expr: @AST, expected: @TypeInfo): bool
+    if expr == null or expr.kind != AST_STRING_LIT:
+        return false
+    end
+
+    if is_cstr_type(expected):
+        expr.data._string.lower_kind = STRING_LOWER_CSTR
+        return true
+    end
+
+    if is_string_type(expected):
+        expr.data._string.lower_kind = STRING_LOWER_STRING
+        return true
+    end
+
+    return false
+end
+
+func builtin_expects_cstr_arg(src: @char, start: int, length: int, index: int): bool
+    if length == 6 and not strncmp(src + start, "printf", 6):
+        return index == 0
+
+    else if length == 7 and not strncmp(src + start, "fprintf", 7):
+        return index == 1
+
+    else if length == 8 and not strncmp(src + start, "snprintf", 8):
+        return index == 2
+
+    else if length == 6 and not strncmp(src + start, "strcmp", 6):
+        return index == 0 or index == 1
+
+    else if length == 7 and not strncmp(src + start, "strncmp", 7):
+        return index == 0 or index == 1
+
+    else if length == 6 and not strncmp(src + start, "strcpy", 6):
+        return index == 0 or index == 1
+
+    else if length == 7 and not strncmp(src + start, "strncpy", 7):
+        return index == 0 or index == 1
+
+    else if length == 6 and not strncmp(src + start, "strdup", 6):
+        return index == 0
+
+    else if length == 5 and not strncmp(src + start, "fopen", 5):
+        return index == 0 or index == 1
+
+    else if length == 6 and not strncmp(src + start, "system", 6):
+        return index == 0
+
+    else if length == 8 and not strncmp(src + start, "realpath", 8):
+        return index == 0
+    end
+
+    return false
+end
+
+func annotate_builtin_cstr_args(args: @AST, src: @char, start: int, length: int): void
+    arg: @AST = args
+    index: int = 0
+
+    while arg != null:
+        if builtin_expects_cstr_arg(src, start, length, index) and arg.kind == AST_STRING_LIT:
+            arg.data._string.lower_kind = STRING_LOWER_CSTR
+        end
+
+        arg = arg.next
+        index = index + 1
+    end
+end
+
 func wider_numeric_base(left: @TypeInfo, right: @TypeInfo): int
     if left.base == TOKEN_DOUBLE or right.base == TOKEN_DOUBLE:
         return TOKEN_DOUBLE
@@ -214,6 +284,16 @@ end
 func set_plain_type(out: @TypeInfo, base: int): void
     out.base = base
     out.pointer_depth = 0
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+end
+
+func set_cstr_type(out: @TypeInfo): void
+    out.base = TOKEN_CHAR
+    out.pointer_depth = 1
     out.array_size = 0
     out.arr_size_expr = null
     out.name_start = 0
@@ -502,6 +582,77 @@ func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
     end
 end
 
+// FOR C
+func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): bool
+    start: int = expr.data._func_call.name_start
+    length: int = expr.data._func_call.name_length
+    return_kind: int = 0    // 1 = int, 2 = @char
+
+    if length == 6 and not strncmp(src + start, "printf", 6):
+        return_kind = 1
+
+    else if length == 7 and not strncmp(src + start, "fprintf", 7):
+        return_kind = 1
+
+    else if length == 8 and not strncmp(src + start, "snprintf", 8):
+        return_kind = 1
+
+    else if length == 6 and not strncmp(src + start, "strcmp", 6):
+        return_kind = 1
+
+    else if length == 7 and not strncmp(src + start, "strncmp", 7):
+        return_kind = 1
+
+    else if length == 6 and not strncmp(src + start, "strlen", 6):
+        return_kind = 1
+    
+    else if length == 7 and not strncmp(src + start, "tolower", 7):
+        return_kind = 1
+
+    else if length == 6 and not strncmp(src + start, "system", 6):
+        return_kind = 1
+        
+    else if length == 6 and not strncmp(src + start, "fflush", 6):
+        return_kind = 1
+        
+    else if length == 6 and not strncmp(src + start, "fclose", 6):
+        return_kind = 1
+
+    
+    else if length == 6 and not strncmp(src + start, "strcpy", 6):
+        return_kind = 2
+        
+    else if length == 7 and not strncmp(src + start, "strncpy", 7):
+        return_kind = 2
+        
+    else if length == 6 and not strncmp(src + start, "strdup", 6):
+        return_kind = 2
+        
+    else if length == 7 and not strncmp(src + start, "strrchr", 7):
+        return_kind = 2
+        
+    else if length == 8 and not strncmp(src + start, "realpath", 8):
+        return_kind = 2
+        
+    else if length == 6 and not strncmp(src + start, "getcwd", 6):
+        return_kind = 2
+
+    else:
+        return false
+    end
+
+    annotate_builtin_cstr_args(expr.data._func_call.args, src, start, length)
+    resolve_expr_list(env, expr.data._func_call.args, src)
+
+    if return_kind == 1:
+        set_plain_type(out, TOKEN_INT)
+    else:
+        set_cstr_type(out)
+    end
+
+    return true
+end
+
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     if expr == null:
         return 0
@@ -542,6 +693,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return resolve_dot(env, expr, out, src)
 
     else if expr.kind == AST_FUNC_CALL:
+        if resolve_builtin_c_call(env, expr, out, src):
+            return 1
+        end
+        
+        annotate_builtin_cstr_args(expr.data._func_call.args, src, expr.data._func_call.name_start, expr.data._func_call.name_length)
+
         info: @FuncInfo = lookup_func_info(env, src, expr.data._func_call.name_start, expr.data._func_call.name_length)
         if info == null:
             resolve_expr_list(env, expr.data._func_call.args, src)
@@ -801,14 +958,14 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     else if expr.kind == AST_STRING_LIT:
         // STRING SETTING— UNNUSED UNTIL COMPILER IS UPDATED
-        // set_plain_type(out, TOKEN_STRING)
-        out.base = TOKEN_CHAR
-        out.pointer_depth = 1
-        out.array_size = 0
-        out.arr_size_expr = null
-        out.name_start = 0
-        out.name_length = 0
-        out.name_src = null
+        set_plain_type(out, TOKEN_STRING)
+        // out.base = TOKEN_CHAR
+        // out.pointer_depth = 1
+        // out.array_size = 0
+        // out.arr_size_expr = null
+        // out.name_start = 0
+        // out.name_length = 0
+        // out.name_src = null
         return 1
 
     else if expr.kind == AST_NULL:
@@ -954,8 +1111,9 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             value_type: @TypeInfo = new TypeInfo
 
             if resolve_expr(env, ast.data._var_decl.value, value_type, src):
-                if not can_implicitly_convert(&ast.data._var_decl.type, value_type):
+                if not allow_string_literal_for_target(ast.data._var_decl.value, &ast.data._var_decl.type) and not can_implicitly_convert(&ast.data._var_decl.type, value_type):
                     type_error(env, ast, "variable initializer does not match declared type")
+                    prune value_type
                     return
                 end
             end
@@ -975,7 +1133,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         end
 
         if resolve_expr(env, ast.data._var_ass.value, value_type, src):
-            if not can_implicitly_convert(target_type, value_type):
+            if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
                 type_error(env, ast, "assigned value does not match variable type")
             end
         end
@@ -1075,7 +1233,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             else:
                 tmp: @TypeInfo = new TypeInfo
                 if resolve_expr(env, ast.data._flow_ctrl.value, tmp, src):
-                    if not can_implicitly_convert(&current_return_type, tmp):
+                    if not allow_string_literal_for_target(ast.data._flow_ctrl.value, &current_return_type) and not can_implicitly_convert(&current_return_type, tmp):
                         type_error(env, ast, "return value does not match function return type")
                     end
                 end
@@ -1128,9 +1286,15 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
         
         else if curr.kind == AST_VAR_DECL:
             if curr.data._var_decl.value != null:
-                tmp: @TypeInfo = new TypeInfo
-                resolve_expr(env, curr.data._var_decl.value, tmp, src)
-                prune tmp
+                value_type: @TypeInfo = new TypeInfo
+
+                if resolve_expr(env, curr.data._var_decl.value, value_type, src):
+                    if not allow_string_literal_for_target(curr.data._var_decl.value, &curr.data._var_decl.type) and not can_implicitly_convert(&curr.data._var_decl.type, value_type):
+                        type_error(env, curr, "variable initializer does not match declared type")
+                    end
+                end
+
+                prune value_type
             end
         end
         curr = curr.next
@@ -1241,7 +1405,7 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
             return 0
         end
 
-        if not can_pass_arg(&param.data._func_params.type, arg_type):
+        if not allow_string_literal_for_target(arg, &param.data._func_params.type) and not can_pass_arg(&param.data._func_params.type, arg_type):
             type_error(env, arg, "function argument does not match parameter type")
             prune arg_type
             return 0

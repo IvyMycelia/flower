@@ -864,7 +864,18 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         // fprintf(out, "flowe_string_from_cst(")
         // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
         // fprintf(out, ")")
-        fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+
+        // fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+
+        if ast.data._string.lower_kind == STRING_LOWER_CSTR:
+            fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+        else:
+            fprintf(out, "((flower_string){ ")
+            fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+            fprintf(out, ", (int)(sizeof(")
+            fprintf(out, "%.*s", ast.data._string.str_length, src + ast.data._string.str_start)
+            fprintf(out, ") - 1) })")
+        end
         
     else if ast.kind == AST_ARRAY_LIT:
         fprintf(out, "{")
