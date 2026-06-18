@@ -1,4 +1,5 @@
-import <stdio>
+import "src/stdlib/string.flo" as strings
+
 
 prop func test(): bool
     name: string = "Ivy" as string
@@ -6,23 +7,23 @@ prop func test(): bool
     other: string = raw as string
     empty: string = "" as string
     literal_raw: @char = "Flower"
+    literal_string: string = literal_raw as string
 
     first: char = name[0]
     second: char = name[1]
     raw_last: char = raw[2]
 
     raw_string: string = raw as string
-    literal_string: string = literal_raw as string
 
     if name != other:
         return false
     end
 
-    if name == "Nova" as string:
+    if name == "Nova":
         return false
     end
 
-    if name != "Ivy" as string:
+    if name != "Ivy":
         return false
     end
 
@@ -57,14 +58,46 @@ prop func test(): bool
     if literal_string != "Flower":
         return false
     end
-    
-    print("\n")
-    print(name)
-    print("\n")
-    print(other)
-    print("\n")
-    print(first)
-    print("\n")
+
+    if not strings.is_empty(empty):
+        return false
+    end
+
+    if strings.is_empty(name):
+        return false
+    end
+
+    if not strings.starts_with(name, "Iv"):
+        return false
+    end
+
+    if strings.starts_with(name, "vy"):
+        return false
+    end
+
+    if not strings.ends_with(name, "vy"):
+        return false
+    end
+
+    if strings.ends_with(name, "Iv"):
+        return false
+    end
+
+    if strings.find_char(name, 'v') != 1:
+        return false
+    end
+
+    if strings.find_char(name, 'z') != -1:
+        return false
+    end
+
+    if not strings.starts_with(literal_string, "Flow"):
+        return false
+    end
+
+    if not strings.ends_with(literal_string, "wer"):
+        return false
+    end
 
     return true
 end
