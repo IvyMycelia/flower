@@ -1,3 +1,5 @@
+import "src/stdlib/cstr.flo" as cstr
+
 project_root: char[512]
 
 current_file: @char
@@ -21,17 +23,17 @@ func resolve_path(importing_file: @char, import_path: @char): @char
     
     if (import_path[0] == '.' and import_path[1] == '/') or (import_path[0] == '.' and import_path[1] == '.' and import_path[2] == '/'):
         dir: char[1024]
-        strncpy(dir, importing_file, sizeof(dir) - 1)
+        cstr.copy_n(dir, importing_file, sizeof(dir) - 1)
         dir[sizeof(dir) - 1] = '\0'
 
-        last_slash: @char = strrchr(dir, '/')
+        last_slash: @char = cstr.find_last(dir, '/')
         if last_slash:
             last_slash = last_slash + 1
             @last_slash = '\0'
-        else: strcpy(dir, "./")
+        else: cstr.copy(dir, "./")
         end
 
-        if strlen(dir) + strlen(import_path) + 1 > sizeof(resolved):
+        if cstr.len(dir) + cstr.len(import_path) + 1 > sizeof(resolved):
             printf("%sPath too long: %s%s%s\n", RED, dir, import_path, RESET)
             return null
         end
@@ -40,5 +42,5 @@ func resolve_path(importing_file: @char, import_path: @char): @char
     else:
         snprintf(resolved, sizeof(resolved), "%s/%s", project_root, import_path)
     end
-    return strdup(resolved)
+    return cstr.dup(resolved)
 end

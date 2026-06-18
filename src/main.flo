@@ -1,9 +1,9 @@
 import <stdio>
-import <string>
 import <ctype>
 import <stdlib>
 import <unistd>
 
+import "src/stdlib/cstr.flo" as cstr
 import "src/globals.flo" as globals
 import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
@@ -128,7 +128,7 @@ func main(argc: int, argv: @char[]): int
             fclose(output)
 
             bin_name: char[512]
-            snprintf(bin_name, sizeof(bin_name), "%.*s", (strlen(out_c) - 2) as int, out_c)
+            snprintf(bin_name, sizeof(bin_name), "%.*s", (cstr.len(out_c) - 2) as int, out_c)
 
             build_cmd: char[1024]
             snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name)

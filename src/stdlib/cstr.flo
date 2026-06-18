@@ -1,0 +1,94 @@
+prop func len(s: @char): int
+    if s == null:
+        return 0
+    end
+
+    i: int = 0
+    while s[i] != '\0':
+        i = i + 1
+    end
+
+    return i
+end
+
+prop func eq(a: @char, b: @char): bool
+    if a == null or b == null:
+        return a == b
+    end
+
+    i: int = 0
+    while a[i] != '\0' and b[i] != '\0':
+        if a[i] != b[i]:
+            return false
+        end
+        i = i + 1
+    end
+
+    return a[i] == b[i]
+end
+
+prop func eq_n(a: @char, b: @char, n: int): bool
+    if a == null or b == null:
+        return a == b and n == 0
+    end
+
+    for i in 0..n:
+        if a[i] != b[i]:
+            return false
+        end
+
+        if a[i] == '\0':
+            return true
+        end
+    end
+
+    return true
+end
+
+prop func copy(dst: @char, src: @char): @char
+    i: int = 0
+    while src[i] != '\0':
+        dst[i] = src[i]
+        i = i + 1
+    end
+    dst[i] = '\0'
+    return dst
+end
+
+prop func copy_n(dst: @char, src: @char, n: int): @char
+    i: int = 0
+    while i < n and src[i] != '\0':
+        dst[i] = src[i]
+        i = i + 1
+    end
+
+    if i < n:
+        dst[i] = '\0'
+    end
+
+    return dst
+end
+
+prop func dup(src: @char): @char
+    n: int = len(src)
+    out: @char = new char[n + 1]
+    copy(out, src)
+    return out
+end
+
+prop func find_last(src: @char, ch: char): @char
+    if src == null:
+        return null
+    end
+
+    last: @char = null
+    i: int = 0
+    while src[i] != '\0':
+        if src[i] == ch:
+            last = src + i
+        end
+        i = i + 1
+    end
+
+    return last
+end
