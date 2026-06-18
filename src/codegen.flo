@@ -1014,7 +1014,11 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_SUBSCRIPT:
         gen_expr(ast.data._subscript.array, out, src)
-        fprintf(out, "[")
+        if ast.data._subscript.is_string:
+            fprintf(out, ".data[")
+        else:
+            fprintf(out, "[")
+        end
         gen_expr(ast.data._subscript.index, out, src)
         fprintf(out, "]")
 
@@ -1128,7 +1132,11 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_SUBSCRIPT:
         gen_expr(ast.data._subscript.array, out, src)
-        fprintf(out, "[")
+        if ast.data._subscript.is_string:
+            fprintf(out, ".data[")
+        else:
+            fprintf(out, "[")
+        end
         gen_expr(ast.data._subscript.index, out, src)
         fprintf(out, "]")
 
@@ -1136,6 +1144,7 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, " = ")
             gen_expr(ast.data._subscript.value, out, src)
         end
+            
         fprintf(out, ";\n")
         
     else if ast.kind == AST_ALIAS_CALL:

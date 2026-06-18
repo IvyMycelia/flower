@@ -172,7 +172,7 @@ func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
         return true 
     end
 
-    if is_numeric_type(target) and is_numeric_type(value): 
+    if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)): 
         return true 
     end
 
@@ -720,12 +720,20 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        expr.data._subscript.is_string = 0
+
         idx_type: @TypeInfo = new TypeInfo
         if !resolve_expr(env, expr.data._subscript.index, idx_type, src):
             prune idx_type
             return 0
         end
         prune idx_type
+
+        if is_string_type(out):
+            expr.data._subscript.is_string = 1
+            set_plain_type(out, TOKEN_CHAR)
+            return 1
+        end
 
         if out.array_size != 0:
             out.array_size = 0
@@ -738,7 +746,8 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 1
         end
 
-        return 1
+        type_error(env, expr, "cannot subscript non-indexable type")
+        return 0
 
     else if expr.kind == AST_BINARY_OP:
         left_type: @TypeInfo = new TypeInfo
@@ -1140,6 +1149,31 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
         prune target_type
         prune value_type
+
+    else if ast.kind == AST_SUBSCRIPT:
+        target_type: @TypeInfo = new TypeInfo
+        if !resolve_expr(env, ast, target_type, src):
+            prune target_type
+            return
+        end
+
+        if ast.data._subscript.value != null:
+            if ast.data._subscript.is_string:
+                type_error(env, ast, "string indexing is readonly")
+                prune target_type
+                return
+            end
+
+            value_type: @TypeInfo = new TypeInfo
+            if resolve_expr(env, ast.data._subscript.value, value_type, src):
+                if not can_implicitly_convert(target_type, value_type):
+                    type_error(env, ast, "subscript assignment value does not match element type")
+                end
+            end
+            prune value_type
+        end
+
+        prune target_type
 
     else if ast.kind == AST_DOT_ACCESS:
         tmp: @TypeInfo = new TypeInfo

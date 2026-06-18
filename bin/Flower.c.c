@@ -878,7 +878,6 @@ typedef struct subscript {
 AST* array;
 AST* index;
 AST* value;
-int is_string;
 } subscript;
 
 
@@ -3002,7 +3001,7 @@ int mod_src_typecheck_flo_can_explicitly_convert(TypeInfo* target, TypeInfo* val
 if (mod_src_typecheck_flo_types_match(target, value)) {
 return 1;
 }
-if (mod_src_typecheck_flo_is_integer_type(target)  ||  mod_src_typecheck_flo_is_decimal_type(target)  &&  mod_src_typecheck_flo_is_integer_type(value)  ||  mod_src_typecheck_flo_is_decimal_type(value)) {
+if (mod_src_typecheck_flo_is_numeric_type(target)  &&  mod_src_typecheck_flo_is_numeric_type(value)) {
 return 1;
 }
 if (mod_src_typecheck_flo_is_bool_type(target)  &&  value->base == TOKEN_INT  &&  value->pointer_depth == 0  &&  value->array_size == 0) {
@@ -3489,18 +3488,12 @@ else if (expr->kind == AST_SUBSCRIPT) {
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
 return 0;
 }
-expr->data._subscript.is_string = 0;
 TypeInfo* idx_type = malloc(sizeof(TypeInfo));
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.index, idx_type, src))) {
 free(idx_type);
 return 0;
 }
 free(idx_type);
-if (mod_src_typecheck_flo_is_string_type(out)) {
-expr->data._subscript.is_string = 1;
-mod_src_typecheck_flo_set_plain_type(out, TOKEN_CHAR);
-return 1;
-}
 if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
@@ -3510,8 +3503,7 @@ if (out->pointer_depth > 0) {
 out->pointer_depth = out->pointer_depth - 1;
 return 1;
 }
-mod_src_typecheck_flo_type_error(env, expr, "cannot subscript non-indexable type");
-return 0;
+return 1;
 }
 else if (expr->kind == AST_BINARY_OP) {
 TypeInfo* left_type = malloc(sizeof(TypeInfo));
@@ -3866,26 +3858,6 @@ mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match variab
 }
 free(target_type);
 free(value_type);
-}
-else if (ast->kind == AST_SUBSCRIPT) {
-TypeInfo* target_type = malloc(sizeof(TypeInfo));
-if (!(mod_src_typecheck_flo_resolve_expr(env, ast, target_type, src))) {
-free(target_type);
-return;}
-if (ast->data._subscript.value != NULL) {
-if (ast->data._subscript.is_string) {
-mod_src_typecheck_flo_type_error(env, ast, "string indexing is readonly");
-free(target_type);
-return;}
-TypeInfo* value_type = malloc(sizeof(TypeInfo));
-if (mod_src_typecheck_flo_resolve_expr(env, ast->data._subscript.value, value_type, src)) {
-if (!(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
-mod_src_typecheck_flo_type_error(env, ast, "subscript assignment value does not match element type");
-}
-}
-free(value_type);
-}
-free(target_type);
 }
 else if (ast->kind == AST_DOT_ACCESS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
@@ -5034,12 +5006,7 @@ fprintf(out, "%.*s", ast->data._char_lit.length, ast->data._char_lit.start + src
 }
 else if (ast->kind == AST_SUBSCRIPT) {
 mod_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
-if (ast->data._subscript.is_string) {
-fprintf(out, ".data[");
-}
-else {
 fprintf(out, "[");
-}
 mod_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
 fprintf(out, "]");
 }
@@ -5159,12 +5126,7 @@ fprintf(out, ";\n");
 }
 else if (ast->kind == AST_SUBSCRIPT) {
 mod_src_codegen_flo_gen_expr(ast->data._subscript.array, out, src);
-if (ast->data._subscript.is_string) {
-fprintf(out, ".data[");
-}
-else {
 fprintf(out, "[");
-}
 mod_src_codegen_flo_gen_expr(ast->data._subscript.index, out, src);
 fprintf(out, "]");
 if (ast->data._subscript.value != NULL) {
@@ -5206,7 +5168,7 @@ while (arg[0] == '-') {
 arg = arg + 1;
 }
 for (int i = 0; ((0) > (strlen(arg))) ? i > (strlen(arg)) : i < (strlen(arg)); ((0) > (strlen(arg))) ? i-- : i++) {
-arg[i] = (char)(tolower((char)(arg[i])));
+arg[i] = tolower((char)(arg[i]));
 }
 if (!(strcmp(arg, "help"))  ||  !(strcmp(arg, "h"))) {
 printf("%s🌸 Welcome to Flower Compiler!\n\n%s", GREEN, RESET);
