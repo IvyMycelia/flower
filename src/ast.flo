@@ -115,7 +115,8 @@ struct array {
 struct subscript {
     array: @AST,
     index: @AST,
-    value: @AST
+    value: @AST,
+    is_string: int,
 }
 
     // === Unary Operations ===

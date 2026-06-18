@@ -8,6 +8,10 @@ prop func test(): bool
     empty: string = "" as string
     literal_raw: @char = "Flower"
 
+    first: char = name[0]
+    second: char = name[1]
+    raw_last: char = raw[2]
+
     if name != other:
         return false
     end
@@ -32,6 +36,18 @@ prop func test(): bool
         return false
     end
 
+    if first != 'I':
+        return false
+    end
+
+    if second != 'v':
+        return false
+    end
+
+    if raw_last != 'y':
+        return false
+    end
+
     if strcmp(raw, "Ivy") != 0:
         return false
     end
@@ -40,9 +56,12 @@ prop func test(): bool
         return false
     end
     
+    print("\n")
     print(name)
     print("\n")
     print(other)
+    print("\n")
+    print(first)
     print("\n")
 
     return true

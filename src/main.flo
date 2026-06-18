@@ -30,7 +30,7 @@ func main(argc: int, argv: @char[]): int
             end
 
             for i in 0..strlen(arg):
-                arg[i] = tolower(arg[i] as char)
+                arg[i] = tolower(arg[i] as char) as char
             end
 
             if not strcmp(arg, "help") or not strcmp(arg, "h"):
