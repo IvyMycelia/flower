@@ -63,7 +63,7 @@ prop func copy_n(dst: @char, src: @char, n: int): @char
     end
 
     if i < n:
-        dst[i] = '\n'
+        dst[i] = '\0'
     end
 
     return dst
