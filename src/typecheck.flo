@@ -119,6 +119,10 @@ func is_bool_type(typeInfo: @TypeInfo): int
     return 0
 end
 
+func is_pointer_like_type(typeInfo: @TypeInfo): bool
+    return typeInfo.pointer_depth > 0 or typeInfo.array_size != 0
+end
+
 func is_void_type(typeInfo: @TypeInfo): bool
     return typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
@@ -127,16 +131,20 @@ func is_null_type(typeInfo: @TypeInfo): bool
     return typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
 end
 
+func can_accept_null(typeInfo: @TypeInfo): bool
+    if is_null_type(typeInfo):
+        return true
+    end
+
+    return is_pointer_like_type(typeInfo)
+end
+
 func is_integer_type(typeInfo: @TypeInfo): bool
     return (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_decimal_type(typeInfo: @TypeInfo): bool
     return (typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
-end
-
-func is_pointer_like_type(typeInfo: @TypeInfo): bool
-    return typeInfo.pointer_depth > 0 or typeInfo.array_size != 0
 end
 
 func is_condition_type(typeInfo: @TypeInfo): bool
@@ -307,6 +315,16 @@ func set_cstr_type(out: @TypeInfo): void
     out.name_src = null
 end
 
+func set_null_type(out: @TypeInfo): void
+    out.base = TOKEN_VOID
+    out.pointer_depth = 1
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+end
+
 func is_comparison_op(kind: int): bool
     return kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP
 end
@@ -351,12 +369,12 @@ end
 
 
 func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
-    if is_null_type(expected) and is_pointer_like_type(actual):
-        return true
+    if is_null_type(expected):
+        return can_accept_null(actual)
     end
 
-    if is_null_type(actual) and is_pointer_like_type(expected):
-        return true
+    if is_null_type(actual):
+        return can_accept_null(expected)
     end
 
     if is_decimal_type(expected) and is_decimal_type(actual):
@@ -1028,10 +1046,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_NULL:
-        out.base = TOKEN_VOID
-        out.pointer_depth = 1
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_null_type(out)
         return 1
     end
 

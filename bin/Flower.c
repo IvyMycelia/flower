@@ -3098,6 +3098,11 @@ return 0;
 }
 
 
+int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* typeInfo) {
+return typeInfo->pointer_depth > 0  ||  typeInfo->array_size != 0;
+}
+
+
 int mod_src_typecheck_flo_is_void_type(TypeInfo* typeInfo) {
 return typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
@@ -3108,6 +3113,14 @@ return typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 1  &&  typeI
 }
 
 
+int mod_src_typecheck_flo_can_accept_null(TypeInfo* typeInfo) {
+if (mod_src_typecheck_flo_is_null_type(typeInfo)) {
+return 1;
+}
+return mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
+}
+
+
 int mod_src_typecheck_flo_is_integer_type(TypeInfo* typeInfo) {
 return typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
@@ -3115,11 +3128,6 @@ return typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_CHAR  &&  typeIn
 
 int mod_src_typecheck_flo_is_decimal_type(TypeInfo* typeInfo) {
 return typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
-}
-
-
-int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* typeInfo) {
-return typeInfo->pointer_depth > 0  ||  typeInfo->array_size != 0;
 }
 
 
@@ -3292,6 +3300,17 @@ out->name_src = NULL;
 }
 
 
+void mod_src_typecheck_flo_set_null_type(TypeInfo* out) {
+out->base = TOKEN_VOID;
+out->pointer_depth = 1;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+}
+
+
 int mod_src_typecheck_flo_is_comparison_op(int kind) {
 return kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP;
 }
@@ -3333,11 +3352,11 @@ return 0;
 
 
 int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual) {
-if (mod_src_typecheck_flo_is_null_type(expected)  &&  mod_src_typecheck_flo_is_pointer_like_type(actual)) {
-return 1;
+if (mod_src_typecheck_flo_is_null_type(expected)) {
+return mod_src_typecheck_flo_can_accept_null(actual);
 }
-if (mod_src_typecheck_flo_is_null_type(actual)  &&  mod_src_typecheck_flo_is_pointer_like_type(expected)) {
-return 1;
+if (mod_src_typecheck_flo_is_null_type(actual)) {
+return mod_src_typecheck_flo_can_accept_null(expected);
 }
 if (mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual)) {
 return 1;
@@ -3913,10 +3932,7 @@ mod_src_typecheck_flo_set_plain_type(out, TOKEN_STRING);
 return 1;
 }
 else if (expr->kind == AST_NULL) {
-out->base = TOKEN_VOID;
-out->pointer_depth = 1;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_null_type(out);
 return 1;
 }
 return 0;
