@@ -1,36 +1,48 @@
-.PHONY: help stage0 build bootstrap rebuild test clean all
+.PHONY: help build bootstrap rebuild test clean all
+
+SHELL ?= sh
 
 CC ?= cc
-CFLAGS ?=
-BOOTSTRAP_CFLAGS ?= -fsanitize=address -fno-omit-frame-pointer
+CFLAGS ?= -std=c99
+BOOTSTRAP_CFLAGS ?= $(CFLAGS)
+ASAN_CFLAGS ?= -fsanitize=address -fno-omit-frame-pointer
 
-STAGE0_C := bin/Flower.c
-STAGE0_BIN := bin/Flower_stage0
+FLOWER_C := bin/Flower.c
 FLOWER_BIN := bin/Flower
+BACKUP_BIN := bin/Flower_backup
+BOOTSTRAP_BIN := bin/Flower_bootstrap
 NEW_C := bin/Flower_new.c
+NEW_BIN := bin/Flower_new_bin
+TEST_C := bin/Flower_test.c
 OUT_BIN := output/out
 
 help:
 	@echo "Flower Compiler\t\t:   Build Commands"
-	@echo "\tmake stage0\t:   Build portable stage0 compiler from bin/Flower.c"
-	@echo "\tmake build\t:   Rebuild Flower from source using stage0"
+	@echo "\tmake build\t:   Rebuild Flower from source using a C Compiler"
 	@echo "\tmake bootstrap\t:   Self-hosting verification pass"
+	@echo "\tmake rebuild\t:   Clean rebuild Flower"
 	@echo "\tmake test\t:   Run test suite"
 	@echo "\tmake clean\t:   Remove generated build artifacts"
 
-stage0: $(STAGE0_BIN)
-
-$(STAGE0_BIN): $(STAGE0_C)
-	$(CC) $(CFLAGS) $(STAGE0_C) -o $(STAGE0_BIN)
-
-build: stage0
-	./$(STAGE0_BIN) ./src/main.flo ./bin/Flower_new
+build:
+	$(CC) $(CFLAGS) $(FLOWER_C) -o $(FLOWER_BIN)
+	./$(FLOWER_BIN) ./src/main.flo ./bin/Flower_new
+	cp $(NEW_C) $(FLOWER_C)
 	$(CC) $(CFLAGS) $(NEW_C) -o $(FLOWER_BIN)
-	cp $(NEW_C) $(STAGE0_C)
-	rm -f $(NEW_C)
+	rm -f $(NEW_C) $(NEW_BIN)
 
-bootstrap: stage0
-	CC="$(CC)" BOOTSTRAP_CFLAGS="$(BOOTSTRAP_CFLAGS)" WORKING=./$(STAGE0_BIN) ./scripts/build.sh
+bootstrap:
+	CC="$(CC)" \
+	CFLAGS="$(CFLAGS)" \
+	BOOTSTRAP_CFLAGS="$(BOOTSTRAP_CFLAGS) $(ASAN_CFLAGS)" \
+	FLOWER_C="./$(FLOWER_C)" \
+	FLOWER_BIN="./$(FLOWER_BIN)" \
+	BACKUP="./$(BACKUP_BIN)" \
+	BOOTSTRAP_BIN="./$(BOOTSTRAP_BIN)" \
+	NEW_C="./$(NEW_C)" \
+	NEW_BIN="./$(NEW_BIN)" \
+	TEST_C="./$(TEST_C)" \
+	./scripts/build.sh
 	@echo "Verified bootstrap build complete"
 
 rebuild: clean build
@@ -42,8 +54,8 @@ test: build
 	./$(OUT_BIN)
 
 clean:
-	rm -rf build/ output/
-	rm -f bin/Flower bin/Flower_backup bin/Flower_new bin/Flower_new.c bin/Flower_new_bin bin/Flower_test bin/Flower_test.c bin/Flower_stage0
+	rm -rf output/
+	rm -f $(FLOWER_BIN) $(BACKUP_BIN) $(BOOTSTRAP_BIN) $(NEW_C) $(NEW_BIN) $(TEST_C)
 	@echo "Removed artifacts"
 
 all: build test

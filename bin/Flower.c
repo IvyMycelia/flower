@@ -3169,6 +3169,9 @@ return index == 0  ||  index == 1;
 else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "system", 6)) {
 return index == 0;
 }
+else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "getenv", 6)) {
+return index == 0;
+}
 else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "realpath", 8)) {
 return index == 0;
 }
@@ -3491,6 +3494,9 @@ else if (length == 8  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "realpath", 
 return_kind = 2;
 }
 else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "getcwd", 6)) {
+return_kind = 2;
+}
+else if (length == 6  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "getenv", 6)) {
 return_kind = 2;
 }
 else {
@@ -5378,8 +5384,18 @@ free(mods);
 fclose(output);
 char bin_name[512];
 snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(mod_src_stdlib_cstr_flo_len(out_c) - 2), out_c);
+char* compiler = getenv((((flower_string){ "CC", (int)(sizeof("CC") - 1) })).data);
+char* compiler_flags = getenv((((flower_string){ "CFLAGS", (int)(sizeof("CFLAGS") - 1) })).data);
+if (compiler == NULL  ||  compiler[0] == '\0') {
+compiler = "cc";
+}
 char build_cmd[1024];
-snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name);
+if (compiler_flags != NULL  &&  compiler_flags[0] != '\0') {
+snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -o %s", compiler, compiler_flags, out_c, bin_name);
+}
+else {
+snprintf(build_cmd, sizeof(build_cmd), "%s %s -o %s", compiler, out_c, bin_name);
+}
 int build_status = system(build_cmd);
 if (build_status != 0) {
 printf("%sFailed to compile generated C outputs%s\n", RED, RESET);
