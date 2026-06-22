@@ -1,0 +1,40 @@
+type Count = int
+type Total = Count
+type Name = string
+
+struct Pair {
+    left: Count,
+    right: Total,
+}
+
+func identity(x: Count): Total
+    return x
+end
+
+prop func test(): bool
+    n: Count = 12
+    total: Total = identity(n)
+    name: Name = "Ivy"
+    pair: Pair
+
+    pair.left = n
+    pair.right = total
+
+    if pair.left != 12:
+        return false
+    end
+
+    if pair.right != 12:
+        return false
+    end
+
+    if name != "Ivy":
+        return false
+    end
+
+    if name.length != 3:
+        return false
+    end
+
+    return true
+end

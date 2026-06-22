@@ -7,6 +7,10 @@ import "src/stdlib/cstr.flo" as cstr
 has_stdlib: int = 0
 has_stdio: int = 0
 
+// Currently processing (for circular detection)
+active_modules: @ModuleSet
+current_codegen_module: @Module
+
 // === UTILITIES ===
 
 func emit_string_runtime(out: @FILE): void
@@ -226,19 +230,113 @@ func token_to_string(kind: int): @char
     end
 end
 
-func typeinfo_to_string(type: @TypeInfo, out: @FILE, src: @char): void
-    if type.base == TOKEN_IDENTIFIER:
-        fprintf(out, "%.*s", type.name_length, src + type.name_start)
-    else if type.base == TOKEN_STRING:
-        fprintf(out, "flower_string")
-    else:
-        fprintf(out, "%s", token_to_string(type.base))
+func copy_typeinfo(dst: @TypeInfo, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+end
+
+func find_type_alias(src: @char, start: int, length: int, out: @TypeInfo): bool
+    for i in 0..active_modules.count:
+        m: @Module = active_modules.modules + i
+
+        if m.src != src:
+            continue
+        end
+
+        curr: @AST = m.ast
+        while curr != null:
+            decl: @AST = curr
+
+            if curr.kind == AST_PROP and curr.data._prop.decl != null:
+                decl = curr.data._prop.decl
+            end
+
+            if decl.kind == AST_TYPE_ALIAS:
+                if decl.data._type_alias.name_length == length and cstr.eq_n(src + decl.data._type_alias.name_start, src + start, length):
+                    copy_typeinfo(out, &decl.data._type_alias.target)
+                    return true
+                end
+            end
+
+            curr = curr.next
+        end
     end
+
+    return false
+end
+
+func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
+    if typeInfo.base != TOKEN_IDENTIFIER:
+        return true
+    end
+
+    if depth >= 32:
+        return false
+    end
+
+    target: @TypeInfo = new TypeInfo
+    if not find_type_alias(typeInfo.name_src, typeInfo.name_start, typeInfo.name_length, target):
+        prune target
+        return true
+    end
+
+    outer_pointer_depth: int = typeInfo.pointer_depth
+    outer_array_size: int = typeInfo.array_size
+    outer_array_expr: @AST = typeInfo.arr_size_expr
+
+    if not canonicalize_codegen_type(target, depth + 1):
+        prune target
+        return false
+    end
+
+    if target.array_size != 0 or target.arr_size_expr != null:
+        prune target
+        return false
+    end
+
+    copy_typeinfo(typeInfo, target)
+    typeInfo.pointer_depth = typeInfo.pointer_depth + outer_pointer_depth
+
+    if outer_array_size != 0 or outer_array_expr != null:
+        typeInfo.array_size = outer_array_size
+        typeInfo.arr_size_expr = outer_array_expr
+    end
+
+    prune target
+    return true
+end
+
+func typeinfo_to_string(typeInfo: @TypeInfo, out: @FILE, src: @char): void
+    resolved: @TypeInfo = new TypeInfo
+    copy_typeinfo(resolved, typeInfo)
+    canonicalize_codegen_type(resolved, 0)
+    
+    if resolved.base == TOKEN_IDENTIFIER:
+        name_src: @char = resolved.name_src
+        if name_src == null:
+            name_src = src
+        end
+        fprintf(out, "%.*s", resolved.name_length, name_src + resolved.name_start)
+
+    else if resolved.base == TOKEN_STRING:
+        fprintf(out, "flower_string")
+
+    else:
+        fprintf(out, "%s", token_to_string(resolved.base))
+    end
+
     i: int = 0
-    while i < type.pointer_depth:
+    while i < resolved.pointer_depth:
         i = i + 1
         fprintf(out, "*")
     end
+
+    prune resolved
 end
 
 
@@ -404,16 +502,16 @@ func gen_struct(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "\n\ntypedef struct %.*s {\n", ast.data._struct_def.name_length, src + ast.data._struct_def.name_start)
     field: @AST = ast.data._struct_def.fields
     while field != null:
-        typeinfo_to_string(&field.data._struct_field.type, out, src)
+        typeinfo_to_string(&field.data._struct_field.typeInfo, out, src)
         fprintf(out, " %.*s", field.data._struct_field.name_length, src + field.data._struct_field.name_start)
 
-        if field.data._struct_field.type.array_size == -1:
+        if field.data._struct_field.typeInfo.array_size == -1:
             fprintf(out, "[]")
-        else if field.data._struct_field.type.array_size > 0:
-            fprintf(out, "[%d]", field.data._struct_field.type.array_size)
-        else if field.data._struct_field.type.arr_size_expr != null:
+        else if field.data._struct_field.typeInfo.array_size > 0:
+            fprintf(out, "[%d]", field.data._struct_field.typeInfo.array_size)
+        else if field.data._struct_field.typeInfo.arr_size_expr != null:
             fprintf(out, "[")
-            gen_expr(field.data._struct_field.type.arr_size_expr, out, src)
+            gen_expr(field.data._struct_field.typeInfo.arr_size_expr, out, src)
             fprintf(out, "]")
         end
 
@@ -443,16 +541,16 @@ func gen_union(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "\n\ntypedef union %.*s {\n", ast.data._union_def.name_length, src + ast.data._union_def.name_start)
     field: @AST = ast.data._union_def.fields
     while field != null:
-        typeinfo_to_string(&field.data._struct_field.type, out, src)
-        fprintf(out, " %.*s", field.data._union_def.name_length, src + field.data._union_def.name_start)
+        typeinfo_to_string(&field.data._struct_field.typeInfo, out, src)
+        fprintf(out, " %.*s", field.data._struct_field.name_length, src + field.data._union_def.name_start)
 
-        if field.data._struct_field.type.array_size == -1:
+        if field.data._struct_field.typeInfo.array_size == -1:
             fprintf(out, "[]")
-        else if field.data._struct_field.type.array_size > 0:
-            fprintf(out, "[%d]", ast.data._struct_field.type.array_size)
-        else if field.data._struct_field.type.arr_size_expr != null:
+        else if field.data._struct_field.typeInfo.array_size > 0:
+            fprintf(out, "[%d]", field.data._struct_field.typeInfo.array_size)
+        else if field.data._struct_field.typeInfo.arr_size_expr != null:
             fprintf(out, "[")
-            gen_expr(field.data._struct_field.type.arr_size_expr, out, src)
+            gen_expr(field.data._struct_field.typeInfo.arr_size_expr, out, src)
             fprintf(out, "]")
         end
 
@@ -480,26 +578,22 @@ struct EmittedImport {
 emitted_imports: EmittedImport[256]
 emitted_count: int = 0
 
-// Currently processing (for circular detection)
-active_modules: @ModuleSet
-current_codegen_module: @Module
-
 forward func emit_lowered_func_name(mod: @Module, out: @FILE, src: @char, start: int, length: int): void
 forward func resolve_called_function_module(src: @char, start: int, length: int): @Module
 
 
 func gen_param(param: @AST, out: @FILE, src: @char): void
     // Emit: int v,
-    typeinfo_to_string(&param.data._func_params.type, out, src)
+    typeinfo_to_string(&param.data._func_params.typeInfo, out, src)
     fprintf(out, " %.*s", param.data._func_params.name_length, src + param.data._func_params.name_start)
 
-    if param.data._func_params.type.array_size == -1:
+    if param.data._func_params.typeInfo.array_size == -1:
         fprintf(out, "[]")
-    else if param.data._func_params.type.array_size != 0:
-        fprintf(out, "[%d]", param.data._func_params.type.array_size)
-    else if param.data._func_params.type.arr_size_expr != null:
+    else if param.data._func_params.typeInfo.array_size != 0:
+        fprintf(out, "[%d]", param.data._func_params.typeInfo.array_size)
+    else if param.data._func_params.typeInfo.arr_size_expr != null:
         fprintf(out, "[")
-        gen_expr(param.data._func_params.type.arr_size_expr, out, src)
+        gen_expr(param.data._func_params.typeInfo.arr_size_expr, out, src)
         fprintf(out, "]")
     end
 end
@@ -587,15 +681,15 @@ end
 // === VARIABLES ===
 
 func gen_var_decl(ast: @AST, out: @FILE, src: @char): void
-    typeinfo_to_string(&ast.data._var_decl.type, out, src)
+    typeinfo_to_string(&ast.data._var_decl.typeInfo, out, src)
     fprintf(out, " %.*s", ast.data._var_decl.name_length, src + ast.data._var_decl.name_start)
-    if ast.data._var_decl.type.array_size == -1:
+    if ast.data._var_decl.typeInfo.array_size == -1:
         fprintf(out, "[]")
-    else if ast.data._var_decl.type.array_size != 0:
-        fprintf(out, "[%d]", ast.data._var_decl.type.array_size)
-    else if ast.data._var_decl.type.arr_size_expr != null:
+    else if ast.data._var_decl.typeInfo.array_size != 0:
+        fprintf(out, "[%d]", ast.data._var_decl.typeInfo.array_size)
+    else if ast.data._var_decl.typeInfo.arr_size_expr != null:
         fprintf(out, "[")
-        gen_expr(ast.data._var_decl.type.arr_size_expr, out, src)
+        gen_expr(ast.data._var_decl.typeInfo.arr_size_expr, out, src)
         fprintf(out, "]")
     end
     if ast.data._var_decl.value != null:
@@ -913,24 +1007,24 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "}")
         
     else if ast.kind == AST_CAST:
-        if ast.data._cast.type.base == TOKEN_CHAR and ast.data._cast.type.pointer_depth == 1 and ast.data._cast.type.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
+        if ast.data._cast.typeInfo.base == TOKEN_CHAR and ast.data._cast.typeInfo.pointer_depth == 1 and ast.data._cast.typeInfo.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
             fprintf(out, "(")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ").data")
 
-        else if ast.data._cast.type.base == TOKEN_STRING and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0 and ast.data._cast.value_type.base == TOKEN_CHAR and ast.data._cast.value_type.pointer_depth == 1 and ast.data._cast.value_type.array_size == 0:
+        else if ast.data._cast.typeInfo.base == TOKEN_STRING and ast.data._cast.typeInfo.pointer_depth == 0 and ast.data._cast.typeInfo.array_size == 0 and ast.data._cast.value_type.base == TOKEN_CHAR and ast.data._cast.value_type.pointer_depth == 1 and ast.data._cast.value_type.array_size == 0:
             fprintf(out, "flower_string_from_cstr(")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ")")
 
-        else if ast.data._cast.type.base == TOKEN_BOOL and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0:
+        else if ast.data._cast.typeInfo.base == TOKEN_BOOL and ast.data._cast.typeInfo.pointer_depth == 0 and ast.data._cast.typeInfo.array_size == 0:
             fprintf(out, "((")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ") != 0")
 
         else:
             fprintf(out, "(")
-            typeinfo_to_string(&ast.data._cast.type, out, src)
+            typeinfo_to_string(&ast.data._cast.typeInfo, out, src)
             fprintf(out, ")(")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ")")
@@ -963,15 +1057,15 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_NEW:
         fprintf(out, "malloc(sizeof(")
-        typeinfo_to_string(&ast.data._new_alloc.type, out, src)
+        typeinfo_to_string(&ast.data._new_alloc.typeInfo, out, src)
         fprintf(out, ")")
             
-        if ast.data._new_alloc.type.arr_size_expr != null:
+        if ast.data._new_alloc.typeInfo.arr_size_expr != null:
             fprintf(out, " * (")
-            gen_expr(ast.data._new_alloc.type.arr_size_expr, out, src)
+            gen_expr(ast.data._new_alloc.typeInfo.arr_size_expr, out, src)
             fprintf(out, ")")
-        else if ast.data._new_alloc.type.array_size > 0:
-            fprintf(out, " * %d", ast.data._new_alloc.type.array_size)
+        else if ast.data._new_alloc.typeInfo.array_size > 0:
+            fprintf(out, " * %d", ast.data._new_alloc.typeInfo.array_size)
         end
         fprintf(out, ")")
 
@@ -1017,7 +1111,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_SIZEOF:
         fprintf(out, "sizeof(")
-        typeinfo_to_string(&ast.data._size_of.type, out, src)
+        typeinfo_to_string(&ast.data._size_of.typeInfo, out, src)
         fprintf(out, ")")
         
     else if ast.kind == AST_CHAR_LIT:

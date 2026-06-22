@@ -39,6 +39,8 @@ end
 forward func parser_error(ps: @Parser, message: @char): void
 forward func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
 
+forward func parse_type_alias(ps: @Parser):             @AST
+
 forward func parse_var_decl(ps: @Parser):               @AST
 forward func parse_var_ass(ps: @Parser):                @AST
 forward func parse_subscript_ass(ps: @Parser):          @AST
@@ -107,34 +109,34 @@ func parser_expect(ps: @Parser, kind: int): int
 end    
 
 func parse_type(ps: @Parser): @TypeInfo
-    type: @TypeInfo = new TypeInfo
+    typeInfo: @TypeInfo = new TypeInfo
 
-    type.pointer_depth = 0
-    type.array_size = 0
-    type.arr_size_expr = null
-    type.name_src = ps.src
+    typeInfo.pointer_depth = 0
+    typeInfo.array_size = 0
+    typeInfo.arr_size_expr = null
+    typeInfo.name_src = ps.src
 
     while parser_peek(ps).kind == TOKEN_AT:
-        type.pointer_depth = type.pointer_depth + 1
+        typeInfo.pointer_depth = typeInfo.pointer_depth + 1
         parser_advance(ps)
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in type")
-            return type
+            return typeInfo
         end
     end
 
     if parser_peek(ps).kind == TOKEN_EOF:
         parser_error(ps, "Unexpected end of file while parsing type")
-        return type
+        return typeInfo
     end
 
     base: @Token = parser_advance(ps)
-    type.base = base.kind
+    typeInfo.base = base.kind
 
     if base.kind == TOKEN_IDENTIFIER:
-        type.name_start = base.start
-        type.name_length = base.length
+        typeInfo.name_start = base.start
+        typeInfo.name_length = base.length
     end
 
     if parser_peek(ps).kind == TOKEN_LBRACK:
@@ -142,26 +144,26 @@ func parse_type(ps: @Parser): @TypeInfo
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in array type")
-            return type
+            return typeInfo
         end
 
         if parser_peek(ps).kind == TOKEN_RBRACK:
-            type.array_size = -1
+            typeInfo.array_size = -1
 
         else if parser_peek(ps).kind == TOKEN_NUMBER:
-            type.array_size = atoi(ps.src + parser_peek(ps).start)
+            typeInfo.array_size = atoi(ps.src + parser_peek(ps).start)
             parser_advance(ps)
 
         else:
-            type.arr_size_expr = parse_expr(ps, 0)
+            typeInfo.arr_size_expr = parse_expr(ps, 0)
         end
 
         if !parser_expect(ps, TOKEN_RBRACK):
-            return type
+            return typeInfo
         end
     end
 
-    return type
+    return typeInfo
 end
 
 func get_precedence(kind: int): int
@@ -241,6 +243,32 @@ func parse_field_flags(ps: @Parser, field: @AST): void
 end
 
 
+// == TYPES ==
+
+func parse_type_alias(ps: @Parser): @AST
+    if not parser_expect(ps, TOKEN_TYPE):
+        return null
+    end
+
+    node: @AST = make_node(ps, AST_TYPE_ALIAS)
+
+    name: @Token = parser_advance(ps)
+    if name.kind != TOKEN_IDENTIFIER:
+        parser_error(ps, "Expected type alias name")
+        return node
+    end
+
+    node.data._type_alias.name_start = name.start
+    node.data._type_alias.name_length = name.length
+
+    if not parser_expect(ps, TOKEN_ASSIGN):
+        return node
+    end
+
+    node.data._type_alias.target = @parse_type(ps)
+    return node
+end
+
 // === VARIABLES ===
 
 func parse_var_decl(ps: @Parser): @AST
@@ -265,7 +293,7 @@ func parse_var_decl(ps: @Parser): @AST
         return node
     end
 
-    node.data._var_decl.type = @parse_type(ps)
+    node.data._var_decl.typeInfo= @parse_type(ps)
     
     if parser_peek(ps).kind == TOKEN_ASSIGN:
         parser_advance(ps)
@@ -631,7 +659,7 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
         cast: @AST = make_node(ps, AST_CAST)
 
         cast.data._cast.value = left
-        cast.data._cast.type = @parse_type(ps)
+        cast.data._cast.typeInfo= @parse_type(ps)
 
         left = cast
     end
@@ -1062,7 +1090,7 @@ func parse_primary(ps: @Parser): @AST
 
         new_node: @AST = make_node(ps, AST_NEW)
 
-        new_node.data._new_alloc.type = @parse_type(ps)
+        new_node.data._new_alloc.typeInfo= @parse_type(ps)
 
         return new_node
 
@@ -1135,7 +1163,7 @@ func parse_primary(ps: @Parser): @AST
 
         node: @AST = make_node(ps, AST_SIZEOF)
 
-        node.data._size_of.type = @parse_type(ps)
+        node.data._size_of.typeInfo= @parse_type(ps)
 
         parser_expect(ps, TOKEN_RPAREN)
 
@@ -1400,7 +1428,7 @@ func parse_param(ps: @Parser): @AST
         return node
     end
 
-    node.data._func_params.type = @parse_type(ps)
+    node.data._func_params.typeInfo= @parse_type(ps)
     
     return node
 end
@@ -1463,7 +1491,7 @@ func parse_struct(ps: @Parser): @AST
             continue
         end
 
-        field.data._struct_field.type = @parse_type(ps)
+        field.data._struct_field.typeInfo= @parse_type(ps)
 
         if field_head == null:
             field_head = field
@@ -1538,7 +1566,7 @@ func parse_union(ps: @Parser): @AST
             continue
         end
 
-        field.data._struct_field.type = @parse_type(ps)
+        field.data._struct_field.typeInfo= @parse_type(ps)
 
         if field_head == null:
             field_head = field
@@ -1719,6 +1747,9 @@ prop func parse(ps: @Parser): @AST
             else if parser_peek(ps).kind == TOKEN_UNION:
                 decl = parse_union(ps)
 
+            else if parser_peek(ps).kind == TOKEN_TYPE:
+                decl = parse_type_alias(ps)
+
             else:
                 parser_error(ps, "Expected declaration after prop")
             end
@@ -1739,6 +1770,9 @@ prop func parse(ps: @Parser): @AST
 
         else if parser_peek(ps).kind == TOKEN_IDENTIFIER and peek(ps.ts, ps.pos + 1).kind == TOKEN_COLON:
             node = parse_var_decl(ps)
+
+        else if parser_peek(ps).kind == TOKEN_TYPE:
+            node = parse_type_alias(ps)
         
         else:
             parser_error(ps, "Unexpected top-level statement or declaration")
