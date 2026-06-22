@@ -251,6 +251,9 @@ func builtin_expects_cstr_arg(src: @char, start: int, length: int, index: int): 
     else if length == 6 and cstr.eq_n(src + start, "system", 6):
         return index == 0
 
+    else if length == 6 and cstr.eq_n(src + start, "getenv", 6):
+        return index == 0
+
     else if length == 8 and cstr.eq_n(src + start, "realpath", 8):
         return index == 0
     end
@@ -647,6 +650,9 @@ func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @cha
         return_kind = 2
         
     else if length == 6 and cstr.eq_n(src + start, "getcwd", 6):
+        return_kind = 2
+
+    else if length == 6 and cstr.eq_n(src + start, "getenv", 6):
         return_kind = 2
 
     else:

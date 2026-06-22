@@ -1,42 +1,47 @@
-#!/bin/bash
-#set -e
+#!/bin/sh
+set -eu
 
-WORKING="./bin/Flower"
-BACKUP="./bin/Flower_backup"
-NEW_C="./bin/Flower_new.c"
-NEW_BIN="./bin/Flower_new_bin"
-TEST_C="./bin/Flower_test.c"
+CC="${CC:-cc}"
+CFLAGS="${CFLAGS:--std=c99}"
+BOOTSTRAP_CFLAGS="${BOOTSTRAP_CFLAGS:--$CFLAGS}"
+
+FLOWER_C="${FLOWER_C:-./bin/Flower.c}"
+FLOWER_BIN="${FLOWER_BIN:-./bin/Flower}"
+BACKUP="${BACKUP:-./bin/Flower_backup}"
+BOOTSTRAP_BIN="${BOOTSTRAP_BIN:-./bin/Flower_bootstrap}"
+NEW_C="${NEW_C:-./bin/Flower_new.c}"
+NEW_BIN="${NEW_BIN:-./bin/Flower_new_bin}"
+TEST_C="${TEST_C:-./bin/Flower_test.c}"
+
+echo "=== Building bootstrap compiler ==="
+"$CC" $CFLAGS "$FLOWER_C" -o "$BOOTSTRAP_BIN"
 
 echo "=== Building new version ==="
-$WORKING ./src/main.flo ./bin/Flower_new
+"$BOOTSTRAP_BIN" ./src/main.flo ./bin/Flower_new
 
 echo "=== Compiling new binary ==="
-gcc $NEW_C -o $NEW_BIN -fsanitize=address -fno-omit-frame-pointer
+"$CC" $BOOTSTRAP_CFLAGS "$NEW_C" -o "$NEW_BIN"
 
 echo "=== Testing new compiler ==="
-$NEW_BIN ./src/main.flo ./bin/Flower_test
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: New compiler failed self-test!"
-    rm -f $NEW_BIN
-    exit 1
-fi
+"$NEW_BIN" ./src/main.flo ./bin/Flower_test
 
 echo "=== Idempotency check ==="
-if ! diff $NEW_C $TEST_C > /dev/null 2>&1; then
+if ! cmp -s "$NEW_C" "$TEST_C"; then
     echo "ERROR: Generated code differs between runs!"
     echo "This indicates non-deterministic compilation."
-    rm -f $NEW_BIN
+    rm -f "$BOOTSTRAP_BIN" "$NEW_BIN"
     exit 1
 fi
 
 echo "=== Accepting new version ==="
-cp $WORKING $BACKUP
-cp $NEW_BIN $WORKING
+if [ -f "$FLOWER_BIN" ]; then
+    cp "$FLOWER_BIN" "$BACKUP"
+fi
+
+cp "$NEW_BIN" "$FLOWER_BIN"
 
 echo "Bootstrap successful"
 echo "Previous version backed up to: $BACKUP"
 
-# Cleanup
-cp $NEW_C ./bin/Flower.c
-rm -f $NEW_C $NEW_BIN $TEST_C
+cp "$NEW_C" "$FLOWER_BIN"
+rm -f "$BOOTSTRAP_BIN" "$NEW_C" "$NEW_BIN" "$TEST_C"

@@ -133,8 +133,19 @@ func main(argc: int, argv: @char[]): int
             bin_name: char[512]
             snprintf(bin_name, sizeof(bin_name), "%.*s", (cstr.len(out_c) - 2) as int, out_c)
 
+            compiler: @char = getenv("CC" as @char)
+            compiler_flags: @char = getenv("CFLAGS" as @char)
+
+            if compiler == null or compiler[0] == '\0':
+                compiler = "cc"
+            end
+
             build_cmd: char[1024]
-            snprintf(build_cmd, sizeof(build_cmd), "clang %s -o %s", out_c, bin_name)
+            if compiler_flags != null and compiler_flags[0] != '\0':
+                snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -o %s", compiler, compiler_flags, out_c, bin_name)
+            else:
+                snprintf(build_cmd, sizeof(build_cmd), "%s %s -o %s", compiler, out_c, bin_name)
+            end
 
             build_status: int = system(build_cmd)
             if build_status != 0:
