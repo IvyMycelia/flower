@@ -1,38 +1,49 @@
-#!/usr/bin/env bash
-set -euo pipefail
+.PHONY: help stage0 build bootstrap rebuild test clean all
 
-CC="${CC:-cc}"
-BOOTSTRAP_CFLAGS="${BOOTSTRAP_CFLAGS:--fsanitize=address -fno-omit-frame-pointer}"
+CC ?= cc
+CFLAGS ?=
+BOOTSTRAP_CFLAGS ?= -fsanitize=address -fno-omit-frame-pointer
 
-WORKING="${WORKING:-./bin/Flower}"
-BACKUP="${BACKUP:-./bin/Flower_backup}"
-NEW_C="${NEW_C:-./bin/Flower_new.c}"
-NEW_BIN="${NEW_BIN:-./bin/Flower_new_bin}"
-TEST_C="${TEST_C:-./bin/Flower_test.c}"
+STAGE0_C := bin/Flower.c
+STAGE0_BIN := bin/Flower_stage0
+FLOWER_BIN := bin/Flower
+NEW_C := bin/Flower_new.c
+OUT_BIN := output/out
 
-echo "=== Building new version ==="
-"$WORKING" ./src/main.flo ./bin/Flower_new
+help:
+	@echo "Flower Compiler\t\t:   Build Commands"
+	@echo "\tmake stage0\t:   Build portable stage0 compiler from bin/Flower.c"
+	@echo "\tmake build\t:   Rebuild Flower from source using stage0"
+	@echo "\tmake bootstrap\t:   Self-hosting verification pass"
+	@echo "\tmake test\t:   Run test suite"
+	@echo "\tmake clean\t:   Remove generated build artifacts"
 
-echo "=== Compiling new binary ==="
-"$CC" $BOOTSTRAP_CFLAGS "$NEW_C" -o "$NEW_BIN"
+stage0: $(STAGE0_BIN)
 
-echo "=== Testing new compiler ==="
-"$NEW_BIN" ./src/main.flo ./bin/Flower_test
+$(STAGE0_BIN): $(STAGE0_C)
+	$(CC) $(CFLAGS) $(STAGE0_C) -o $(STAGE0_BIN)
 
-echo "=== Idempotency check ==="
-if ! diff "$NEW_C" "$TEST_C" > /dev/null 2>&1; then
-    echo "ERROR: Generated code differs between runs!"
-    echo "This indicates non-deterministic compilation."
-    rm -f "$NEW_BIN"
-    exit 1
-fi
+build: stage0
+	./$(STAGE0_BIN) ./src/main.flo ./bin/Flower_new
+	$(CC) $(CFLAGS) $(NEW_C) -o $(FLOWER_BIN)
+	cp $(NEW_C) $(STAGE0_C)
+	rm -f $(NEW_C)
 
-echo "=== Accepting new version ==="
-cp "$WORKING" "$BACKUP"
-cp "$NEW_BIN" ./bin/Flower
+bootstrap: stage0
+	CC="$(CC)" BOOTSTRAP_CFLAGS="$(BOOTSTRAP_CFLAGS)" WORKING=./$(STAGE0_BIN) ./scripts/build.sh
+	@echo "Verified bootstrap build complete"
 
-echo "Bootstrap successful"
-echo "Previous version backed up to: $BACKUP"
+rebuild: clean build
+	@echo "Clean rebuild complete"
 
-cp "$NEW_C" ./bin/Flower.c
-rm -f "$NEW_C" "$NEW_BIN" "$TEST_C"
+test: build
+	mkdir -p output
+	./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
+	./$(OUT_BIN)
+
+clean:
+	rm -rf build/ output/
+	rm -f bin/Flower bin/Flower_backup bin/Flower_new bin/Flower_new.c bin/Flower_new_bin bin/Flower_test bin/Flower_test.c bin/Flower_stage0
+	@echo "Removed artifacts"
+
+all: build test
