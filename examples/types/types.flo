@@ -117,7 +117,7 @@ prop func test(): bool
         print("FAIL\n")
     end
 
-    print(" nullable... ")
+    print("  nullable... ")
     total = total + 1
     if nullable_test.test():
         pass = pass + 1
