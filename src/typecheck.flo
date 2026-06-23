@@ -80,6 +80,8 @@ inside_function: int = 0
 
 // Helper Functions
 
+forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
+
 func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): bool
     if a_len != b_len:
         return false
@@ -97,6 +99,7 @@ func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
     dst.pointer_depth = src_type.pointer_depth
     dst.array_size = src_type.array_size
     dst.arr_size_expr = src_type.arr_size_expr
+    dst.is_nullable = src_type.is_nullable
     dst.name_start = src_type.name_start
     dst.name_length = src_type.name_length
     dst.name_src = src_type.name_src
@@ -111,12 +114,16 @@ end
 
 forward func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
 
-func is_bool_type(typeInfo: @TypeInfo): int
-    if typeInfo.base == TOKEN_BOOL and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0:
-        return 1
+func is_bool_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_nullable:
+        return false
     end
 
-    return 0
+    if typeInfo.base == TOKEN_BOOL and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0:
+        return true
+    end
+
+    return false
 end
 
 func is_pointer_like_type(typeInfo: @TypeInfo): bool
@@ -124,11 +131,48 @@ func is_pointer_like_type(typeInfo: @TypeInfo): bool
 end
 
 func is_void_type(typeInfo: @TypeInfo): bool
-    return typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_null_type(typeInfo: @TypeInfo): bool
-    return typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
+end
+
+func is_nullable_type(typeInfo: @TypeInfo): bool
+    return typeInfo.is_nullable
+end
+
+func nullable_requires_pointer_storage(typeInfo: @TypeInfo): bool
+    return typeInfo.pointer_depth > 0
+end
+
+func validate_nullable_type(env: @TypeEnv, ast: @AST, typeInfo: @TypeInfo): bool
+    if not is_nullable_type(typeInfo):
+        return true
+    end
+
+    if nullable_requires_pointer_storage(typeInfo):
+        return true
+    end
+
+    type_error(env, ast, "nullable types currently require a pointer type")
+    return false
+end
+
+func same_type_ignoring_nullability(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.base != actual.base:
+        return false
+    end
+
+    if expected.pointer_depth != actual.pointer_depth:
+        return false
+    end
+
+    if expected.base == TOKEN_IDENTIFIER:
+        return same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length)
+    end
+
+    return true
 end
 
 func can_accept_null(typeInfo: @TypeInfo): bool
@@ -136,15 +180,19 @@ func can_accept_null(typeInfo: @TypeInfo): bool
         return true
     end
 
+    if is_nullable_type(typeInfo):
+        return true
+    end
+
     return is_pointer_like_type(typeInfo)
 end
 
 func is_integer_type(typeInfo: @TypeInfo): bool
-    return (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_decimal_type(typeInfo: @TypeInfo): bool
-    return (typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_condition_type(typeInfo: @TypeInfo): bool
@@ -152,15 +200,15 @@ func is_condition_type(typeInfo: @TypeInfo): bool
 end
 
 func is_string_type(typeInfo: @TypeInfo): bool
-    return typeInfo.base == TOKEN_STRING and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_STRING and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_cstr_type(typeInfo: @TypeInfo): bool
-    return typeInfo.base == TOKEN_CHAR and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_CHAR and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
 end
 
 func is_numeric_type(typeInfo: @TypeInfo): bool
-    return (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func numeric_rank(typeInfo: @TypeInfo): int
@@ -198,6 +246,12 @@ func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
         return true 
     end
 
+    if same_type_ignoring_nullability(target, value):
+        if is_nullable_type(target) or is_nullable_type(value):
+            return true
+        end
+    end
+
     if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)): 
         return true 
     end
@@ -230,16 +284,23 @@ func allow_string_literal_for_target(expr: @AST, expected: @TypeInfo): bool
         return false
     end
 
-    if is_cstr_type(expected):
+    lowered_target: @TypeInfo = new TypeInfo
+    copy_type(lowered_target, expected)
+    lowered_target.is_nullable = false
+
+    if is_cstr_type(lowered_target):
         expr.data._string.lower_kind = STRING_LOWER_CSTR
+        prune lowered_target
         return true
     end
 
-    if is_string_type(expected):
+    if is_string_type(lowered_target):
         expr.data._string.lower_kind = STRING_LOWER_STRING
+        prune lowered_target
         return true
     end
 
+    prune lowered_target
     return false
 end
 
@@ -300,6 +361,7 @@ func set_plain_type(out: @TypeInfo, base: int): void
     out.pointer_depth = 0
     out.array_size = 0
     out.arr_size_expr = null
+    out.is_nullable = false
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
@@ -310,6 +372,7 @@ func set_cstr_type(out: @TypeInfo): void
     out.pointer_depth = 1
     out.array_size = 0
     out.arr_size_expr = null
+    out.is_nullable = false
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
@@ -320,6 +383,7 @@ func set_null_type(out: @TypeInfo): void
     out.pointer_depth = 1
     out.array_size = 0
     out.arr_size_expr = null
+    out.is_nullable = false
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
@@ -375,6 +439,18 @@ func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
 
     if is_null_type(actual):
         return can_accept_null(expected)
+    end
+
+    if is_nullable_type(expected) or is_nullable_type(actual):
+        if not same_type_ignoring_nullability(expected, actual):
+            return false
+        end
+
+        if is_nullable_type(expected):
+            return true
+        end
+
+        return false
     end
 
     if is_decimal_type(expected) and is_decimal_type(actual):
@@ -704,6 +780,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        out.is_nullable = false
         out.pointer_depth = out.pointer_depth + 1
         return 1
     
@@ -720,6 +797,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
 
         out.pointer_depth = out.pointer_depth - 1
+        out.is_nullable = false
         return 1
 
     else if expr.kind == AST_GET_ADDR:
@@ -728,6 +806,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
 
         out.pointer_depth = out.pointer_depth + 1
+        out.is_nullable = false
         return 1
 
     else if expr.kind == AST_DOT_ACCESS:
@@ -779,11 +858,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         if out.array_size != 0:
             out.array_size = 0
             out.arr_size_expr = null
+            out.is_nullable = false
             return 1
         end
 
         if out.pointer_depth > 0:
             out.pointer_depth = out.pointer_depth - 1
+            out.is_nullable = false
             return 1
         end
 
@@ -826,10 +907,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 return 0
             end
 
-            out.base = TOKEN_BOOL
-            out.pointer_depth = 0
-            out.array_size = 0
-            out.arr_size_expr = null
+            set_plain_type(out, TOKEN_BOOL)
 
         else if is_comparison_op(expr.data._binary.op):
             expr.data._binary.is_string_compare = 0
@@ -860,10 +938,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 set_plain_type(out, TOKEN_BOOL)
             end
 
-            out.base = TOKEN_BOOL
-            out.pointer_depth = 0
-            out.array_size = 0
-            out.arr_size_expr = null
+            set_plain_type(out, TOKEN_BOOL)
 
         else:
             if is_bool_type(left_type) or is_bool_type(right_type):
@@ -935,10 +1010,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
         prune operand_type
 
-        out.base = TOKEN_BOOL
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_BOOL)
         return 1
 
     else if expr.kind == AST_UNARY_NEG:
@@ -999,50 +1071,27 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_SIZEOF:
-        out.base = TOKEN_INT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_INT)
         return 1
 
     else if expr.kind == AST_LITERAL:
-        out.base = TOKEN_INT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_INT)
         return 1
 
     else if expr.kind == AST_FLOAT_LIT:
-        out.base = TOKEN_FLOAT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_FLOAT)
         return 1
 
     else if expr.kind == AST_BOOL_LIT:
-        out.base = TOKEN_BOOL
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_BOOL)
         return 1
 
     else if expr.kind == AST_CHAR_LIT:
-        out.base = TOKEN_CHAR
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_CHAR)
         return 1
 
     else if expr.kind == AST_STRING_LIT:
-        // STRING SETTING— UNNUSED UNTIL COMPILER IS UPDATED
         set_plain_type(out, TOKEN_STRING)
-        // out.base = TOKEN_CHAR
-        // out.pointer_depth = 1
-        // out.array_size = 0
-        // out.arr_size_expr = null
-        // out.name_start = 0
-        // out.name_length = 0
-        // out.name_src = null
         return 1
 
     else if expr.kind == AST_NULL:
@@ -1183,12 +1232,12 @@ end
 
 func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
     if typeInfo.base != TOKEN_IDENTIFIER:
-        return true
+        return validate_nullable_type(env, ast, typeInfo)
     end
 
     alias: @AliasInfo = lookup_alias(env, typeInfo.name_src, typeInfo.name_start, typeInfo.name_length)
     if alias == null:
-        return true
+        return validate_nullable_type(env, ast, typeInfo)
     end
 
     if depth >= 32:
@@ -1199,6 +1248,7 @@ func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, dep
     outer_pointer_depth: int = typeInfo.pointer_depth
     outer_array_size: int = typeInfo.array_size
     outer_array_expr: @AST = typeInfo.arr_size_expr
+    outer_nullable: bool = typeInfo.is_nullable
 
     resolved: @TypeInfo = new TypeInfo
     copy_type(resolved, &alias.target)
@@ -1216,8 +1266,12 @@ func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, dep
         typeInfo.arr_size_expr = outer_array_expr
     end
 
+    if outer_nullable:
+        typeInfo.is_nullable = true
+    end
+
     prune resolved
-    return true
+    return validate_nullable_type(env, ast, typeInfo)
 end
 
 func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
@@ -1360,6 +1414,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         loop_var.typeInfo.pointer_depth = 0
         loop_var.typeInfo.array_size = 0
         loop_var.typeInfo.arr_size_expr = null
+        loop_var.typeInfo.is_nullable = false
         loop_var.typeInfo.name_start = 0
         loop_var.typeInfo.name_length = 0
         loop_var.typeInfo.name_src = null
@@ -1462,14 +1517,14 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
                     prune value_type
                     return
                 end
-
-                if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
-                    prune expected_type
-                    prune value_type
-                    return
-                end
                 
                 if resolve_expr(env, curr.data._var_decl.value, value_type, src):
+                    if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
+                        prune expected_type
+                        prune value_type
+                        return
+                    end
+                    
                     if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
                         type_error(env, curr, "variable initializer does not match declared type")
                         prune expected_type

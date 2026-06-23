@@ -235,6 +235,7 @@ func copy_typeinfo(dst: @TypeInfo, src_type: @TypeInfo): void
     dst.pointer_depth = src_type.pointer_depth
     dst.array_size = src_type.array_size
     dst.arr_size_expr = src_type.arr_size_expr
+    dst.is_nullable = src_type.is_nullable
     dst.name_start = src_type.name_start
     dst.name_length = src_type.name_length
     dst.name_src = src_type.name_src
@@ -288,6 +289,7 @@ func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
     outer_pointer_depth: int = typeInfo.pointer_depth
     outer_array_size: int = typeInfo.array_size
     outer_array_expr: @AST = typeInfo.arr_size_expr
+    outer_nullable: bool = typeInfo.is_nullable
 
     if not canonicalize_codegen_type(target, depth + 1):
         prune target
@@ -300,6 +302,11 @@ func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
     end
 
     copy_typeinfo(typeInfo, target)
+
+    if outer_nullable:
+        typeInfo.is_nullable = true
+    end
+
     typeInfo.pointer_depth = typeInfo.pointer_depth + outer_pointer_depth
 
     if outer_array_size != 0 or outer_array_expr != null:

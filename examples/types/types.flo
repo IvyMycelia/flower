@@ -12,6 +12,7 @@ import "examples/types/string.flo" as string_test
 import "examples/types/array.flo" as array_test
 import "examples/types/struct.flo" as struct_test
 import "examples/types/alias.flo" as alias_test
+import "examples/types/nullable.flo" as nullable_test
 
 prop func test(): bool
     total: int = 0
@@ -110,6 +111,15 @@ prop func test(): bool
     print("  alias... ")
     total = total + 1
     if alias_test.test():
+        pass = pass + 1
+        print("OK\n")
+    else:
+        print("FAIL\n")
+    end
+
+    print(" nullable... ")
+    total = total + 1
+    if nullable_test.test():
         pass = pass + 1
         print("OK\n")
     else:

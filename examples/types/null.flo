@@ -1,24 +1,15 @@
 import <stdio>
 import <stdlib>
 
-func pass_ptr(ptr: @int): @int
-    return ptr
-end
-
 func is_null_cstr(s: @char): bool
     return s == null
 end
 
 prop func test(): bool
     ptr: @int = null
-    other: @int = pass_ptr(null)
     text: @char = null
 
     if ptr != null:
-        return false
-    end
-
-    if other != null:
         return false
     end
 
