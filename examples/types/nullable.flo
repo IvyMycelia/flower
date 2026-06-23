@@ -1,0 +1,49 @@
+import <stdio>
+import <stdlib>
+
+type MaybeIntPtr = ?@int
+type MaybeCStr = ?@char
+
+func pass_ptr(ptr: ?@int): ?@int
+    return ptr
+end
+
+prop func test(): bool
+    ptr: ?@int = null
+    other: MaybeIntPtr = pass_ptr(null)
+    text: MaybeCStr = null
+
+    if ptr != null:
+        return false
+    end
+
+    if other != null:
+        return false
+    end
+
+    raw: @int = new int
+    ptr = raw
+
+    if ptr == null:
+        prune raw
+        return false
+    end
+
+    text = "Ivy"
+
+    if text == null:
+        prune raw
+        return false
+    end
+
+    casted: ?@int = raw as ?@int
+    back: @int = casted as @int
+
+    if back == null:
+        prune raw
+        return false
+    end
+
+    prune raw
+    return true
+end

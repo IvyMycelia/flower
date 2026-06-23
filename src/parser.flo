@@ -114,7 +114,20 @@ func parse_type(ps: @Parser): @TypeInfo
     typeInfo.pointer_depth = 0
     typeInfo.array_size = 0
     typeInfo.arr_size_expr = null
+    typeInfo.is_nullable = false
+    typeInfo.name_start = 0
+    typeInfo.name_length = 0
     typeInfo.name_src = ps.src
+
+    if parser_peek(ps).kind == TOKEN_QUESTION:
+        typeInfo.is_nullable = true
+        parser_advance(ps)
+
+        if parser_peek(ps).kind == TOKEN_EOF:
+            parser_error(ps, "Unexpected end of file while parsing nullable type")
+            return typeInfo
+        end
+    end
 
     while parser_peek(ps).kind == TOKEN_AT:
         typeInfo.pointer_depth = typeInfo.pointer_depth + 1

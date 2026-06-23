@@ -243,9 +243,10 @@ int TOKEN_LBRACE = 66;
 int TOKEN_RBRACE = 67;
 int TOKEN_COLON = 68;
 int TOKEN_COMMA = 69;
-int TOKEN_SEMI = 70;
-int TOKEN_NEWLINE = 71;
-int TOKEN_EOF = 72;
+int TOKEN_QUESTION = 70;
+int TOKEN_SEMI = 71;
+int TOKEN_NEWLINE = 72;
+int TOKEN_EOF = 73;
 
 
 typedef struct Token {
@@ -561,6 +562,11 @@ mod_src_lexer_flo_add_token(ts, TOKEN_AT, i, 1);
 i = i + 1;
 continue;
 }
+else if (src[i] == '?') {
+mod_src_lexer_flo_add_token(ts, TOKEN_QUESTION, i, 1);
+i = i + 1;
+continue;
+}
 else if (src[i] == '=') {
 if (src[i + 1] == '=') {
 mod_src_lexer_flo_add_token(ts, TOKEN_COMP, i, 2);
@@ -810,6 +816,9 @@ return "TOKEN_SLASH";
 else if (kind == TOKEN_CARET) {
 return "TOKEN_CARET";
 }
+else if (kind == TOKEN_QUESTION) {
+return "TOKEN_QUESTION";
+}
 else if (kind == TOKEN_AMPERSAND) {
 return "TOKEN_AMPERSAND";
 }
@@ -957,6 +966,7 @@ int base;
 int pointer_depth;
 int array_size;
 AST* arr_size_expr;
+int is_nullable;
 int name_start;
 int name_length;
 char* name_src;
@@ -1368,7 +1378,18 @@ TypeInfo* typeInfo = malloc(sizeof(TypeInfo));
 typeInfo->pointer_depth = 0;
 typeInfo->array_size = 0;
 typeInfo->arr_size_expr = NULL;
+typeInfo->is_nullable = 0;
+typeInfo->name_start = 0;
+typeInfo->name_length = 0;
 typeInfo->name_src = ps->src;
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_QUESTION) {
+typeInfo->is_nullable = 1;
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing nullable type");
+return typeInfo;
+}
+}
 while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
 typeInfo->pointer_depth = typeInfo->pointer_depth + 1;
 mod_src_parser_flo_parser_advance(ps);
@@ -3058,6 +3079,7 @@ ModuleSet* active_type_modules;
 Module* current_type_module;
 TypeInfo current_return_type;
 int inside_function = 0;
+void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
 
 
 int mod_src_typecheck_flo_same_name(char* a_src, int a_start, int a_len, char* b_src, int b_start, int b_len) {
@@ -3076,6 +3098,7 @@ dst->base = src_type->base;
 dst->pointer_depth = src_type->pointer_depth;
 dst->array_size = src_type->array_size;
 dst->arr_size_expr = src_type->arr_size_expr;
+dst->is_nullable = src_type->is_nullable;
 dst->name_start = src_type->name_start;
 dst->name_length = src_type->name_length;
 dst->name_src = src_type->name_src;
@@ -3091,6 +3114,9 @@ int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual);
 
 
 int mod_src_typecheck_flo_is_bool_type(TypeInfo* typeInfo) {
+if (typeInfo->is_nullable) {
+return 0;
+}
 if (typeInfo->base == TOKEN_BOOL  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0) {
 return 1;
 }
@@ -3098,28 +3124,75 @@ return 0;
 }
 
 
+int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* typeInfo) {
+return typeInfo->pointer_depth > 0  ||  typeInfo->array_size != 0;
+}
+
+
 int mod_src_typecheck_flo_is_void_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
 
 
 int mod_src_typecheck_flo_is_null_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 1  &&  typeInfo->array_size == 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 1  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_nullable_type(TypeInfo* typeInfo) {
+return typeInfo->is_nullable;
+}
+
+
+int mod_src_typecheck_flo_nullable_requires_pointer_storage(TypeInfo* typeInfo) {
+return typeInfo->pointer_depth > 0;
+}
+
+
+int mod_src_typecheck_flo_validate_nullable_type(TypeEnv* env, AST* ast, TypeInfo* typeInfo) {
+if (!(mod_src_typecheck_flo_is_nullable_type(typeInfo))) {
+return 1;
+}
+if (mod_src_typecheck_flo_nullable_requires_pointer_storage(typeInfo)) {
+return 1;
+}
+mod_src_typecheck_flo_type_error(env, ast, "nullable types currently require a pointer type");
+return 0;
+}
+
+
+int mod_src_typecheck_flo_same_type_ignoring_nullability(TypeInfo* expected, TypeInfo* actual) {
+if (expected->base != actual->base) {
+return 0;
+}
+if (expected->pointer_depth != actual->pointer_depth) {
+return 0;
+}
+if (expected->base == TOKEN_IDENTIFIER) {
+return mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length);
+}
+return 1;
+}
+
+
+int mod_src_typecheck_flo_can_accept_null(TypeInfo* typeInfo) {
+if (mod_src_typecheck_flo_is_null_type(typeInfo)) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_nullable_type(typeInfo)) {
+return 1;
+}
+return mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
 }
 
 
 int mod_src_typecheck_flo_is_integer_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
 
 
 int mod_src_typecheck_flo_is_decimal_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
-}
-
-
-int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* typeInfo) {
-return typeInfo->pointer_depth > 0  ||  typeInfo->array_size != 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
 
 
@@ -3129,17 +3202,17 @@ return mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_i
 
 
 int mod_src_typecheck_flo_is_string_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_STRING  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_STRING  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
 
 
 int mod_src_typecheck_flo_is_cstr_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 1  &&  typeInfo->array_size == 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 1  &&  typeInfo->array_size == 0;
 }
 
 
 int mod_src_typecheck_flo_is_numeric_type(TypeInfo* typeInfo) {
-return typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
 
 
@@ -3180,6 +3253,11 @@ int mod_src_typecheck_flo_can_explicitly_convert(TypeInfo* target, TypeInfo* val
 if (mod_src_typecheck_flo_types_match(target, value)) {
 return 1;
 }
+if (mod_src_typecheck_flo_same_type_ignoring_nullability(target, value)) {
+if (mod_src_typecheck_flo_is_nullable_type(target)  ||  mod_src_typecheck_flo_is_nullable_type(value)) {
+return 1;
+}
+}
 if (mod_src_typecheck_flo_is_integer_type(target)  ||  mod_src_typecheck_flo_is_decimal_type(target)  &&  mod_src_typecheck_flo_is_integer_type(value)  ||  mod_src_typecheck_flo_is_decimal_type(value)) {
 return 1;
 }
@@ -3208,14 +3286,20 @@ int mod_src_typecheck_flo_allow_string_literal_for_target(AST* expr, TypeInfo* e
 if (expr == NULL  ||  expr->kind != AST_STRING_LIT) {
 return 0;
 }
-if (mod_src_typecheck_flo_is_cstr_type(expected)) {
+TypeInfo* lowered_target = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(lowered_target, expected);
+lowered_target->is_nullable = 0;
+if (mod_src_typecheck_flo_is_cstr_type(lowered_target)) {
 expr->data._string.lower_kind = STRING_LOWER_CSTR;
+free(lowered_target);
 return 1;
 }
-if (mod_src_typecheck_flo_is_string_type(expected)) {
+if (mod_src_typecheck_flo_is_string_type(lowered_target)) {
 expr->data._string.lower_kind = STRING_LOWER_STRING;
+free(lowered_target);
 return 1;
 }
+free(lowered_target);
 return 0;
 }
 
@@ -3275,6 +3359,7 @@ out->base = base;
 out->pointer_depth = 0;
 out->array_size = 0;
 out->arr_size_expr = NULL;
+out->is_nullable = 0;
 out->name_start = 0;
 out->name_length = 0;
 out->name_src = NULL;
@@ -3286,6 +3371,19 @@ out->base = TOKEN_CHAR;
 out->pointer_depth = 1;
 out->array_size = 0;
 out->arr_size_expr = NULL;
+out->is_nullable = 0;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+}
+
+
+void mod_src_typecheck_flo_set_null_type(TypeInfo* out) {
+out->base = TOKEN_VOID;
+out->pointer_depth = 1;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->is_nullable = 0;
 out->name_start = 0;
 out->name_length = 0;
 out->name_src = NULL;
@@ -3333,11 +3431,20 @@ return 0;
 
 
 int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual) {
-if (mod_src_typecheck_flo_is_null_type(expected)  &&  mod_src_typecheck_flo_is_pointer_like_type(actual)) {
+if (mod_src_typecheck_flo_is_null_type(expected)) {
+return mod_src_typecheck_flo_can_accept_null(actual);
+}
+if (mod_src_typecheck_flo_is_null_type(actual)) {
+return mod_src_typecheck_flo_can_accept_null(expected);
+}
+if (mod_src_typecheck_flo_is_nullable_type(expected)  ||  mod_src_typecheck_flo_is_nullable_type(actual)) {
+if (!(mod_src_typecheck_flo_same_type_ignoring_nullability(expected, actual))) {
+return 0;
+}
+if (mod_src_typecheck_flo_is_nullable_type(expected)) {
 return 1;
 }
-if (mod_src_typecheck_flo_is_null_type(actual)  &&  mod_src_typecheck_flo_is_pointer_like_type(expected)) {
-return 1;
+return 0;
 }
 if (mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual)) {
 return 1;
@@ -3620,6 +3727,7 @@ mod_src_typecheck_flo_copy_type(out, &(expr->data._new_alloc.typeInfo));
 if (!(mod_src_typecheck_flo_resolve_type_alias(env, out, expr))) {
 return 0;
 }
+out->is_nullable = 0;
 out->pointer_depth = out->pointer_depth + 1;
 return 1;
 }
@@ -3632,6 +3740,7 @@ if (out->pointer_depth <= 0) {
 return 0;
 }
 out->pointer_depth = out->pointer_depth - 1;
+out->is_nullable = 0;
 return 1;
 }
 else if (expr->kind == AST_GET_ADDR) {
@@ -3639,6 +3748,7 @@ if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._get_addr.operand, out,
 return 0;
 }
 out->pointer_depth = out->pointer_depth + 1;
+out->is_nullable = 0;
 return 1;
 }
 else if (expr->kind == AST_DOT_ACCESS) {
@@ -3682,10 +3792,12 @@ return 1;
 if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
+out->is_nullable = 0;
 return 1;
 }
 if (out->pointer_depth > 0) {
 out->pointer_depth = out->pointer_depth - 1;
+out->is_nullable = 0;
 return 1;
 }
 mod_src_typecheck_flo_type_error(env, expr, "cannot subscript non-indexable type");
@@ -3721,10 +3833,7 @@ free(left_type);
 free(right_type);
 return 0;
 }
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 }
 else if (mod_src_typecheck_flo_is_comparison_op(expr->data._binary.op)) {
 expr->data._binary.is_string_compare = 0;
@@ -3757,10 +3866,7 @@ return 0;
 else {
 mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 }
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 }
 else {
 if (mod_src_typecheck_flo_is_bool_type(left_type)  ||  mod_src_typecheck_flo_is_bool_type(right_type)) {
@@ -3820,10 +3926,7 @@ free(operand_type);
 return 0;
 }
 free(operand_type);
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 return 1;
 }
 else if (expr->kind == AST_UNARY_NEG) {
@@ -3874,38 +3977,23 @@ free(target_type);
 return 1;
 }
 else if (expr->kind == AST_SIZEOF) {
-out->base = TOKEN_INT;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
 return 1;
 }
 else if (expr->kind == AST_LITERAL) {
-out->base = TOKEN_INT;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
 return 1;
 }
 else if (expr->kind == AST_FLOAT_LIT) {
-out->base = TOKEN_FLOAT;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_FLOAT);
 return 1;
 }
 else if (expr->kind == AST_BOOL_LIT) {
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 return 1;
 }
 else if (expr->kind == AST_CHAR_LIT) {
-out->base = TOKEN_CHAR;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_CHAR);
 return 1;
 }
 else if (expr->kind == AST_STRING_LIT) {
@@ -3913,10 +4001,7 @@ mod_src_typecheck_flo_set_plain_type(out, TOKEN_STRING);
 return 1;
 }
 else if (expr->kind == AST_NULL) {
-out->base = TOKEN_VOID;
-out->pointer_depth = 1;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_null_type(out);
 return 1;
 }
 return 0;
@@ -4043,11 +4128,11 @@ return mod_src_typecheck_flo_resolve_type_alias_depth(env, typeInfo, ast, 0);
 
 int mod_src_typecheck_flo_resolve_type_alias_depth(TypeEnv* env, TypeInfo* typeInfo, AST* ast, int depth) {
 if (typeInfo->base != TOKEN_IDENTIFIER) {
-return 1;
+return mod_src_typecheck_flo_validate_nullable_type(env, ast, typeInfo);
 }
 AliasInfo* alias = mod_src_typecheck_flo_lookup_alias(env, typeInfo->name_src, typeInfo->name_start, typeInfo->name_length);
 if (alias == NULL) {
-return 1;
+return mod_src_typecheck_flo_validate_nullable_type(env, ast, typeInfo);
 }
 if (depth >= 32) {
 mod_src_typecheck_flo_type_error(env, ast, "type alias circle or recursion too deep");
@@ -4056,6 +4141,7 @@ return 0;
 int outer_pointer_depth = typeInfo->pointer_depth;
 int outer_array_size = typeInfo->array_size;
 AST* outer_array_expr = typeInfo->arr_size_expr;
+int outer_nullable = typeInfo->is_nullable;
 TypeInfo* resolved = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_copy_type(resolved, &(alias->target));
 if (!(mod_src_typecheck_flo_resolve_type_alias_depth(env, resolved, ast, depth + 1))) {
@@ -4068,8 +4154,11 @@ if (outer_array_size != 0  ||  outer_array_expr != NULL) {
 typeInfo->array_size = outer_array_size;
 typeInfo->arr_size_expr = outer_array_expr;
 }
+if (outer_nullable) {
+typeInfo->is_nullable = 1;
+}
 free(resolved);
-return 1;
+return mod_src_typecheck_flo_validate_nullable_type(env, ast, typeInfo);
 }
 
 
@@ -4190,6 +4279,7 @@ loop_var->typeInfo.base = TOKEN_INT;
 loop_var->typeInfo.pointer_depth = 0;
 loop_var->typeInfo.array_size = 0;
 loop_var->typeInfo.arr_size_expr = NULL;
+loop_var->typeInfo.is_nullable = 0;
 loop_var->typeInfo.name_start = 0;
 loop_var->typeInfo.name_length = 0;
 loop_var->typeInfo.name_src = NULL;
@@ -4284,11 +4374,11 @@ if (!(mod_src_typecheck_flo_resolve_type_alias(env, expected_type, curr))) {
 free(expected_type);
 free(value_type);
 return;}
+if (mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, value_type, src)) {
 if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, curr->data._var_decl.value))) {
 free(expected_type);
 free(value_type);
 return;}
-if (mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, value_type, src)) {
 if (!(mod_src_typecheck_flo_allow_string_literal_for_target(curr->data._var_decl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, value_type))) {
 mod_src_typecheck_flo_type_error(env, curr, "variable initializer does not match declared type");
 free(expected_type);
@@ -4700,6 +4790,7 @@ dst->base = src_type->base;
 dst->pointer_depth = src_type->pointer_depth;
 dst->array_size = src_type->array_size;
 dst->arr_size_expr = src_type->arr_size_expr;
+dst->is_nullable = src_type->is_nullable;
 dst->name_start = src_type->name_start;
 dst->name_length = src_type->name_length;
 dst->name_src = src_type->name_src;
@@ -4746,6 +4837,7 @@ return 1;
 int outer_pointer_depth = typeInfo->pointer_depth;
 int outer_array_size = typeInfo->array_size;
 AST* outer_array_expr = typeInfo->arr_size_expr;
+int outer_nullable = typeInfo->is_nullable;
 if (!(mod_src_codegen_flo_canonicalize_codegen_type(target, depth + 1))) {
 free(target);
 return 0;
@@ -4755,6 +4847,9 @@ free(target);
 return 0;
 }
 mod_src_codegen_flo_copy_typeinfo(typeInfo, target);
+if (outer_nullable) {
+typeInfo->is_nullable = 1;
+}
 typeInfo->pointer_depth = typeInfo->pointer_depth + outer_pointer_depth;
 if (outer_array_size != 0  ||  outer_array_expr != NULL) {
 typeInfo->array_size = outer_array_size;

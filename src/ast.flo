@@ -77,6 +77,7 @@ struct TypeInfo {
     pointer_depth: int,
     array_size: int,
     arr_size_expr: @AST,
+    is_nullable: bool,
     name_start: int,
     name_length: int,
     name_src: @char
