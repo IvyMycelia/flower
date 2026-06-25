@@ -72,15 +72,34 @@ STRING_LOWER_CSTR:   int = 1
 
 forward struct AST
 
+struct TypeAtom {
+    base: int,
+    pointer_depth: int,
+    array_size: int,
+    arr_size_expr: @AST,
+
+    name_start: int,
+    name_length: int,
+    name_src: @char,
+
+    is_nullable: bool,
+}
+
 struct TypeInfo {
     base: int,
     pointer_depth: int,
     array_size: int,
     arr_size_expr: @AST,
-    is_nullable: bool,
+
     name_start: int,
     name_length: int,
-    name_src: @char
+    name_src: @char,
+
+    is_nullable: bool,
+
+    is_union: bool,
+    union_members: TypeAtom[8],
+    union_count: int,
 }
 
 

@@ -5,8 +5,6 @@ import "src/stdlib/cstr.flo" as cstr
 
 
 // Modules
-forward struct Module
-
 EXPORT_FUNC:    int = 1
 EXPORT_STRUCT:  int = 2
 EXPORT_UNION:   int = 3

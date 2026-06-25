@@ -5,11 +5,6 @@ import "src/parser.flo" as parser
 import "src/file.flo" as file
 import "src/stdlib/cstr.flo" as cstr
 
-forward struct StructInfo
-forward struct FieldInfo
-forward struct VarInfo
-forward struct FuncInfo
-
 struct FieldInfo {
     src: @char,
     name_start: int,
@@ -103,6 +98,21 @@ func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
     dst.name_start = src_type.name_start
     dst.name_length = src_type.name_length
     dst.name_src = src_type.name_src
+    dst.is_union = src_type.is_union
+    dst.union_count = src_type.union_count
+
+    i: int = 0
+    while i < src_type.union_count:
+        dst.union_members[i].base = src_type.union_members[i].base
+        dst.union_members[i].pointer_depth = src_type.union_members[i].pointer_depth
+        dst.union_members[i].array_size = src_type.union_members[i].array_size
+        dst.union_members[i].arr_size_expr = src_type.union_members[i].arr_size_expr
+        dst.union_members[i].name_start = src_type.union_members[i].name_start
+        dst.union_members[i].name_length = src_type.union_members[i].name_length
+        dst.union_members[i].name_src = src_type.union_members[i].name_src
+        dst.union_members[i].is_nullable = src_type.union_members[i].is_nullable
+        i = i + 1
+    end
 end
 
 forward func resolve_type_alias(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST): bool
@@ -112,10 +122,58 @@ func copy_resolved_type(env: @TypeEnv, dst: @TypeInfo, src_type: @TypeInfo, ast:
     return resolve_type_alias(env, dst, ast)
 end
 
+func copy_type_atom(dst: @TypeAtom, src_type: @TypeAtom): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+end
+
+func copy_type_to_atom(dst: @TypeAtom, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+end
+
+func copy_atom_to_type(dst: @TypeInfo, src_type: @TypeAtom): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+    dst.is_union = false
+    dst.union_count = 0
+end
+
+func clear_union_type(dst: @TypeInfo): void
+    dst.base = TOKEN_VOID
+    dst.pointer_depth = 0
+    dst.array_size = 0
+    dst.arr_size_expr = null
+    dst.name_start = 0
+    dst.name_length = 0
+    dst.name_src = null
+    dst.is_nullable = false
+    dst.is_union = true
+    dst.union_count = 0
+end
+
 forward func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
 
 func is_bool_type(typeInfo: @TypeInfo): bool
-    if typeInfo.is_nullable:
+    if typeInfo.is_nullable or typeInfo.is_union:
         return false
     end
 
@@ -127,14 +185,26 @@ func is_bool_type(typeInfo: @TypeInfo): bool
 end
 
 func is_pointer_like_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return typeInfo.pointer_depth > 0 or typeInfo.array_size != 0
 end
 
 func is_void_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_null_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
 end
 
@@ -188,10 +258,18 @@ func can_accept_null(typeInfo: @TypeInfo): bool
 end
 
 func is_integer_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_decimal_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and (typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
@@ -200,14 +278,26 @@ func is_condition_type(typeInfo: @TypeInfo): bool
 end
 
 func is_string_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and typeInfo.base == TOKEN_STRING and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_cstr_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and typeInfo.base == TOKEN_CHAR and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
 end
 
 func is_numeric_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
     return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
@@ -232,6 +322,14 @@ func can_widen_numeric(expected: @TypeInfo, actual: @TypeInfo): bool
 end
 
 func can_implicitly_convert(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.is_union:
+        return types_match(expected, actual)
+    end
+
+    if actual.is_union:
+        return false
+    end
+
     if types_match(expected, actual):       
         return true 
     end
@@ -242,6 +340,28 @@ func can_implicitly_convert(expected: @TypeInfo, actual: @TypeInfo): bool
 end
 
 func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
+    if target.is_union:
+        return types_match(target, value)
+    end
+
+    if value.is_union:
+        i: int = 0
+        while i < value.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, value.union_members + i)
+
+            if types_match(target, member):
+                prune member
+                return true
+            end
+
+            prune member
+            i = i + 1
+        end
+
+        return false
+    end
+
     if types_match(target, value): 
         return true 
     end
@@ -365,6 +485,8 @@ func set_plain_type(out: @TypeInfo, base: int): void
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
+    out.is_union = false
+    out.union_count = 0
 end
 
 func set_cstr_type(out: @TypeInfo): void
@@ -376,6 +498,8 @@ func set_cstr_type(out: @TypeInfo): void
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
+    out.is_union = false
+    out.union_count = 0
 end
 
 func set_null_type(out: @TypeInfo): void
@@ -387,6 +511,8 @@ func set_null_type(out: @TypeInfo): void
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
+    out.is_union = false
+    out.union_count = 0
 end
 
 func is_comparison_op(kind: int): bool
@@ -433,6 +559,32 @@ end
 
 
 func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.is_union:
+        i: int = 0
+        while i < expected.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, expected.union_members + i)
+
+            if actual.is_union:
+                if types_match(member, actual):
+                    prune member
+                    return true
+                end
+            else if types_match(member, actual):
+                prune member
+                return true
+            end
+
+            prune member
+            i = i + 1
+        end
+        return false
+    end
+
+    if actual.is_union:
+        return false
+    end
+
     if is_null_type(expected):
         return can_accept_null(actual)
     end
@@ -466,10 +618,7 @@ func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
     end
 
     if expected.base == TOKEN_IDENTIFIER:
-        if same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length):
-            return true
-        end
-        return false
+        return same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length)
     end
 
     return true
@@ -840,6 +989,11 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if out.is_union:
+            type_error(env, expr, "semantic union requires explicit cast before indexing")
+            return 0
+        end
+
         expr.data._subscript.is_string = 0
 
         idx_type: @TypeInfo = new TypeInfo
@@ -894,6 +1048,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
 
         if not resolve_type_alias(env, right_type, expr.data._binary.right):
+            prune left_type
+            prune right_type
+            return 0
+        end
+
+        if left_type.is_union or right_type.is_union:
+            type_error(env, expr, "semantic union requires explicit cast before operator use")
             prune left_type
             prune right_type
             return 0
@@ -1002,6 +1163,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if operand_type.is_union:
+            type_error(env, expr, "semantic union requires explicit cast before unary use")
+            prune operand_type
+            return 0
+        end
+
         if !is_condition_type(operand_type):
             type_error(env, expr, "not requires a condition-compatible operand")
             prune operand_type
@@ -1017,6 +1184,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         operand_type: @TypeInfo = new TypeInfo
 
         if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+            prune operand_type
+            return 0
+        end
+
+        if operand_type.is_union:
+            type_error(env, expr, "semantic union requires explicit type before unary use")
             prune operand_type
             return 0
         end
@@ -1107,6 +1280,12 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     
     if not resolve_expr(env, expr.data._dot_access.object, object_type, src):
         type_error(env, expr, "could not resolve object type for field access")
+        prune object_type
+        return 0
+    end
+
+    if object_type.is_union:
+        type_error(env, expr, "semantic union requires explicit cast before field access")
         prune object_type
         return 0
     end
@@ -1231,6 +1410,56 @@ func resolve_type_alias(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST): bool
 end
 
 func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
+    if typeInfo.is_union:
+        flattened: @TypeInfo = new TypeInfo
+        clear_union_type(flattened)
+
+        i: int = 0
+        while i < typeInfo.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, typeInfo.union_members + i)
+
+            if not resolve_type_alias_depth(env, member, ast, depth + 1):
+                prune member
+                prune flattened
+                return false
+            end
+
+            if member.is_union:
+                j: int = 0
+                while j < member.union_count:
+                    if flattened.union_count >= 8:
+                        type_error(env, ast, "semantic union support at most 8 members")
+                        prune member
+                        prune flattened
+                        return false
+                    end
+
+                    copy_type_atom(flattened.union_members + flattened.union_count, member.union_members + j)
+                    flattened.union_count = flattened.union_count + 1
+                    j = j + 1
+                end
+            else:
+                if flattened.union_count >= 8:
+                    type_error(env, ast, "semantic union supports at most 8 members")
+                    prune member
+                    prune flattened
+                    return false
+                end
+
+                copy_type_to_atom(flattened.union_members + flattened.union_count, member)
+                flattened.union_count = flattened.union_count + 1
+            end
+
+            prune member
+            i = i + 1
+        end
+
+        copy_type(typeInfo, flattened)
+        prune flattened
+        return true
+    end
+
     if typeInfo.base != TOKEN_IDENTIFIER:
         return validate_nullable_type(env, ast, typeInfo)
     end
@@ -1470,6 +1699,12 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     else if ast.kind == AST_PRINT:
         tmp: @TypeInfo = new TypeInfo
         if resolve_expr(env, ast.data._print.value, tmp, src):
+            if tmp.is_union:
+                type_error(env, ast, "cannot print semantic union without explicit cast")
+                prune tmp
+                return
+            end
+
             copy_type(&ast.data._print.value_type, tmp)
         end
         prune tmp
