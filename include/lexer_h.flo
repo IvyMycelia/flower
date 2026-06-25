@@ -97,12 +97,13 @@ TOKEN_LBRACE:       int = 66    // Struct handling
 TOKEN_RBRACE:       int = 67    // Struct handling
 TOKEN_COLON:        int = 68    // Start block
 TOKEN_COMMA:        int = 69    // Separate parameters
-TOKEN_QUESTION:     int = 70
-TOKEN_SEMI:         int = 71    // Semicolon for starting a new statement
+TOKEN_QUESTION:     int = 70    // Nullable types
+TOKEN_PIPE:         int = 71    // Semantic Union types
+TOKEN_SEMI:         int = 72    // Semicolon for starting a new statement
 
-TOKEN_NEWLINE:      int = 72    // For determining next statement
+TOKEN_NEWLINE:      int = 73    // For determining next statement
 
-TOKEN_EOF:          int = 73    // End of File
+TOKEN_EOF:          int = 74    // End of File
 
 struct Token {
     kind: int,

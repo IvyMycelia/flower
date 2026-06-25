@@ -256,6 +256,9 @@ prop func lex(ts: @TokenStream, src: @char): void
         else if src[i] == '?':
             add_token(ts, TOKEN_QUESTION, i, 1)
             i = i + 1 continue
+        else if src[i] == '|':
+            add_token(ts, TOKEN_PIPE, i, 1)
+            i = i + 1 continue
         else if src[i] == '=':
             if src[i+1] == '=':
                 add_token(ts, TOKEN_COMP, i, 2)
@@ -389,6 +392,7 @@ func token_kind_name(kind: int): @char
     else if kind == TOKEN_SLASH:        return "TOKEN_SLASH"
     else if kind == TOKEN_CARET:        return "TOKEN_CARET"
     else if kind == TOKEN_QUESTION:     return "TOKEN_QUESTION"
+    else if kind == TOKEN_PIPE:         return "TOKEN_PIPE"
     else if kind == TOKEN_AMPERSAND:    return "TOKEN_AMPERSAND"
     else if kind == TOKEN_AT:           return "TOKEN_AT"
     else if kind == TOKEN_ASSIGN:       return "TOKEN_ASSIGN"
