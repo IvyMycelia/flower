@@ -54,7 +54,7 @@ Current shipped scope:
 Improve the type system.
 
 - [x] Type alias: `type MyInt = int`
-- [ ] Nullable types: `?int` for optional values
+- [x] Nullable types: `?int` for optional values
 - [ ] Better type inference in some contexts
 - [ ] Union types (experimental)
 
