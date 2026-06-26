@@ -12,6 +12,20 @@ prop func test(): bool
     ptr: ?@int = null
     other: MaybeIntPtr = pass_ptr(null)
     text: MaybeCStr = null
+    maybe_ptr: ?@int = null
+
+    if maybe_ptr is @int:
+        return false
+    end
+
+    maybe_ptr = new int
+
+    if maybe_ptr is @int:
+        real_ptr: @int = maybe_ptr
+        @real_ptr = 7
+    else:
+        return false
+    end
 
     if ptr != null:
         return false

@@ -278,7 +278,7 @@ func get_precedence(kind: int): int
         return 5
     else if kind == TOKEN_PLUS or kind == TOKEN_MINUS:
         return 4
-    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP:
+    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP or kind == TOKEN_IS:
         return 3
     else if kind == TOKEN_AND:
         return 2
@@ -778,6 +778,20 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
 
         op: @Token = parser_advance(ps)
 
+        if op.kind == TOKEN_IS:
+            if parser_peek(ps).kind == TOKEN_EOF:
+                parser_error(ps, "Unexpected end of file after `is`")
+                return left
+            end
+
+            test: @AST = make_node(ps, AST_TYPE_TEST)
+            test.data._type_test.value = left
+            test.data._type_test.typeInfo = @parse_type(ps)
+
+            left = test
+            continue
+        end
+
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file after binary operator")
             return left
@@ -1092,7 +1106,7 @@ func parse_primary(ps: @Parser): @AST
         str.data._string.str_start = parser_peek(ps).start
         str.data._string.str_length = parser_peek(ps).length
 
-        str.data._string.lower_kind = STRING_LOWER_STRING
+        str.data._string.lower_kind = STRING_LOWER_CSTR
 
         parser_advance(ps)
 
