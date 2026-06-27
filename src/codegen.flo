@@ -959,6 +959,15 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
 
     else if ast.kind == AST_NULL:
         fprintf(out, "NULL")
+
+    else if ast.kind == AST_TYPE_TEST:
+        if ast.data._type_test.lower_kind == TYPE_TEST_NONNULL:
+            fprintf(out, "(")
+            gen_expr(ast.data._type_test.value, out, src)
+            fprintf(out, " != NULL)")
+        else:
+            fprintf(out, "1")
+        end
         
     else if ast.kind == AST_BINARY_OP: 
         if ast.data._binary.is_string_compare:

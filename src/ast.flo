@@ -56,7 +56,12 @@ AST_PRINT:          int = 37    // print()
     // Etc
 
 AST_TYPE_ALIAS:     int = 38
+AST_TYPE_TEST:      int = 39
 
+// Type Tests
+TYPE_TEST_UNKNOWN:      int = 0
+TYPE_TEST_STATIC_TRUE:  int = 1
+TYPE_TEST_NONNULL:      int = 2
 
 // FIELDS
 FIELD_FALSE: int = 0
@@ -114,6 +119,13 @@ struct cast {
     value: @AST,
     typeInfo: TypeInfo,
     value_type: TypeInfo
+}
+
+struct type_test {
+    value: @AST,
+    typeInfo: TypeInfo,
+    value_type: TypeInfo,
+    lower_kind: int,
 }
 
 struct float_lit {
@@ -352,6 +364,7 @@ struct if_condition {
 }
 
 union NodeData {
+    _type_test:     type_test,
     _type_alias:    type_alias,
     _cast:          cast,
     _float_lit:     float_lit,
