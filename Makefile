@@ -23,6 +23,7 @@ help:
 	@echo "\tmake rebuild\t:   Clean rebuild Flower"
 	@echo "\tmake test\t:   Run test suite"
 	@echo "\tmake clean\t:   Remove generated build artifacts"
+	@echo "\tmake clean\t:   Remove generated build artifacts"
 
 build:
 	$(CC) $(CFLAGS) $(FLOWER_C) -o $(FLOWER_BIN)
@@ -46,10 +47,14 @@ bootstrap:
 	@echo "Verified bootstrap build complete"
 
 rebuild: clean build
+rebuild: clean build
 	@echo "Clean rebuild complete"
 
 test: build
+test: build
 	mkdir -p output
+	./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
+	./$(OUT_BIN)
 	./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
 	./$(OUT_BIN)
 
