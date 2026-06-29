@@ -13,6 +13,7 @@ import "examples/types/array.flo" as array_test
 import "examples/types/struct.flo" as struct_test
 import "examples/types/alias.flo" as alias_test
 import "examples/types/nullable.flo" as nullable_test
+import "examples/types/union.flo" as union_test
 
 prop func test(): bool
     total: int = 0
@@ -120,6 +121,15 @@ prop func test(): bool
     print("  nullable... ")
     total = total + 1
     if nullable_test.test():
+        pass = pass + 1
+        print("OK\n")
+    else:
+        print("FAIL\n")
+    end
+
+    print("  sem union...")
+    total = total + 1
+    if union_test.test():
         pass = pass + 1
         print("OK\n")
     else:

@@ -1,0 +1,31 @@
+type Value = int | string
+
+prop func test(): bool
+    value: Value = 7
+
+    if value is int:
+        n: int = value as int
+        if n != 7:
+            return false
+        end
+    else:
+        return false
+    end
+
+    value = "Ivy"
+
+    if value is string:
+        s: string = value as string
+        if s != "Ivy":
+            return false
+        end
+
+        if s.length != 3:
+            return false
+        end
+    else:
+        return false
+    end
+
+    return true
+end

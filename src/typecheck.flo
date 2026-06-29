@@ -48,6 +48,21 @@ struct AliasInfo {
     target: TypeInfo
 }
 
+NARROW_NONE:            int = 0
+NARROW_UNION_MEMBER:    int = 1
+
+struct NarrowInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+
+    narrowed_type: TypeInfo,
+    union_source_type: TypeInfo,
+
+    kind: int,
+    union_member_index: int,
+}
+
 // Type Environment, hosts registries and their data
 struct TypeEnv {
     src: @char,
@@ -63,6 +78,9 @@ struct TypeEnv {
 
     aliases: AliasInfo[512],
     alias_count: int,
+
+    narrowings: NarrowInfo[2048],
+    narrow_count: int,
 
     error_count: int
 }
@@ -549,8 +567,115 @@ func can_pass_arg(expected: @TypeInfo, actual: @TypeInfo): bool
     return false
 end
 
+func type_atom_matches_union_info(atom: @TypeAtom, info: @TypeInfo): bool
+    tmp: @TypeInfo = new TypeInfo
+    copy_atom_to_type(tmp, atom)
+    matched: bool = types_match(tmp, info)
+    prune tmp
+    return matched
+end
+
+func find_union_member_index(union_type: @TypeInfo, target: @TypeInfo): int
+    if not union_type.is_union:
+        return 0
+    end
+
+    i: int = 0
+    while i < union_type.union_count:
+        if type_atom_matches_union_info(union_type.union_members + i, target):
+            return i + 1
+        end
+        i = i + 1
+    end
+
+    return 0
+end
+
+func push_union_narrow(env: @TypeEnv, src: @char, start: int, length: int, target: @TypeInfo, union_type: @TypeInfo, member_index: int): void
+    if env.narrow_count >= 2048:
+        return
+    end
+
+    info: @NarrowInfo = env.narrowings + env.narrow_count
+    info.src = src
+    info.name_start = start
+    info.name_length = length
+
+    copy_type(&info.narrowed_type, target)
+    copy_type(&info.union_source_type, union_type)
+
+    info.kind = NARROW_UNION_MEMBER
+    info.union_member_index = member_index
+
+    env.narrow_count = env.narrow_count + 1
+end
+
+func lookup_union_narrow_index(env: @TypeEnv, src: @char, start: int, length: int, target: @TypeInfo, union_type: @TypeInfo): int
+    i: int = env.narrow_count
+    while i > 0:
+        i = i - 1
+
+        info: @NarrowInfo = env.narrowings + i
+        if info.kind == NARROW_UNION_MEMBER and same_name(info.src, info.name_start, info.name_length, src, start, length):
+            if types_match(&info.narrowed_type, target) and types_match(&info.union_source_type, union_type):
+                return info.union_member_index
+            end
+        end
+    end
+
+    return 0
+end
+
+func union_atom_exact_match(a: @TypeAtom, b: @TypeAtom): bool
+    if a.base != b.base:
+        return false
+    end
+
+    if a.pointer_depth != b.pointer_depth:
+        return false
+    end
+
+    if a.array_size != b.array_size:
+        return false
+    end
+
+    if a.is_nullable != b.is_nullable:
+        return false
+    end
+
+    if a.base == TOKEN_IDENTIFIER:
+        return same_name(a.name_src, a.name_start, a.name_length, b.name_src, b.name_start, b.name_length)
+    end
+
+    return true
+end
+
+func union_types_exact_match(expected: @TypeInfo, actual: @TypeInfo): bool
+    if not expected.is_union or not actual.is_union:
+        return false
+    end
+
+    if expected.union_count != actual.union_count:
+        return false
+    end
+
+    i: int = 0
+    while i < expected.union_count:
+        if not union_atom_exact_match(expected.union_members + i, actual.union_members + i):
+            return false
+        end
+
+        i = i + 1
+    end
+
+    return true
+end
 
 func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.is_union and actual.is_union:
+        return union_types_exact_match(expected, actual)
+    end
+
     if expected.is_union:
         i: int = 0
         while i < expected.union_count:
@@ -719,6 +844,9 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.name_length = field.data._struct_field.name_length
         copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
         resolve_type_alias(env, &finfo.typeInfo, field)
+        if finfo.typeInfo.is_union:
+            type_error(env, field, "semantic union fields are not lowered yet")
+        end
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
         finfo.is_readonly = field.data._struct_field.is_readonly
@@ -750,6 +878,9 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.name_length = field.data._struct_field.name_length
         copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
         resolve_type_alias(env, &finfo.typeInfo, field)
+        if finfo.typeInfo.is_union:
+            type_error(env, field, "semantic union fields are not lowered yet")
+        end
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
         finfo.is_readonly = field.data._struct_field.is_readonly
@@ -774,7 +905,9 @@ func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     info.params = ast.data._func_def.params
     copy_type(&info.return_type, &ast.data._func_def.return_type)
     resolve_type_alias(env, &info.return_type, ast)
-
+    if info.return_type.is_union:
+        type_error(env, ast, "semantic union return types are not lowered yet")
+    end
     env.func_count = env.func_count + 1
 end
 
@@ -812,6 +945,9 @@ func register_params(env: @TypeEnv, fnc: @AST, src: @char): void
         info.name_start = param.data._func_params.name_start
         info.name_length = param.data._func_params.name_length
         copy_type(&info.typeInfo, &param.data._func_params.typeInfo)
+        if info.typeInfo.is_union:
+            type_error(env, param, "semantic union parameters are not lowered yet")
+        end
         resolve_type_alias(env, &info.typeInfo, param)
 
         env.var_count = env.var_count + 1
@@ -931,6 +1067,19 @@ func apply_condition_narrow(env: @TypeEnv, condition: @AST, src: @char): void
             copy_type(narrowed, &condition.data._type_test.typeInfo)
             push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
             prune narrowed
+
+        else if condition.data._type_test.lower_kind == TYPE_TEST_UNION_TAG and condition.data._type_test.value != null and condition.data._type_test.value.kind == AST_VAR_REF:
+            narrowed: @TypeInfo = new TypeInfo
+            source_union: @TypeInfo = new TypeInfo
+
+            copy_type(narrowed, &condition.data._type_test.typeInfo)
+            copy_type(source_union, &condition.data._type_test.value_type)
+
+            // I'd love to have this as a multiline parameter list... but alas! Not supported :p
+            push_union_narrow(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed, source_union, condition.data._type_test.union_member_index)
+
+            prune narrowed
+            prune source_union
         end
         return
     end
@@ -1059,11 +1208,27 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         copy_type(&expr.data._type_test.value_type, value_type)
         expr.data._type_test.lower_kind = TYPE_TEST_UNKNOWN
 
+        copy_type(&expr.data._type_test.typeInfo, target_type)
+        copy_type(&expr.data._type_test.value_type, value_type)
+        expr.data._type_test.lower_kind = TYPE_TEST_UNKNOWN
+        expr.data._type_test.union_member_index = 0
+
         if value_type.is_union:
-            type_error(env, expr, "semantic union runtime type tests are not lowered yet")
+            member_index: int = find_union_member_index(value_type, target_type)
+            if member_index == 0:
+                type_error(env, expr, "`is` target is not a member of this semantic union")
+                prune value_type
+                prune target_type
+                return 0
+            end
+
+            expr.data._type_test.lower_kind = TYPE_TEST_UNION_TAG
+            expr.data._type_test.union_member_index = member_index
+            set_plain_type(out, TOKEN_BOOL)
+
             prune value_type
             prune target_type
-            return 0
+            return 1
         end
 
         if same_type_ignoring_nullability(value_type, target_type):
@@ -1332,6 +1497,26 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             prune value_type
             prune target_type
             return 0
+        end
+
+        copy_type(&expr.data._cast.typeInfo, target_type)
+        expr.data._cast.lower_kind = CAST_LOWER_NONE
+        expr.data._cast.union_member_index = 0
+
+        if value_type.is_union and expr.data._cast.value != null and expr.data._cast.value.kind == AST_VAR_REF:
+            // I would also like this to be a multi-line parameter list.
+            member_index: int = lookup_union_narrow_index(env, src, expr.data._cast.value.data._var_ref.name_start, expr.data._cast.value.data._var_ref.name_length, target_type, value_type)
+
+            if member_index != 0:
+                copy_type(&expr.data._cast.value_type, value_type)
+                expr.data._cast.lower_kind = CAST_LOWER_UNION_EXTRACT
+                expr.data._cast.union_member_index = member_index
+                copy_type(out, target_type)
+
+                prune value_type
+                prune target_type
+                return 1
+            end
         end
 
         if not can_explicitly_convert(target_type, value_type):
@@ -1640,6 +1825,11 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 end
             end
 
+            ast.data._var_decl.union_member_index = 0
+            if expected_type.is_union and not value_type.is_union:
+                ast.data._var_decl.union_member_index = find_union_member_index(expected_type, value_type)
+            end
+
             prune expected_type
             prune value_type
         end
@@ -1648,17 +1838,24 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         target_type: @TypeInfo = new TypeInfo
         value_type: @TypeInfo = new TypeInfo
 
-        if !lookup_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
+        if not lookup_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
             type_error(env, ast, "unknown variable in assignment")
             prune target_type
             prune value_type
             return
         end
 
+        copy_type(&ast.data._var_ass.resolved_type, target_type)
+
         if resolve_expr(env, ast.data._var_ass.value, value_type, src):
             if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
                 type_error(env, ast, "assigned value does not match variable type")
             end
+        end
+
+        ast.data._var_ass.union_member_index = 0
+        if target_type.is_union and not value_type.is_union:
+            ast.data._var_ass.union_member_index = find_union_member_index(target_type, value_type)
         end
 
         prune target_type
@@ -1728,13 +1925,17 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         end
 
         saved_then_var_count: int = env.var_count
+        saved_then_narrow_count: int = env.narrow_count
         apply_condition_narrow(env, ast.data._if_condition.condition, src)
         walk_statement_list(env, ast.data._if_condition.body, src)
         env.var_count = saved_then_var_count
+        env.narrow_count = saved_then_narrow_count
 
         saved_else_var_count: int = env.var_count
+        saved_else_narrow_count: int = env.narrow_count
         walk_statement_list(env, ast.data._if_condition.else_branch, src)
         env.var_count = saved_else_var_count
+        env.narrow_count = saved_then_narrow_count
 
     else if ast.kind == AST_WHILE:
         tmp: @TypeInfo = new TypeInfo
@@ -1817,6 +2018,9 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
     else if ast.kind == AST_PRINT:
         tmp: @TypeInfo = new TypeInfo
+        // if tmp.is_union:
+        //     type_error(env, ast, "semantic union requires explicit cast before print")
+        // end
         if resolve_expr(env, ast.data._print.value, tmp, src):
             if is_string_type(tmp):
                 force_string_literal_lowering(ast.data._print.value)
