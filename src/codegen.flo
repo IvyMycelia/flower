@@ -540,13 +540,19 @@ end
 
 // === CONTROL FLOW ===
 
+forward func gen_packed_union_value(union_type: @TypeInfo, member_index: int, value: @AST, out: @FILE, src: @char): void
+
 func gen_return(ast: @AST, out: @FILE, src: @char): void
     // Emit: return n
     if ast.data._flow_ctrl.value == null:
         fprintf(out, "return;")
     else:
         fprintf(out, "return ")
-        gen_expr(ast.data._flow_ctrl.value, out, src)
+        if ast.data._flow_ctrl.union_member_index != 0:
+            gen_packed_union_value(&ast.data._flow_ctrl.resolved_type, ast.data._flow_ctrl.union_member_index, ast.data._flow_ctrl.value, out, src)
+        else:
+            gen_expr(ast.data._flow_ctrl.value, out, src)
+        end
         fprintf(out, ";\n")
     end
 end
@@ -751,6 +757,14 @@ func gen_packed_union_value(union_type: @TypeInfo, member_index: int, value: @AS
     prune resolved
 end
 
+func gen_union_aware_call_arg(arg: @AST, union_type: @TypeInfo, member_index: int, out: @FILE, src: @char): void
+    if member_index != 0:
+        gen_packed_union_value(union_type, member_index, arg, out, src)
+    else:
+        gen_expr(arg, out, src)
+    end
+end
+
 func emit_semantic_union_defs(out: @FILE): void
     i: int = 0
     while i < semantic_union_count:
@@ -919,12 +933,14 @@ func gen_func_call(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "(")
 
     arg: @AST = ast.data._func_call.args
+    arg_index: int = 0
     while arg != null:
-        gen_expr(arg, out, src)
+        gen_union_aware_call_arg(arg, ast.data._func_call.arg_union_types + arg_index, ast.data._func_call.arg_union_members[arg_index], out, src)
         if arg.next != null:
             fprintf(out, ", ")
         end
         arg = arg.next
+        arg_index = arg_index + 1
     end
     fprintf(out, ")")
 end
@@ -1361,12 +1377,14 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "(")
 
         arg: @AST = ast.data._alias_call.args
+        arg_index: int = 0
         while arg != null:
-            gen_expr(arg, out, src)
+            gen_union_aware_call_arg(arg, ast.data._alias_call.arg_union_types + arg_index, ast.data._alias_call.arg_union_members[arg_index], out, src)
             if arg.next != null:
                 fprintf(out, ", ")
             end
             arg = arg.next
+            arg_index = arg_index + 1
         end
         fprintf(out, ")")
         

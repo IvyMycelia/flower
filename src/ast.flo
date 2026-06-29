@@ -237,6 +237,8 @@ struct alias_call {
     func_start: int,
     func_length: int,
     args: @AST,
+    arg_union_members: int[64],
+    arg_union_types: TypeInfo[64],
 }
 
     // === Structs ===
@@ -343,6 +345,8 @@ struct func_call {
     name_start: int,
     name_length: int,
     args: @AST,
+    arg_union_members: int[64],
+    arg_union_types: TypeInfo[64],
 }
 
     // === Return ===
@@ -350,6 +354,8 @@ struct func_call {
 struct flow_ctrl {
     base: @Token,
     value: @AST,
+    union_member_index: int,
+    resolved_type: TypeInfo,
 }
 
     // === Conditionals ===

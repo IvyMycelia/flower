@@ -1,0 +1,59 @@
+type RemoteValue = int | string
+
+prop func accept(value: RemoteValue): bool
+    if value is int:
+        n: int = value as int
+        return n == 11
+    end
+
+    if value is string:
+        s: string = value as string
+        return s == "Rose"
+    end
+
+    return false
+end
+
+prop func make_int(): RemoteValue
+    return 11
+end
+
+prop func make_string(): RemoteValue
+    return "Rose"
+end
+
+prop func test(): bool
+    if not accept(11):
+        return false
+    end
+
+    if not accept("Rose"):
+        return false
+    end
+
+    value: RemoteValue = make_int()
+    if value is int:
+        n: int = value as int
+        if n != 11:
+            return false
+        end
+    else:
+        return false
+    end
+
+    value = make_string()
+    if value is string:
+        s: string = value as string
+        if s != "Rose":
+            return false
+        end
+
+        if s.length != 4:
+            return false
+        end
+    else:
+        return false
+    end
+
+    return true
+end

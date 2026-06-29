@@ -1140,6 +1140,8 @@ int alias_length;
 int func_start;
 int func_length;
 AST* args;
+int arg_union_members[64];
+TypeInfo arg_union_types[64];
 } alias_call;
 
 
@@ -1241,12 +1243,16 @@ typedef struct func_call {
 int name_start;
 int name_length;
 AST* args;
+int arg_union_members[64];
+TypeInfo arg_union_types[64];
 } func_call;
 
 
 typedef struct flow_ctrl {
 Token* base;
 AST* value;
+int union_member_index;
+TypeInfo resolved_type;
 } flow_ctrl;
 
 
@@ -3992,9 +3998,6 @@ info->name_length = ast->data._func_def.name_length;
 info->params = ast->data._func_def.params;
 mod_src_typecheck_flo_copy_type(&(info->return_type), &(ast->data._func_def.return_type));
 mod_src_typecheck_flo_resolve_type_alias(env, &(info->return_type), ast);
-if (info->return_type.is_union) {
-mod_src_typecheck_flo_type_error(env, ast, "semantic union return types are not lowered yet");
-}
 env->func_count = env->func_count + 1;
 }
 
@@ -4920,6 +4923,7 @@ free(to_type);
 env->var_count = saved_var_count;
 }
 else if (ast->kind == AST_FLOW_CONTROL) {
+ast->data._flow_ctrl.union_member_index = 0;
 if (ast->data._flow_ctrl.base != NULL  &&  ast->data._flow_ctrl.base->kind == TOKEN_RETURN  &&  inside_function) {
 if (ast->data._flow_ctrl.value == NULL) {
 if (!(mod_src_typecheck_flo_is_void_type(&(current_return_type)))) {
@@ -4933,6 +4937,7 @@ if (!(mod_src_typecheck_flo_copy_resolved_type(env, expected_type, &(current_ret
 free(expected_type);
 free(actual_type);
 return;}
+mod_src_typecheck_flo_copy_type(&(ast->data._flow_ctrl.resolved_type), expected_type);
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, actual_type, src)) {
 if (!(mod_src_typecheck_flo_resolve_type_alias(env, actual_type, ast->data._flow_ctrl.value))) {
 free(expected_type);
@@ -4940,6 +4945,9 @@ free(actual_type);
 return;}
 if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._flow_ctrl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, actual_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "return value does not match function return type");
+}
+else if (expected_type->is_union  &&  !(actual_type->is_union)) {
+ast->data._flow_ctrl.union_member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, actual_type);
 }
 }
 free(expected_type);
@@ -5122,9 +5130,37 @@ return NULL;
 }
 
 
+void mod_src_typecheck_flo_clear_call_union_metadata(AST* call_ast) {
+int i = 0;
+while (i < 64) {
+if (call_ast->kind == AST_FUNC_CALL) {
+call_ast->data._func_call.arg_union_members[i] = 0;
+}
+else if (call_ast->kind == AST_ALIAS_CALL) {
+call_ast->data._alias_call.arg_union_members[i] = 0;
+}
+i = i + 1;
+}
+}
+
+
+void mod_src_typecheck_flo_set_call_union_metadata(AST* call_ast, int index, TypeInfo* union_type, int member_index) {
+if (call_ast->kind == AST_FUNC_CALL) {
+call_ast->data._func_call.arg_union_members[index] = member_index;
+mod_src_typecheck_flo_copy_type(call_ast->data._func_call.arg_union_types + index, union_type);
+}
+else if (call_ast->kind == AST_ALIAS_CALL) {
+call_ast->data._alias_call.arg_union_members[index] = member_index;
+mod_src_typecheck_flo_copy_type(call_ast->data._alias_call.arg_union_types + index, union_type);
+}
+}
+
+
 int mod_src_typecheck_flo_check_call_args(TypeEnv* env, AST* call_ast, AST* args, AST* params, char* src) {
 AST* arg = args;
 AST* param = params;
+int index = 0;
+mod_src_typecheck_flo_clear_call_union_metadata(call_ast);
 while (arg != NULL  &&  param != NULL) {
 TypeInfo* arg_type = malloc(sizeof(TypeInfo));
 TypeInfo* expected_type = malloc(sizeof(TypeInfo));
@@ -5149,6 +5185,12 @@ mod_src_typecheck_flo_type_error(env, arg, "function argument does not match par
 free(expected_type);
 free(arg_type);
 return 0;
+}
+if (expected_type->is_union  &&  !(arg_type->is_union)) {
+int member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, arg_type);
+if (member_index != 0) {
+mod_src_typecheck_flo_set_call_union_metadata(call_ast, index, expected_type, member_index);
+}
 }
 free(expected_type);
 free(arg_type);
@@ -5686,6 +5728,7 @@ statement = statement->next;
 }
 fprintf(out, "}\n");
 }
+void mod_src_codegen_flo_gen_packed_union_value(TypeInfo* union_type, int member_index, AST* value, FILE* out, char* src);
 
 
 void mod_src_codegen_flo_gen_return(AST* ast, FILE* out, char* src) {
@@ -5694,7 +5737,12 @@ fprintf(out, "return;");
 }
 else {
 fprintf(out, "return ");
+if (ast->data._flow_ctrl.union_member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._flow_ctrl.resolved_type), ast->data._flow_ctrl.union_member_index, ast->data._flow_ctrl.value, out, src);
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._flow_ctrl.value, out, src);
+}
 fprintf(out, ";\n");
 }
 }
@@ -5885,6 +5933,16 @@ free(resolved);
 }
 
 
+void mod_src_codegen_flo_gen_union_aware_call_arg(AST* arg, TypeInfo* union_type, int member_index, FILE* out, char* src) {
+if (member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(union_type, member_index, arg, out, src);
+}
+else {
+mod_src_codegen_flo_gen_expr(arg, out, src);
+}
+}
+
+
 void mod_src_codegen_flo_emit_semantic_union_defs(FILE* out) {
 int i = 0;
 while (i < semantic_union_count) {
@@ -6033,12 +6091,14 @@ fprintf(out, "%.*s", ast->data._func_call.name_length, src + ast->data._func_cal
 }
 fprintf(out, "(");
 AST* arg = ast->data._func_call.args;
+int arg_index = 0;
 while (arg != NULL) {
-mod_src_codegen_flo_gen_expr(arg, out, src);
+mod_src_codegen_flo_gen_union_aware_call_arg(arg, ast->data._func_call.arg_union_types + arg_index, ast->data._func_call.arg_union_members[arg_index], out, src);
 if (arg->next != NULL) {
 fprintf(out, ", ");
 }
 arg = arg->next;
+arg_index = arg_index + 1;
 }
 fprintf(out, ")");
 }
@@ -6358,12 +6418,14 @@ fprintf(out, "%.*s_%.*s", ast->data._alias_call.alias_length, src + ast->data._a
 }
 fprintf(out, "(");
 AST* arg = ast->data._alias_call.args;
+int arg_index = 0;
 while (arg != NULL) {
-mod_src_codegen_flo_gen_expr(arg, out, src);
+mod_src_codegen_flo_gen_union_aware_call_arg(arg, ast->data._alias_call.arg_union_types + arg_index, ast->data._alias_call.arg_union_members[arg_index], out, src);
 if (arg->next != NULL) {
 fprintf(out, ", ");
 }
 arg = arg->next;
+arg_index = arg_index + 1;
 }
 fprintf(out, ")");
 }

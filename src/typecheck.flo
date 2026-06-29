@@ -905,9 +905,6 @@ func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     info.params = ast.data._func_def.params
     copy_type(&info.return_type, &ast.data._func_def.return_type)
     resolve_type_alias(env, &info.return_type, ast)
-    if info.return_type.is_union:
-        type_error(env, ast, "semantic union return types are not lowered yet")
-    end
     env.func_count = env.func_count + 1
 end
 
@@ -1981,6 +1978,8 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         env.var_count = saved_var_count
     
     else if ast.kind == AST_FLOW_CONTROL:
+        ast.data._flow_ctrl.union_member_index = 0
+
         if ast.data._flow_ctrl.base != null and ast.data._flow_ctrl.base.kind == TOKEN_RETURN and inside_function:
             if ast.data._flow_ctrl.value == null:
                 if !is_void_type(&current_return_type):
@@ -1996,6 +1995,8 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                     return
                 end
 
+                copy_type(&ast.data._flow_ctrl.resolved_type, expected_type)
+
                 if resolve_expr(env, ast.data._flow_ctrl.value, actual_type, src):
                     if not resolve_type_alias(env, actual_type, ast.data._flow_ctrl.value):
                         prune expected_type
@@ -2005,8 +2006,11 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
                     if not allow_string_literal_for_target(ast.data._flow_ctrl.value, expected_type) and not can_implicitly_convert(expected_type, actual_type):
                         type_error(env, ast, "return value does not match function return type")
+                    else if expected_type.is_union and not actual_type.is_union:
+                        ast.data._flow_ctrl.union_member_index = find_union_member_index(expected_type, actual_type)
                     end
                 end
+                
                 prune expected_type
                 prune actual_type
             end
@@ -2203,9 +2207,34 @@ func lookup_alias(env: @TypeEnv, src: @char, start: int, length: int): @AliasInf
     return null
 end
 
-func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): int
+func clear_call_union_metadata(call_ast: @AST): void
+    i: int = 0
+    while i < 64:
+        if call_ast.kind == AST_FUNC_CALL:
+            call_ast.data._func_call.arg_union_members[i] = 0
+        else if call_ast.kind == AST_ALIAS_CALL:
+            call_ast.data._alias_call.arg_union_members[i] = 0
+        end
+        i = i + 1
+    end
+end
+
+func set_call_union_metadata(call_ast: @AST, index: int, union_type: @TypeInfo, member_index: int): void
+    if call_ast.kind == AST_FUNC_CALL:
+        call_ast.data._func_call.arg_union_members[index] = member_index
+        copy_type(call_ast.data._func_call.arg_union_types + index, union_type)
+    else if call_ast.kind == AST_ALIAS_CALL:
+        call_ast.data._alias_call.arg_union_members[index] = member_index
+        copy_type(call_ast.data._alias_call.arg_union_types + index, union_type)
+    end
+end
+
+func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): bool
     arg: @AST = args
     param: @AST = params
+    index: int = 0
+
+    clear_call_union_metadata(call_ast)
 
     while arg != null and param != null:
         arg_type: @TypeInfo = new TypeInfo
@@ -2215,26 +2244,33 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
         if not resolve_type_alias(env, expected_type, param):
             prune expected_type
             prune arg_type
-            return 0
+            return false
         end
 
         if not resolve_expr(env, arg, arg_type, src):
             prune expected_type
             prune arg_type
-            return 0
+            return false
         end
 
         if not resolve_type_alias(env, arg_type, arg):
             prune expected_type
             prune arg_type
-            return 0
+            return false
         end
 
         if not allow_string_literal_for_target(arg, expected_type) and not can_pass_arg(expected_type, arg_type):
             type_error(env, arg, "function argument does not match parameter type")
             prune expected_type
             prune arg_type
-            return 0
+            return false
+        end
+
+        if expected_type.is_union and not arg_type.is_union:
+            member_index: int = find_union_member_index(expected_type, arg_type)
+            if member_index != 0:
+                set_call_union_metadata(call_ast, index, expected_type, member_index)
+            end
         end
 
         prune expected_type
@@ -2245,10 +2281,10 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
 
     if arg != null or param != null:
         type_error(env, call_ast, "function call argument count does not match parameter count")
-        return 0
+        return false
     end
 
-    return 1
+    return true
 end
 
 // Walk statement
