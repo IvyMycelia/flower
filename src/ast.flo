@@ -62,6 +62,10 @@ AST_TYPE_TEST:      int = 39
 TYPE_TEST_UNKNOWN:      int = 0
 TYPE_TEST_STATIC_TRUE:  int = 1
 TYPE_TEST_NONNULL:      int = 2
+TYPE_TEST_UNION_TAG:    int = 3
+
+CAST_LOWER_NONE:            int = 0
+CAST_LOWER_UNION_EXTRACT:   int = 1
 
 // FIELDS
 FIELD_FALSE: int = 0
@@ -118,7 +122,9 @@ struct type_alias {
 struct cast {
     value: @AST,
     typeInfo: TypeInfo,
-    value_type: TypeInfo
+    value_type: TypeInfo,
+    lower_kind: int,
+    union_member_index: int,
 }
 
 struct type_test {
@@ -126,6 +132,7 @@ struct type_test {
     typeInfo: TypeInfo,
     value_type: TypeInfo,
     lower_kind: int,
+    union_member_index: int,
 }
 
 struct float_lit {
@@ -300,12 +307,15 @@ struct var_decl {
     name_length: int,
     typeInfo: TypeInfo,
     value: @AST,
+    union_member_index: int,
 }
 
 struct var_ass {
     name_start: int,
     name_length: int,
     value: @AST,
+    union_member_index: int,
+    resolved_type: TypeInfo,
 }
 
 struct var_ref {
