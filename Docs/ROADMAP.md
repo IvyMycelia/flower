@@ -55,8 +55,8 @@ Improve the type system.
 
 - [x] Type alias: `type MyInt = int`
 - [x] Nullable types: `?int` for optional values
-- [ ] Better type inference in some contexts
-- [ ] Union types (experimental)
+- [x] Better type inference in some contexts
+- [x] Union types (experimental)
 
 ## v1.5.0 (Documentation)
 
