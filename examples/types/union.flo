@@ -1,4 +1,28 @@
+import "examples/types/union_provider.flo" as remote
+
 type Value = int | string
+
+func accept(value: Value): bool
+    if value is int:
+        n: int = value as int
+        return n == 7
+    end
+
+    if value is string:
+        s: string = value as string
+        return s == "Ivy"
+    end
+
+    return false
+end
+
+func make_int(): Value
+    return 7
+end
+
+func make_string(): Value
+    return "Ivy"
+end
 
 prop func test(): bool
     value: Value = 7
@@ -24,6 +48,36 @@ prop func test(): bool
             return false
         end
     else:
+        return false
+    end
+
+    if not accept(7):
+        return false
+    end
+
+    if not accept("Ivy"):
+        return false
+    end
+
+    value = make_string()
+    if value is string:
+        s: string = value as string
+        if s != "Ivy":
+            return false
+        end
+    else:
+        return false
+    end
+
+    if not remote.accept(11):
+        return false
+    end
+
+    if not remote.accept("Rose"):
+        return false
+    end
+
+    if not remote.test():
         return false
     end
 
