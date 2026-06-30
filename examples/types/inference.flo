@@ -1,0 +1,53 @@
+type MaybeInt = ?@int
+type Value = int | string
+
+prop func test(): bool
+    raw: @int = new int
+    @raw = 7
+
+    maybe: MaybeInt = raw
+
+    if maybe == null:
+        prune raw
+        return false
+    else:
+        real: @int = maybe
+        if @real != 7:
+            prune raw
+            return false
+        end
+    end
+
+    maybe = null
+
+    if maybe != null:
+        prune raw
+        return false
+    else:
+        if maybe != null:
+            prune raw
+            return false
+        end
+    end
+
+    value: Value = "Rose"
+
+    if value is int:
+        prune raw
+        return false
+    else:
+        s: string = value as string
+        if s != "Rose":
+            prune raw
+            return false
+        end
+
+        if s.length != 4:
+            prune raw
+            return false
+        end
+    end
+
+    prune raw
+    return true
+end

@@ -4129,7 +4129,31 @@ env->var_count = env->var_count + 1;
 }
 
 
-void mod_src_typecheck_flo_apply_condition_narrow(TypeEnv* env, AST* condition, char* src) {
+void mod_src_typecheck_flo_push_null_binding(TypeEnv* env, char* src, int start, int length) {
+TypeInfo* null_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_set_null_type(null_type);
+mod_src_typecheck_flo_push_narrowed_binding(env, src, start, length, null_type);
+free(null_type);
+}
+
+
+int mod_src_typecheck_flo_find_single_remaining_union_member(TypeInfo* union_type, int excluded_index) {
+int remaining_index = 0;
+int i = 1;
+while (i <= union_type->union_count) {
+if (i != excluded_index) {
+if (remaining_index != 0) {
+return 0;
+}
+remaining_index = i;
+}
+i = i + 1;
+}
+return remaining_index;
+}
+
+
+void mod_src_typecheck_flo_apply_condition_true_narrow(TypeEnv* env, AST* condition, char* src) {
 if (condition == NULL) {
 return;}
 if (condition->kind == AST_TYPE_TEST) {
@@ -4162,9 +4186,65 @@ if (ref_expr == NULL) {
 return;}
 TypeInfo* current = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_lookup_var_type(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current)) {
+if (condition->data._binary.op == TOKEN_NEQ) {
 if (mod_src_typecheck_flo_is_nullable_type(current)) {
 current->is_nullable = 0;
 mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current);
+}
+}
+else if (condition->data._binary.op == TOKEN_COMP) {
+if (mod_src_typecheck_flo_is_nullable_type(current)) {
+mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
+}
+}
+free(current);
+}
+
+
+void mod_src_typecheck_flo_apply_condition_false_narrow(TypeEnv* env, AST* condition, char* src) {
+if (condition == NULL) {
+return;}
+if (condition->kind == AST_TYPE_TEST) {
+if (condition->data._type_test.lower_kind == TYPE_TEST_NONNULL) {
+mod_src_typecheck_flo_push_null_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length);
+}
+else if (condition->data._type_test.lower_kind == TYPE_TEST_UNION_TAG  &&  condition->data._type_test.value != NULL  &&  condition->data._type_test.value->kind == AST_VAR_REF) {
+TypeInfo* source_union = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(source_union, &(condition->data._type_test.value_type));
+int remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(source_union, condition->data._type_test.union_member_index);
+if (remaining_index != 0) {
+TypeInfo* narrowed = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_atom_to_type(narrowed, source_union->union_members + remaining_index - 1);
+mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed, source_union, remaining_index);
+free(narrowed);
+}
+free(source_union);
+}
+return;}
+if (condition->kind != AST_BINARY_OP) {
+return;}
+AST* ref_expr = NULL;
+if (condition->data._binary.left != NULL  &&  condition->data._binary.left->kind == AST_VAR_REF  &&  condition->data._binary.right != NULL  &&  condition->data._binary.right->kind == AST_NULL) {
+ref_expr = condition->data._binary.left;
+}
+else if (condition->data._binary.right != NULL  &&  condition->data._binary.right->kind == AST_VAR_REF  &&  condition->data._binary.left != NULL  &&  condition->data._binary.left->kind == AST_NULL) {
+ref_expr = condition->data._binary.right;
+}
+if (ref_expr == NULL) {
+return;}
+TypeInfo* current = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_lookup_var_type(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current)) {
+if (condition->data._binary.op == TOKEN_NEQ) {
+if (mod_src_typecheck_flo_is_nullable_type(current)) {
+mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
+}
+else if (condition->data._binary.op == TOKEN_COMP) {
+if (mod_src_typecheck_flo_is_nullable_type(current)) {
+current->is_nullable = 0;
+mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current);
+}
 }
 }
 free(current);
@@ -4875,12 +4955,13 @@ free(tmp);
 }
 int saved_then_var_count = env->var_count;
 int saved_then_narrow_count = env->narrow_count;
-mod_src_typecheck_flo_apply_condition_narrow(env, ast->data._if_condition.condition, src);
+mod_src_typecheck_flo_apply_condition_true_narrow(env, ast->data._if_condition.condition, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src);
 env->var_count = saved_then_var_count;
 env->narrow_count = saved_then_narrow_count;
 int saved_else_var_count = env->var_count;
 int saved_else_narrow_count = env->narrow_count;
+mod_src_typecheck_flo_apply_condition_false_narrow(env, ast->data._if_condition.condition, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
 env->var_count = saved_else_var_count;
 env->narrow_count = saved_then_narrow_count;
