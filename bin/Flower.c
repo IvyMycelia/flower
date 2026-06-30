@@ -4249,6 +4249,45 @@ mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.na
 }
 free(current);
 }
+int mod_src_typecheck_flo_statement_definitely_returns(AST* ast);
+
+
+int mod_src_typecheck_flo_statement_list_definitely_returns(AST* list) {
+AST* curr = list;
+while (curr != NULL) {
+if (mod_src_typecheck_flo_statement_definitely_returns(curr)) {
+return 1;
+}
+curr = curr->next;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_statement_definitely_returns(AST* ast) {
+if (ast == NULL) {
+return 0;
+}
+if (ast->kind == AST_FLOW_CONTROL  &&  ast->data._flow_ctrl.base != NULL  &&  ast->data._flow_ctrl.base->kind == TOKEN_RETURN) {
+return 1;
+}
+if (ast->kind == AST_IF) {
+return mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.body)  &&  mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.else_branch);
+}
+return 0;
+}
+
+
+void mod_src_typecheck_flo_apply_guard_clause_narrow(TypeEnv* env, AST* ast, char* src) {
+int then_returns = mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.body);
+int else_returns = mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.else_branch);
+if (then_returns  &&  !(else_returns)) {
+mod_src_typecheck_flo_apply_condition_false_narrow(env, ast->data._if_condition.condition, src);
+}
+else if (else_returns  &&  !(then_returns)) {
+mod_src_typecheck_flo_apply_condition_true_narrow(env, ast->data._if_condition.condition, src);
+}
+}
 
 
 int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
@@ -4959,12 +4998,13 @@ mod_src_typecheck_flo_apply_condition_true_narrow(env, ast->data._if_condition.c
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src);
 env->var_count = saved_then_var_count;
 env->narrow_count = saved_then_narrow_count;
+mod_src_typecheck_flo_apply_guard_clause_narrow(env, ast, src);
 int saved_else_var_count = env->var_count;
 int saved_else_narrow_count = env->narrow_count;
 mod_src_typecheck_flo_apply_condition_false_narrow(env, ast->data._if_condition.condition, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
 env->var_count = saved_else_var_count;
-env->narrow_count = saved_then_narrow_count;
+env->narrow_count = saved_else_narrow_count;
 }
 else if (ast->kind == AST_WHILE) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));

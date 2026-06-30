@@ -1198,6 +1198,47 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
     prune current
 end
 
+forward func statement_definitely_returns(ast: @AST): bool
+
+func statement_list_definitely_returns(list: @AST): bool
+    curr: @AST = list
+    while curr != null:
+        if statement_definitely_returns(curr):
+            return true
+        end
+        curr = curr.next
+    end
+
+    return false
+end
+
+func statement_definitely_returns(ast: @AST): bool
+    if ast == null:
+        return false
+    end
+
+    if ast.kind == AST_FLOW_CONTROL and ast.data._flow_ctrl.base != null and ast.data._flow_ctrl.base.kind == TOKEN_RETURN:
+        return true
+    end
+
+    if ast.kind == AST_IF:
+        return statement_list_definitely_returns(ast.data._if_condition.body) and statement_list_definitely_returns(ast.data._if_condition.else_branch)
+    end
+
+    return false
+end
+
+func apply_guard_clause_narrow(env: @TypeEnv, ast: @AST, src: @char): void
+    then_returns: bool = statement_list_definitely_returns(ast.data._if_condition.body)
+    else_returns: bool = statement_list_definitely_returns(ast.data._if_condition.else_branch)
+
+    if then_returns and not else_returns:
+        apply_condition_false_narrow(env, ast.data._if_condition.condition, src)
+    else if else_returns and not then_returns:
+        apply_condition_true_narrow(env, ast.data._if_condition.condition, src)
+    end
+end
+
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     if expr == null:
         return 0
@@ -2019,12 +2060,14 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         env.var_count = saved_then_var_count
         env.narrow_count = saved_then_narrow_count
 
+        apply_guard_clause_narrow(env, ast, src)
+
         saved_else_var_count: int = env.var_count
         saved_else_narrow_count: int = env.narrow_count
         apply_condition_false_narrow(env, ast.data._if_condition.condition, src)
         walk_statement_list(env, ast.data._if_condition.else_branch, src)
         env.var_count = saved_else_var_count
-        env.narrow_count = saved_then_narrow_count
+        env.narrow_count = saved_else_narrow_count
 
     else if ast.kind == AST_WHILE:
         tmp: @TypeInfo = new TypeInfo

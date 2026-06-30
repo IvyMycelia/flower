@@ -30,6 +30,19 @@ prop func test(): bool
         end
     end
 
+    maybe = raw
+    
+    if maybe == null:
+        prune raw
+        return false
+    end
+
+    guarded_ptr: @int = maybe
+    if @guarded_ptr != 7:
+        prune raw
+        return false
+    end
+
     value: Value = "Rose"
 
     if value is int:
@@ -46,6 +59,37 @@ prop func test(): bool
             prune raw
             return false
         end
+    end
+
+    value = 7
+
+    if value is string:
+        prune raw
+        return false
+    end
+
+    guarded_num: int = value as int
+    if guarded_num != 7:
+        prune raw
+        return false
+    end
+
+    value = "Lily"
+
+    if value is int:
+        prune raw
+        return false
+    end
+
+    guarded_str: string = value as string
+    if guarded_str != "Lily":
+        prune raw
+        return false
+    end
+
+    if guarded_str.length != 4:
+        prune raw
+        return false
     end
 
     prune raw
