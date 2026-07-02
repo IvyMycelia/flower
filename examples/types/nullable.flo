@@ -1,37 +1,61 @@
 import <stdio>
 import <stdlib>
 
-type MaybeIntPtr = ?@int
-type MaybeCStr = ?@char
+type MaybeInt = ?int
+type MaybeName = ?string
+type MaybePtr = ?@int
 
-func pass_ptr(ptr: ?@int): ?@int
-    return ptr
+func pass_name(name: ?string): ?string
+    return name
+end
+
+func pass_count(value: ?int): ?int
+    return value
 end
 
 prop func test(): bool
-    ptr: ?@int = null
-    other: MaybeIntPtr = pass_ptr(null)
-    text: MaybeCStr = null
-    maybe_ptr: ?@int = null
+    count: MaybeInt = null
+    name: MaybeName = null
+    ptr: MaybePtr = null
 
-    if maybe_ptr is @int:
+    if count != null:
         return false
     end
 
-    maybe_ptr = new int
+    count = pass_count(7)
+    if count == null:
+        return false
+    end
 
-    if maybe_ptr is @int:
-        real_ptr: @int = maybe_ptr
-        @real_ptr = 7
+    if count is int:
+        real_count: int = count as int
+        if real_count != 7:
+            return false
+        end
     else:
         return false
     end
 
-    if ptr != null:
+    name = pass_name(null)
+    if name != null:
         return false
     end
 
-    if other != null:
+    name = "Ivy"
+    if name == null:
+        return false
+    end
+
+    if name is string:
+        real_name: string = name as string
+        if real_name.length != 3:
+            return false
+        end
+        
+        if real_name != "Ivy":
+            return false
+        end
+    else:
         return false
     end
 
@@ -43,17 +67,26 @@ prop func test(): bool
         return false
     end
 
-    text = "Ivy"
-
-    if text == null:
+    if ptr is @int:
+        live_ptr: @int = ptr as @int
+        @live_ptr = 11
+        if @raw != 11:
+            prune raw
+            return false
+        end
+    else:
         prune raw
         return false
     end
 
-    casted: ?@int = raw as ?@int
-    back: @int = casted as @int
-
-    if back == null:
+    casted_name: MaybeName = "Rue" as MaybeName
+    if casted_name is string:
+        real_casted: string = casted_name as string
+        if real_casted != "Rue":
+            prune raw
+            return false
+        end
+    else:
         prune raw
         return false
     end
