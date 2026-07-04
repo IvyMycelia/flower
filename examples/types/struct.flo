@@ -17,22 +17,40 @@ struct Box {
     value: Value
 }
 
+// type MaybeValue = string | null
+
+// struct MaybeBox {
+//     value: MaybeValue
+// }
+
 prop func test(): bool
     p: @Vector2 = new Vector2
     p.x = 5
     p.y = 10
-    if p.x == 5:
-        if p.y == 10:
-            p2: @Vector3 = new Vector3
-            p2.x = 1
-            p2.y = 2
-            p2.z = 3
-            if p2.z == 3:
-                return true
-            end
-            prune p2
-        end
+
+    if p.x != 5:
+        prune p
+        return false
     end
+
+    if p.y != 10:
+        prune p
+        return false
+    end
+
+    p2: @Vector3 = new Vector3
+    p2.x = 1
+    p2.y = 2
+    p2.z = 3
+    
+    if p2.z != 3:
+        prune p
+        prune p2
+        return false
+    end
+
+    prune p
+    prune p2
 
     box: @Box = new Box
 
@@ -42,12 +60,10 @@ prop func test(): bool
         n: int = first as int
         if n != 7:
             prune box
-            prune p
             return false
         end
     else:
         prune box
-        prune p
         return false
     end
 
@@ -57,23 +73,41 @@ prop func test(): bool
         s: string = second as string
         if s != "Ivy":
             prune box
-            prune p
             return false
         end
 
         if s.length != 3:
             prune box
-            prune p
             return false
         end
     else:
         prune box
-        prune p
         return false
     end
 
     prune box
-    
-    prune p
-    return false
+
+    // maybe_box: @MaybeBox = new MaybeBox
+    // maybe_box.value = null
+
+    // if maybe_box.value != null:
+    //     prune maybe_box
+    //     return false
+    // end
+
+    // maybe_box.value = "Rose"
+    // if maybe_box.value != null:
+    //     label: string = maybe_box.value as string
+    //     if label != "Rose":
+    //         prune maybe_box
+    //         return false
+    //     end
+    // else:
+    //     prune maybe_box
+    //     return false
+    // end
+
+    // prune maybe_box
+
+    return true
 end
