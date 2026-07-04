@@ -4107,10 +4107,8 @@ info->name_start = param->data._func_params.name_start;
 info->name_length = param->data._func_params.name_length;
 mod_src_typecheck_flo_copy_type(&(info->typeInfo), &(param->data._func_params.typeInfo));
 info->binding_kind = VAR_BINDING_BASE;
-if (info->typeInfo.is_union) {
-mod_src_typecheck_flo_type_error(env, param, "semantic union parameters are not lowered yet");
-}
 mod_src_typecheck_flo_resolve_type_alias(env, &(info->typeInfo), param);
+info->binding_kind = VAR_BINDING_BASE;
 env->var_count = env->var_count + 1;
 param = param->next;
 }
