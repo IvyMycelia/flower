@@ -23,11 +23,15 @@ struct StructInfo {
     field_count: int
 }
 
+VAR_BINDING_BASE:   int = 0
+VAR_BINDING_NARROW: int = 1
+
 struct VarInfo {
     src: @char,
     name_start: int,
     name_length: int,
-    typeInfo: TypeInfo
+    typeInfo: TypeInfo,
+    binding_kind: int,
 
     // Simple implementation for now.. will add scope depth and 
     // function ID tracking for more advanced system later
@@ -230,21 +234,77 @@ func is_nullable_type(typeInfo: @TypeInfo): bool
     return typeInfo.is_nullable
 end
 
-func nullable_requires_pointer_storage(typeInfo: @TypeInfo): bool
-    return typeInfo.pointer_depth > 0
+func type_atom_is_null(atom: @TypeAtom): bool
+    return not atom.is_nullable and atom.base == TOKEN_VOID and atom.pointer_depth == 1 and atom.array_size == 0
+end
+
+func union_has_null_member(typeInfo: @TypeInfo): int
+    if not typeInfo.is_union:
+        return 0
+    end
+
+    i: int = 0
+    while i < typeInfo.union_count:
+        if type_atom_is_null(typeInfo.union_members + i):
+            return i + 1
+        end
+        i = i + 1
+    end
+
+    return 0
+end
+
+forward func set_null_type(out: @TypeInfo): void
+
+func lower_nullable_to_semantic_union(env: @TypeEnv, ast: @AST, typeInfo: @TypeInfo): bool
+    if not typeInfo.is_nullable:
+        return true
+    end
+
+    if not typeInfo.is_union and typeInfo.array_size != 0 or typeInfo.arr_size_expr != null:
+        type_error(env, ast, "nullable arrays are not lowered yet")
+        return false
+    end
+
+    typeInfo.is_nullable = false
+
+    if typeInfo.is_union:
+        if union_has_null_member(typeInfo) != 0:
+            return true
+        end
+
+        if typeInfo.union_count >= 0:
+            type_error(env, ast, "semantic union supports at most 8 members")
+            return false
+        end
+
+        null_type: @TypeInfo = new TypeInfo
+        set_null_type(null_type)
+        copy_type_to_atom(typeInfo.union_members + typeInfo.union_count, null_type)
+        typeInfo.union_count = typeInfo.union_count + 1
+        prune null_type
+        return true
+    end
+
+    original: @TypeInfo = new TypeInfo
+    copy_type(original, typeInfo)
+
+    clear_union_type(typeInfo)
+    copy_type_to_atom(typeInfo.union_members + 0, original)
+    typeInfo.union_count = 1
+
+    null_type: @TypeInfo = new TypeInfo
+    set_null_type(null_type)
+    copy_type_to_atom(typeInfo.union_members + 1, null_type)
+    typeInfo.union_count = 2
+
+    prune original
+    prune null_type
+    return true
 end
 
 func validate_nullable_type(env: @TypeEnv, ast: @AST, typeInfo: @TypeInfo): bool
-    if not is_nullable_type(typeInfo):
-        return true
-    end
-
-    if nullable_requires_pointer_storage(typeInfo):
-        return true
-    end
-
-    type_error(env, ast, "nullable types currently require a pointer type")
-    return false
+    return lower_nullable_to_semantic_union(env, ast, typeInfo)
 end
 
 func same_type_ignoring_nullability(expected: @TypeInfo, actual: @TypeInfo): bool
@@ -265,6 +325,10 @@ end
 
 func can_accept_null(typeInfo: @TypeInfo): bool
     if is_null_type(typeInfo):
+        return true
+    end
+
+    if union_has_null_member(typeInfo) != 0:
         return true
     end
 
@@ -568,11 +632,31 @@ func can_pass_arg(expected: @TypeInfo, actual: @TypeInfo): bool
 end
 
 func type_atom_matches_union_info(atom: @TypeAtom, info: @TypeInfo): bool
-    tmp: @TypeInfo = new TypeInfo
-    copy_atom_to_type(tmp, atom)
-    matched: bool = types_match(tmp, info)
-    prune tmp
-    return matched
+    if info.is_union:
+        return false
+    end
+
+    if atom.base != info.base:
+        return false
+    end
+
+    if atom.pointer_depth != info.pointer_depth:
+        return false
+    end
+
+    if atom.array_size != info.array_size:
+        return false
+    end
+
+    if atom.is_nullable != info.is_nullable:
+        return false
+    end
+
+    if atom.base == TOKEN_IDENTIFIER:
+        return same_name(atom.name_src, atom.name_start, atom.name_length, info.name_src, info.name_start, info.name_length)
+    end
+    
+    return true
 end
 
 func find_union_member_index(union_type: @TypeInfo, target: @TypeInfo): int
@@ -924,6 +1008,7 @@ func register_var(env: @TypeEnv, ast: @AST, src: @char): void
     info.name_length = ast.data._var_decl.name_length
     copy_type(&info.typeInfo, &ast.data._var_decl.typeInfo)
     resolve_type_alias(env, &info.typeInfo, ast)
+    info.binding_kind = VAR_BINDING_BASE
 
     env.var_count = env.var_count + 1
 end
@@ -942,6 +1027,7 @@ func register_params(env: @TypeEnv, fnc: @AST, src: @char): void
         info.name_start = param.data._func_params.name_start
         info.name_length = param.data._func_params.name_length
         copy_type(&info.typeInfo, &param.data._func_params.typeInfo)
+        info.binding_kind = VAR_BINDING_BASE
         if info.typeInfo.is_union:
             type_error(env, param, "semantic union parameters are not lowered yet")
         end
@@ -1049,6 +1135,7 @@ func push_narrowed_binding(env: @TypeEnv, src: @char, start: int, length: int, n
     info.name_start = start
     info.name_length = length
     copy_type(&info.typeInfo, narrowed)
+    info.binding_kind = VAR_BINDING_NARROW
 
     env.var_count = env.var_count + 1
 end
@@ -1058,6 +1145,21 @@ func push_null_binding(env: @TypeEnv, src: @char, start: int, length: int): void
     set_null_type(null_type)
     push_narrowed_binding(env, src, start, length, null_type)
     prune null_type
+end
+
+func push_visible_binding(env: @TypeEnv, src: @char, start: int, length: int, visible: @TypeInfo): void
+    if env.var_count >= 2048:
+        return
+    end
+
+    info: @VarInfo = env.vars + env.var_count
+    info.src = src
+    info.name_start = start
+    info.name_length = length
+    copy_type(&info.typeInfo, visible)
+    info.binding_kind = VAR_BINDING_BASE
+
+    env.var_count = env.var_count + 1
 end
 
 func find_single_remaining_union_member(union_type: @TypeInfo, excluded_index: int): int
@@ -1076,6 +1178,43 @@ func find_single_remaining_union_member(union_type: @TypeInfo, excluded_index: i
     end
 
     return remaining_index
+end
+
+func build_nonnull_variant(src_type: @TypeInfo, out: @TypeInfo): bool
+    if src_type.is_union:
+        clear_union_type(out)
+
+        i: int = 0
+        while i < src_type.union_count:
+            atom: @TypeAtom = src_type.union_members + i
+            if not type_atom_is_null(atom):
+                copy_type_atom(out.union_members + out.union_count, atom)
+                out.union_count = out.union_count + 1
+            end
+            i = i + 1
+        end
+
+        if out.union_count == 0:
+            return false
+        end
+
+        if out.union_count == 1:
+            tmp: @TypeInfo = new TypeInfo
+            copy_atom_to_type(tmp, out.union_members + 0)
+            copy_type(out, tmp)
+            prune tmp
+        end
+
+        return true
+    end
+
+    if src_type.is_nullable:
+        copy_type(out, src_type)
+        out.is_nullable = false
+        return true
+    end
+
+    return false
 end
 
 func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): void
@@ -1098,6 +1237,7 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
             copy_type(source_union, &condition.data._type_test.value_type)
 
             // I'd love to have this as a multiline parameter list... but alas! Not supported :p
+            push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
             push_union_narrow(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed, source_union, condition.data._type_test.union_member_index)
 
             prune narrowed
@@ -1106,7 +1246,11 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
         return
     end
 
-    if condition.kind != AST_BINARY_OP or condition.data._binary.op != TOKEN_NEQ:
+    if condition.kind != AST_BINARY_OP:
+        return
+    end
+
+    if condition.data._binary.op != TOKEN_NEQ and condition.data._binary.op != TOKEN_COMP:
         return
     end
 
@@ -1125,12 +1269,36 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
     current: @TypeInfo = new TypeInfo
     if lookup_var_type(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, current):
         if condition.data._binary.op == TOKEN_NEQ:
-            if is_nullable_type(current):
+            if current.is_union:
+                narrowed: @TypeInfo = new TypeInfo
+                if build_nonnull_variant(current, narrowed):
+                    push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, narrowed)
+                    
+                    null_index: int = union_has_null_member(current)
+                    remaining_index: int = 0
+
+                    if null_index != 0:
+                        remaining_index = find_single_remaining_union_member(current, null_index)
+                    end
+
+                    if remaining_index != 0:
+                        push_union_narrow(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, narrowed, current, remaining_index)
+                    end
+                end
+                prune narrowed
+
+            else if is_nullable_type(current):
                 current.is_nullable = false
                 push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, current)
             end
+
         else if condition.data._binary.op == TOKEN_COMP:
-            if is_nullable_type(current):
+            if current.is_union:
+                if union_has_null_member(current) != 0:
+                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                end
+
+            else if is_nullable_type(current):
                 push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
             end
         end
@@ -1156,6 +1324,7 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
                 narrowed: @TypeInfo = new TypeInfo
                 copy_atom_to_type(narrowed, source_union.union_members + (remaining_index - 1))
 
+                push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
                 push_union_narrow(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed, source_union, remaining_index)
 
                 prune narrowed
@@ -1185,16 +1354,41 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
     current: @TypeInfo = new TypeInfo
     if lookup_var_type(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, current):
         if condition.data._binary.op == TOKEN_NEQ:
-            if is_nullable_type(current):
+            if current.is_union:
+                if union_has_null_member(current) != 0:
+                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                end
+
+            else if is_nullable_type(current):
                 push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
             end
+
         else if condition.data._binary.op == TOKEN_COMP:
-            if is_nullable_type(current):
+            if current.is_union:
+                narrowed: @TypeInfo = new TypeInfo
+                if build_nonnull_variant(current, narrowed):
+                    push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, narrowed)
+                
+                    null_index: int = union_has_null_member(current)
+                    remaining_index: int = 0
+
+                    if null_index != 0:
+                        remaining_index = find_single_remaining_union_member(current, null_index)
+                    end
+
+                    if remaining_index != 0:
+                        push_union_narrow(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, narrowed, current, remaining_index)
+                    end
+                end
+                prune narrowed
+
+            else if is_nullable_type(current):
                 current.is_nullable = false
                 push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, current)
             end
         end
     end
+
     prune current
 end
 
@@ -1237,6 +1431,78 @@ func apply_guard_clause_narrow(env: @TypeEnv, ast: @AST, src: @char): void
     else if else_returns and not then_returns:
         apply_condition_true_narrow(env, ast.data._if_condition.condition, src)
     end
+end
+
+func try_lower_union_null_compare(expr: @AST, left_type: @TypeInfo, right_type: @TypeInfo): bool
+    expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE
+    expr.data._binary.null_union_member_index = 0
+
+    if expr.data._binary.op != TOKEN_COMP and expr.data._binary.op != TOKEN_NEQ:
+        return false
+    end
+
+    if left_type.is_union and is_null_type(right_type):
+        member_index: int = union_has_null_member(left_type)
+        if member_index != 0:
+            expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG
+            expr.data._binary.null_union_member_index = member_index
+            return true
+        end
+    end
+
+    if right_type.is_union and is_null_type(left_type):
+        member_index: int = union_has_null_member(right_type)
+        if member_index != 0:
+            expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG
+            expr.data._binary.null_union_member_index = member_index
+            return true
+        end
+    end
+
+    return false
+end
+
+forward func lookup_storage_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): bool
+
+func try_lower_storage_union_null_compare(env: @TypeEnv, expr: @AST, src: @char): bool
+    if expr == null or expr.kind != AST_BINARY_OP:
+        return false
+    end
+
+    if expr.data._binary.op != TOKEN_COMP and expr.data._binary.op != TOKEN_NEQ:
+        return false
+    end
+
+    ref_expr: @AST = null
+
+    if expr.data._binary.left != null and expr.data._binary.left.kind == AST_VAR_REF and expr.data._binary.right != null and expr.data._binary.right.kind == AST_NULL:
+        ref_expr = expr.data._binary.left
+    else if expr.data._binary.right != null and expr.data._binary.right.kind == AST_VAR_REF and expr.data._binary.left != null and expr.data._binary.left.kind == AST_NULL:
+        ref_expr = expr.data._binary.right
+    end
+
+    if ref_expr == null:
+        return false
+    end
+
+    storage_type: @TypeInfo = new TypeInfo
+    if not lookup_storage_var_type(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, storage_type):
+        prune storage_type
+        return false
+    end
+
+    if storage_type.is_union:
+        member_index: int = union_has_null_member(storage_type)
+        if member_index != 0:
+            expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG
+            expr.data._binary.null_union_member_index = member_index
+            prune storage_type
+            return true
+        end
+    end
+        
+    prune storage_type
+    return false
 end
 
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
@@ -1456,6 +1722,19 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        expr.data._binary.is_string_compare = 0
+        expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE
+        expr.data._binary.null_union_member_index = 0
+
+        if is_comparison_op(expr.data._binary.op):
+            if try_lower_union_null_compare(expr, left_type, right_type) or try_lower_storage_union_null_compare(env, expr, src):
+                set_plain_type(out, TOKEN_BOOL)
+                prune left_type
+                prune right_type
+                return 1
+            end
+        end
+
         if left_type.is_union or right_type.is_union:
             type_error(env, expr, "semantic union requires explicit cast before operator use")
             prune left_type
@@ -1632,13 +1911,41 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         expr.data._cast.lower_kind = CAST_LOWER_NONE
         expr.data._cast.union_member_index = 0
 
-        if value_type.is_union and expr.data._cast.value != null and expr.data._cast.value.kind == AST_VAR_REF:
-            // I would also like this to be a multi-line parameter list.
-            member_index: int = lookup_union_narrow_index(env, src, expr.data._cast.value.data._var_ref.name_start, expr.data._cast.value.data._var_ref.name_length, target_type, value_type)
+        if expr.data._cast.value != null and expr.data._cast.value.kind == AST_VAR_REF:
+            source_union: @TypeInfo = new TypeInfo
+            has_union_source: bool = false
 
+            if value_type.is_union:
+                copy_type(source_union, value_type)
+                has_union_source = true
+            else if lookup_storage_var_type(env, src, expr.data._cast.value.data._var_ref.name_start, expr.data._cast.value.data._var_ref.name_length, source_union) and source_union.is_union:
+                has_union_source = true
+            end
+
+            if has_union_source:
+                member_index: int = lookup_union_narrow_index(env, src, expr.data._cast.value.data._var_ref.name_start, expr.data._cast.value.data._var_ref.name_length, target_type, source_union)
+
+                if member_index != 0:
+                    copy_type(&expr.data._cast.value_type, source_union)
+                    expr.data._cast.lower_kind = CAST_LOWER_UNION_EXTRACT
+                    expr.data._cast.union_member_index = member_index
+                    copy_type(out, target_type)
+
+                    prune source_union
+                    prune value_type
+                    prune target_type
+                    return 1
+                end
+            end
+
+            prune source_union
+        end
+
+        if target_type.is_union and not value_type.is_union:
+            member_index: int = find_union_member_index(target_type, value_type)
             if member_index != 0:
                 copy_type(&expr.data._cast.value_type, value_type)
-                expr.data._cast.lower_kind = CAST_LOWER_UNION_EXTRACT
+                expr.data._cast.lower_kind = CAST_LOWER_UNION_PACK
                 expr.data._cast.union_member_index = member_index
                 copy_type(out, target_type)
 
@@ -1967,7 +2274,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         target_type: @TypeInfo = new TypeInfo
         value_type: @TypeInfo = new TypeInfo
 
-        if not lookup_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
+        if not lookup_storage_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
             type_error(env, ast, "unknown variable in assignment")
             prune target_type
             prune value_type
@@ -1976,15 +2283,23 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
         copy_type(&ast.data._var_ass.resolved_type, target_type)
 
+        assignment_ok: bool = false
+
         if resolve_expr(env, ast.data._var_ass.value, value_type, src):
             if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
                 type_error(env, ast, "assigned value does not match variable type")
+            else:
+                assignment_ok = true
             end
         end
 
         ast.data._var_ass.union_member_index = 0
         if target_type.is_union and not value_type.is_union:
             ast.data._var_ass.union_member_index = find_union_member_index(target_type, value_type)
+        end
+
+        if assignment_ok: 
+            push_visible_binding(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type)
         end
 
         prune target_type
@@ -2259,6 +2574,23 @@ func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, leng
     end
 
     return null
+end
+
+func lookup_storage_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): bool
+    i: int = env.var_count - 1
+
+    while i >= 0:
+        info: @VarInfo = env.vars + i
+
+        if info.binding_kind != VAR_BINDING_NARROW and same_name(info.src, info.name_start, info.name_length, src, start, length):
+            copy_type(out, &info.typeInfo)
+            return true
+        end
+        
+        i = i - 1
+    end
+
+    return false
 end
 
 func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int

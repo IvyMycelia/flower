@@ -310,6 +310,97 @@ func find_type_alias(src: @char, start: int, length: int, out: @TypeInfo): bool
     return false
 end
 
+func set_codegen_null_type(out: @TypeInfo): void
+    out.base = TOKEN_VOID
+    out.pointer_depth = 1
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.is_nullable = false
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+    out.is_union = false
+    out.union_count = 0
+end
+
+func clear_codegen_union_type(out: @TypeInfo): void
+    out.base = TOKEN_VOID
+    out.pointer_depth = 0
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.is_nullable = false
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+    out.is_union = true
+    out.union_count = 0
+end
+
+func codegen_type_atom_is_null(atom: @TypeAtom): bool
+    return not atom.is_nullable and atom.base == TOKEN_VOID and atom.pointer_depth == 1 and atom.array_size == 0
+end
+
+func codegen_union_has_null_member(typeInfo: @TypeInfo): int
+    if not typeInfo.is_union:
+        return 0
+    end
+
+    i: int = 0
+    while i < typeInfo.union_count:
+        if codegen_type_atom_is_null(typeInfo.union_members + i):
+            return i + 1
+        end
+        i = i +1
+    end
+
+    return 0
+end
+
+func lower_nullable_codegen_type(typeInfo: @TypeInfo): bool
+    if not typeInfo.is_nullable:
+        return true
+    end
+
+    if not typeInfo.is_union and (typeInfo.array_size != 0 or typeInfo.arr_size_expr != null):
+        return false
+    end
+
+    typeInfo.is_nullable = false
+
+    if typeInfo.is_union:
+        if codegen_union_has_null_member(typeInfo) != 0:
+            return true
+        end
+
+        if typeInfo.union_count >= 8:
+            return false
+        end
+
+        null_type: @TypeInfo = new TypeInfo
+        set_codegen_null_type(null_type)
+        copy_type_to_atom(typeInfo.union_members + typeInfo.union_count, null_type)
+        typeInfo.union_count = typeInfo.union_count + 1
+        prune null_type
+        return true
+    end
+
+    original: @TypeInfo = new TypeInfo
+    copy_typeInfo(original, typeInfo)
+
+    clear_codegen_union_type(typeInfo)
+    copy_type_to_atom(typeInfo.union_members + 0, original)
+    typeInfo.union_count = 1
+
+    null_type: @TypeInfo = new TypeInfo
+    set_codegen_null_type(null_type)
+    copy_type_to_atom(typeInfo.union_members + 1, null_type)
+    typeInfo.union_count = 2
+
+    prune original
+    prune null_type
+    return true
+end
+
 func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
     if typeInfo.is_union:
         i: int = 0
@@ -332,11 +423,11 @@ func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
             i = i + 1
         end
 
-        return true
+        return lower_nullable_codegen_type(typeInfo)
     end
 
     if typeInfo.base != TOKEN_IDENTIFIER:
-        return true
+        return lower_nullable_codegen_type(typeInfo)
     end
 
     if depth >= 32:
@@ -346,7 +437,7 @@ func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
     target: @TypeInfo = new TypeInfo
     if not find_type_alias(typeInfo.name_src, typeInfo.name_start, typeInfo.name_length, target):
         prune target
-        return true
+        return lower_nullable_codegen_type(typeInfo)
     end
 
     outer_pointer_depth: int = typeInfo.pointer_depth
@@ -378,7 +469,7 @@ func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
     end
 
     prune target
-    return true
+    return lower_nullable_codegen_type(typeInfo)
 end
 
 forward func ensure_semantic_union_shape(typeInfo: @TypeInfo): int
@@ -698,7 +789,25 @@ func collect_semantic_union_types_in_list(list: @AST): void
             collect_semantic_union_type(&curr.data._var_decl.typeInfo)
 
         else if curr.kind == AST_FUNC_DEF:
+            param: @AST = curr.data._func_def.params
+            while param != null:
+                collect_semantic_union_type(&param.data._func_params.typeInfo)
+                param = param.next
+            end
+
+            collect_semantic_union_type(&curr.data._func_def.return_type)
             collect_semantic_union_types_in_list(curr.data._func_def.body)
+
+        else if curr.kind == AST_FORWARD:
+            if curr.data._forward.is_func:
+                param: @AST = curr.data._forward.params
+                while param != null:
+                    collect_semantic_union_type(&param.data._func_params.typeInfo)
+                    param = param.next
+                end
+
+                collect_semantic_union_type(&curr.data._forward.return_type)
+            end
 
         else if curr.kind == AST_IF:
             collect_semantic_union_types_in_list(curr.data._if_condition.body)
@@ -716,6 +825,13 @@ func collect_semantic_union_types_in_list(list: @AST): void
             if decl.kind == AST_VAR_DECL:
                 collect_semantic_union_type(&decl.data._var_decl.typeInfo)
             else if decl.kind == AST_FUNC_DEF:
+                param: @AST = decl.data._func_def.params
+                while param != null:
+                    collect_semantic_union_type(&param.data._func_params.typeInfo)
+                    param = param.next
+                end
+
+                collect_semantic_union_type(&decl.data._func_def.return_type)
                 collect_semantic_union_types_in_list(decl.data._func_def.body)
             end
         end
@@ -1246,6 +1362,17 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             else:
                 fprintf(out, ")")
             end
+
+        else if ast.data._binary.null_compare_kind == BINARY_NULL_COMPARE_UNION_TAG:
+            value_expr: @AST = ast.data._binary.left
+            if value_expr != null and value_expr.kind == AST_NULL:
+                value_expr = ast.data._binary.right
+            end
+
+            fprintf(out, "((")
+            gen_expr(value_expr, out, src)
+            fprintf(out, ").tag %s %d)", token_to_string(ast.data._binary.op), ast.data._binary.null_union_member_index)
+
         else:
             gen_expr(ast.data._binary.left, out, src)
             fprintf(out, " %s ", token_to_string(ast.data._binary.op))
@@ -1302,6 +1429,9 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, "((")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ").data.m%d)", ast.data._cast.union_member_index - 1)
+
+        else if ast.data._cast.lower_kind == CAST_LOWER_UNION_PACK:
+            gen_packed_union_value(&ast.data._cast.typeInfo, ast.data._cast.union_member_index, ast.data._cast.value, out, src)
 
         else if ast.data._cast.typeInfo.base == TOKEN_CHAR and ast.data._cast.typeInfo.pointer_depth == 1 and ast.data._cast.typeInfo.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
             fprintf(out, "(")

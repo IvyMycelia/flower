@@ -11,7 +11,7 @@ prop func test(): bool
         prune raw
         return false
     else:
-        real: @int = maybe
+        real: @int = maybe as @int
         if @real != 7:
             prune raw
             return false
@@ -37,7 +37,7 @@ prop func test(): bool
         return false
     end
 
-    guarded_ptr: @int = maybe
+    guarded_ptr: @int = maybe as @int
     if @guarded_ptr != 7:
         prune raw
         return false

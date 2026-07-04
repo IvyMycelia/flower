@@ -809,6 +809,10 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
         bin.data._binary.right = right
         bin.data._binary.op = op.kind
 
+        bin.data._binary.is_string_compare = 0
+        bin.data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE
+        bin.data._binary.null_union_member_index = 0
+
         left = bin
     end
 
