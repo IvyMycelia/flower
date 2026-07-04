@@ -3229,6 +3229,7 @@ typedef struct NarrowInfo {
 char* src;
 int name_start;
 int name_length;
+AST* expr;
 TypeInfo narrowed_type;
 TypeInfo union_source_type;
 int kind;
@@ -3263,6 +3264,43 @@ return 0;
 }
 if (mod_src_stdlib_cstr_flo_eq_n(a_src + a_start, b_src + b_start, a_len)) {
 return 1;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_is_narrowable_expr(AST* expr) {
+if (expr == NULL) {
+return 0;
+}
+if (expr->kind == AST_VAR_REF) {
+return 1;
+}
+if (expr->kind == AST_DOT_ACCESS) {
+return mod_src_typecheck_flo_is_narrowable_expr(expr->data._dot_access.object);
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_same_narrow_expr(char* src, AST* a, AST* b) {
+if (a == NULL  ||  b == NULL) {
+return 0;
+}
+if (a->kind != b->kind) {
+return 0;
+}
+if (a->kind == AST_VAR_REF) {
+return mod_src_typecheck_flo_same_name(src, a->data._var_ref.name_start, a->data._var_ref.name_length, src, b->data._var_ref.name_start, b->data._var_ref.name_length);
+}
+if (a->kind == AST_DOT_ACCESS) {
+if (a->data._dot_access.field_length != b->data._dot_access.field_length) {
+return 0;
+}
+if (!(mod_src_stdlib_cstr_flo_eq_n(src + a->data._dot_access.field_start, src + b->data._dot_access.field_start, a->data._dot_access.field_length))) {
+return 0;
+}
+return mod_src_typecheck_flo_same_narrow_expr(src, a->data._dot_access.object, b->data._dot_access.object);
 }
 return 0;
 }
@@ -3809,13 +3847,16 @@ return 0;
 }
 
 
-void mod_src_typecheck_flo_push_union_narrow(TypeEnv* env, char* src, int start, int length, TypeInfo* target, TypeInfo* union_type, int member_index) {
+void mod_src_typecheck_flo_push_union_narrow(TypeEnv* env, char* src, AST* expr, TypeInfo* target, TypeInfo* union_type, int member_index) {
 if (env->narrow_count >= 2048) {
+return;}
+if (expr == NULL  ||  !(mod_src_typecheck_flo_is_narrowable_expr(expr))) {
 return;}
 NarrowInfo* info = env->narrowings + env->narrow_count;
 info->src = src;
-info->name_start = start;
-info->name_length = length;
+info->name_start = 0;
+info->name_length = 0;
+info->expr = expr;
 mod_src_typecheck_flo_copy_type(&(info->narrowed_type), target);
 mod_src_typecheck_flo_copy_type(&(info->union_source_type), union_type);
 info->kind = NARROW_UNION_MEMBER;
@@ -3824,12 +3865,15 @@ env->narrow_count = env->narrow_count + 1;
 }
 
 
-int mod_src_typecheck_flo_lookup_union_narrow_index(TypeEnv* env, char* src, int start, int length, TypeInfo* target, TypeInfo* union_type) {
+int mod_src_typecheck_flo_lookup_union_narrow_index(TypeEnv* env, char* src, AST* expr, TypeInfo* target, TypeInfo* union_type) {
+if (expr == NULL  ||  !(mod_src_typecheck_flo_is_narrowable_expr(expr))) {
+return 0;
+}
 int i = env->narrow_count;
 while (i > 0) {
 i = i - 1;
 NarrowInfo* info = env->narrowings + i;
-if (info->kind == NARROW_UNION_MEMBER  &&  mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+if (info->kind == NARROW_UNION_MEMBER  &&  info->src == src  &&  info->expr != NULL  &&  mod_src_typecheck_flo_same_narrow_expr(src, info->expr, expr)) {
 if (mod_src_typecheck_flo_types_match(&(info->narrowed_type), target)  &&  mod_src_typecheck_flo_types_match(&(info->union_source_type), union_type)) {
 return info->union_member_index;
 }
@@ -4288,8 +4332,10 @@ TypeInfo* narrowed = malloc(sizeof(TypeInfo));
 TypeInfo* source_union = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_copy_type(narrowed, &(condition->data._type_test.typeInfo));
 mod_src_typecheck_flo_copy_type(source_union, &(condition->data._type_test.value_type));
+if (condition->data._type_test.value->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_narrowed_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed);
-mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed, source_union, condition->data._type_test.union_member_index);
+}
+mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value, narrowed, source_union, condition->data._type_test.union_member_index);
 free(narrowed);
 free(source_union);
 }
@@ -4308,26 +4354,30 @@ ref_expr = condition->data._binary.right;
 if (ref_expr == NULL) {
 return;}
 TypeInfo* current = malloc(sizeof(TypeInfo));
-if (mod_src_typecheck_flo_lookup_var_type(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current)) {
+if (mod_src_typecheck_flo_resolve_expr(env, ref_expr, current, src)) {
 if (condition->data._binary.op == TOKEN_NEQ) {
 if (current->is_union) {
 TypeInfo* narrowed = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_build_nonnull_variant(current, narrowed)) {
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, narrowed);
+}
 int null_index = mod_src_typecheck_flo_union_has_null_member(current);
 int remaining_index = 0;
 if (null_index != 0) {
 remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(current, null_index);
 }
 if (remaining_index != 0) {
-mod_src_typecheck_flo_push_union_narrow(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, narrowed, current, remaining_index);
+mod_src_typecheck_flo_push_union_narrow(env, src, ref_expr, narrowed, current, remaining_index);
 }
 }
 free(narrowed);
 }
 else if (mod_src_typecheck_flo_is_nullable_type(current)) {
 current->is_nullable = 0;
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current);
+}
 }
 }
 else if (condition->data._binary.op == TOKEN_COMP) {
@@ -4337,7 +4387,9 @@ mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_s
 }
 }
 else if (mod_src_typecheck_flo_is_nullable_type(current)) {
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
 }
 }
 }
@@ -4350,7 +4402,9 @@ if (condition == NULL) {
 return;}
 if (condition->kind == AST_TYPE_TEST) {
 if (condition->data._type_test.lower_kind == TYPE_TEST_NONNULL) {
+if (condition->data._type_test.value != NULL  &&  condition->data._type_test.value->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_null_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length);
+}
 }
 else if (condition->data._type_test.lower_kind == TYPE_TEST_UNION_TAG  &&  condition->data._type_test.value != NULL  &&  condition->data._type_test.value->kind == AST_VAR_REF) {
 TypeInfo* source_union = malloc(sizeof(TypeInfo));
@@ -4359,8 +4413,10 @@ int remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(s
 if (remaining_index != 0) {
 TypeInfo* narrowed = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_copy_atom_to_type(narrowed, source_union->union_members + remaining_index - 1);
+if (condition->data._type_test.value->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_narrowed_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed);
-mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed, source_union, remaining_index);
+}
+mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value, narrowed, source_union, remaining_index);
 free(narrowed);
 }
 free(source_union);
@@ -4378,7 +4434,7 @@ ref_expr = condition->data._binary.right;
 if (ref_expr == NULL) {
 return;}
 TypeInfo* current = malloc(sizeof(TypeInfo));
-if (mod_src_typecheck_flo_lookup_var_type(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current)) {
+if (mod_src_typecheck_flo_resolve_expr(env, ref_expr, current, src)) {
 if (condition->data._binary.op == TOKEN_NEQ) {
 if (current->is_union) {
 if (mod_src_typecheck_flo_union_has_null_member(current) != 0) {
@@ -4386,28 +4442,34 @@ mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_s
 }
 }
 else if (mod_src_typecheck_flo_is_nullable_type(current)) {
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
 }
 }
 else if (condition->data._binary.op == TOKEN_COMP) {
 if (current->is_union) {
 TypeInfo* narrowed = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_build_nonnull_variant(current, narrowed)) {
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, narrowed);
+}
 int null_index = mod_src_typecheck_flo_union_has_null_member(current);
 int remaining_index = 0;
 if (null_index != 0) {
 remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(current, null_index);
 }
 if (remaining_index != 0) {
-mod_src_typecheck_flo_push_union_narrow(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, narrowed, current, remaining_index);
+mod_src_typecheck_flo_push_union_narrow(env, src, ref_expr, narrowed, current, remaining_index);
 }
 }
 free(narrowed);
 }
 else if (mod_src_typecheck_flo_is_nullable_type(current)) {
 current->is_nullable = 0;
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, current);
+}
 }
 }
 }
@@ -4866,18 +4928,18 @@ return 0;
 mod_src_typecheck_flo_copy_type(&(expr->data._cast.typeInfo), target_type);
 expr->data._cast.lower_kind = CAST_LOWER_NONE;
 expr->data._cast.union_member_index = 0;
-if (expr->data._cast.value != NULL  &&  expr->data._cast.value->kind == AST_VAR_REF) {
+if (expr->data._cast.value != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(expr->data._cast.value)) {
 TypeInfo* source_union = malloc(sizeof(TypeInfo));
 int has_union_source = 0;
 if (value_type->is_union) {
 mod_src_typecheck_flo_copy_type(source_union, value_type);
 has_union_source = 1;
 }
-else if (mod_src_typecheck_flo_lookup_storage_var_type(env, src, expr->data._cast.value->data._var_ref.name_start, expr->data._cast.value->data._var_ref.name_length, source_union)  &&  source_union->is_union) {
+else if (expr->data._cast.value->kind == AST_VAR_REF  &&  mod_src_typecheck_flo_lookup_storage_var_type(env, src, expr->data._cast.value->data._var_ref.name_start, expr->data._cast.value->data._var_ref.name_length, source_union)  &&  source_union->is_union) {
 has_union_source = 1;
 }
 if (has_union_source) {
-int member_index = mod_src_typecheck_flo_lookup_union_narrow_index(env, src, expr->data._cast.value->data._var_ref.name_start, expr->data._cast.value->data._var_ref.name_length, target_type, source_union);
+int member_index = mod_src_typecheck_flo_lookup_union_narrow_index(env, src, expr->data._cast.value, target_type, source_union);
 if (member_index != 0) {
 mod_src_typecheck_flo_copy_type(&(expr->data._cast.value_type), source_union);
 expr->data._cast.lower_kind = CAST_LOWER_UNION_EXTRACT;
