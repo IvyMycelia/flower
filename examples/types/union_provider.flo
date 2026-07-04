@@ -1,6 +1,6 @@
 type RemoteValue = int | string
 
-prop func accept(value: RemoteValue): bool
+prop func accept(value: int | string): bool
     if value is int:
         n: int = value as int
         return n == 11

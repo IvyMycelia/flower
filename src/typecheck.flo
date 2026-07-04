@@ -1028,10 +1028,8 @@ func register_params(env: @TypeEnv, fnc: @AST, src: @char): void
         info.name_length = param.data._func_params.name_length
         copy_type(&info.typeInfo, &param.data._func_params.typeInfo)
         info.binding_kind = VAR_BINDING_BASE
-        if info.typeInfo.is_union:
-            type_error(env, param, "semantic union parameters are not lowered yet")
-        end
         resolve_type_alias(env, &info.typeInfo, param)
+        info.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
         param = param.next

@@ -2,7 +2,7 @@ import "examples/types/union_provider.flo" as remote
 
 type Value = int | string
 
-func accept(value: Value): bool
+func accept(value: int | string): bool
     if value is int:
         n: int = value as int
         return n == 7
