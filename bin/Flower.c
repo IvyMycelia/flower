@@ -1187,6 +1187,7 @@ int field_length;
 AST* value;
 int access_kind;
 TypeInfo resolved_type;
+int union_member_index;
 int is_hidden;
 int is_frozen;
 int is_readonly;
@@ -4020,9 +4021,6 @@ finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
 mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.typeInfo));
 mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
-if (finfo->typeInfo.is_union) {
-mod_src_typecheck_flo_type_error(env, field, "semantic union fields are not lowered yet");
-}
 finfo->is_hidden = field->data._struct_field.is_hidden;
 finfo->is_frozen = field->data._struct_field.is_frozen;
 finfo->is_readonly = field->data._struct_field.is_readonly;
@@ -5235,6 +5233,7 @@ else if (ast->kind == AST_DOT_ACCESS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
 free(tmp);
+ast->data._dot_access.union_member_index = 0;
 if (ast->data._dot_access.value != NULL) {
 TypeInfo* object_type = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.object, object_type, src)) {
@@ -5249,8 +5248,18 @@ if (ast->data._dot_access.is_readonly) {
 mod_src_typecheck_flo_type_error(env, ast, "field is readonly from this scope");
 return;}
 }
+TypeInfo* target_type = malloc(sizeof(TypeInfo));
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src);
+mod_src_typecheck_flo_copy_type(target_type, &(ast->data._dot_access.resolved_type));
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src)) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._dot_access.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
+mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match field type");
+}
+else if (target_type->is_union  &&  !(value_type->is_union)) {
+ast->data._dot_access.union_member_index = mod_src_typecheck_flo_find_union_member_index(target_type, value_type);
+}
+}
+free(target_type);
 free(value_type);
 }
 }
@@ -7066,7 +7075,12 @@ fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_
 }
 if (ast->data._dot_access.value != NULL) {
 fprintf(out, " = ");
+if (ast->data._dot_access.union_member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._dot_access.resolved_type), ast->data._dot_access.union_member_index, ast->data._dot_access.value, out, src);
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._dot_access.value, out, src);
+}
 fprintf(out, ";\n");
 }
 }

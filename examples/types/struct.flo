@@ -11,6 +11,12 @@ struct Vector3 {
     z: int
 }
 
+type Value = int | string
+
+struct Box {
+    value: Value
+}
+
 prop func test(): bool
     p: @Vector2 = new Vector2
     p.x = 5
@@ -28,6 +34,46 @@ prop func test(): bool
         end
     end
 
+    box: @Box = new Box
+
+    box.value = 7
+    first: Value = box.value
+    if first is int:
+        n: int = first as int
+        if n != 7:
+            prune box
+            prune p
+            return false
+        end
+    else:
+        prune box
+        prune p
+        return false
+    end
+
+    box.value = "Ivy"
+    second: Value = box.value
+    if second is string:
+        s: string = second as string
+        if s != "Ivy":
+            prune box
+            prune p
+            return false
+        end
+
+        if s.length != 3:
+            prune box
+            prune p
+            return false
+        end
+    else:
+        prune box
+        prune p
+        return false
+    end
+
+    prune box
+    
     prune p
     return false
 end

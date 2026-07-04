@@ -1622,7 +1622,11 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
         
         if ast.data._dot_access.value != null:
             fprintf(out, " = ")
-            gen_expr(ast.data._dot_access.value, out, src)
+            if ast.data._dot_access.union_member_index != 0:
+                gen_packed_union_value(&ast.data._dot_access.resolved_type, ast.data._dot_access.union_member_index, ast.data._dot_access.value, out, src)
+            else:
+                gen_expr(ast.data._dot_access.value, out, src)
+            end
             fprintf(out, ";\n")
         end
 

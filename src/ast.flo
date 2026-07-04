@@ -289,7 +289,8 @@ struct dot_access {
     access_kind: int,
 
     // Resulting type of this access
-    resolved_type: TypeInfo
+    resolved_type: TypeInfo,
+    union_member_index: int,
 
     is_hidden: int,
     is_frozen: int,
@@ -375,7 +376,7 @@ struct for_loop {
     var_length: int,
     from: @AST,
     to: @AST,
-    inclusive: int,
+    inclusive: bool,
     body: @AST,
 }
 
