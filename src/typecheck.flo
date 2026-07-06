@@ -272,7 +272,11 @@ func is_null_type(typeInfo: @TypeInfo): bool
         return false
     end
 
-    return not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
+    if not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0:
+        return true
+    end
+
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_NULL and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_nullable_type(typeInfo: @TypeInfo): bool
@@ -280,7 +284,11 @@ func is_nullable_type(typeInfo: @TypeInfo): bool
 end
 
 func type_atom_is_null(atom: @TypeAtom): bool
-    return not atom.is_nullable and atom.base == TOKEN_VOID and atom.pointer_depth == 1 and atom.array_size == 0
+    if not atom.is_nullable and atom.base == TOKEN_VOID and atom.pointer_depth == 1 and atom.array_size == 0:
+        return true
+    end
+
+    return not atom.is_nullable and atom.base == TOKEN_NULL and atom.pointer_depth == 0 and atom.array_size == 0
 end
 
 func union_has_null_member(typeInfo: @TypeInfo): int
@@ -1272,13 +1280,15 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
     end
 
     if condition.kind == AST_TYPE_TEST:
-        if condition.data._type_test.lower_kind == TYPE_TEST_NONNULL and condition.data._type_test.value != null and condition.data._type_test.value.kind == AST_VAR_REF:
-            narrowed: @TypeInfo = new TypeInfo
-            copy_type(narrowed, &condition.data._type_test.typeInfo)
-            push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
-            prune narrowed
+        if condition.data._type_test.lower_kind == TYPE_TEST_NONNULL and condition.data._type_test.value != null:
+            if condition.data._type_test.value.kind == AST_VAR_REF:
+                narrowed: @TypeInfo = new TypeInfo
+                copy_type(narrowed, &condition.data._type_test.typeInfo)
+                push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
+                prune narrowed
+            end
 
-        else if condition.data._type_test.lower_kind == TYPE_TEST_UNION_TAG and condition.data._type_test.value != null and condition.data._type_test.value.kind == AST_VAR_REF:
+        else if condition.data._type_test.lower_kind == TYPE_TEST_UNION_TAG and condition.data._type_test.value != null and is_narrowable_expr(condition.data._type_test.value):
             narrowed: @TypeInfo = new TypeInfo
             source_union: @TypeInfo = new TypeInfo
 
@@ -1308,9 +1318,9 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
 
     ref_expr: @AST = null
 
-    if condition.data._binary.left != null and condition.data._binary.left.kind == AST_VAR_REF and condition.data._binary.right != null and condition.data._binary.right.kind == AST_NULL:
+    if condition.data._binary.left != null and is_narrowable_expr(condition.data._binary.left) and condition.data._binary.right != null and condition.data._binary.right.kind == AST_NULL:
         ref_expr = condition.data._binary.left
-    else if condition.data._binary.right != null and condition.data._binary.right.kind == AST_VAR_REF and condition.data._binary.left != null and condition.data._binary.left.kind == AST_NULL:
+    else if condition.data._binary.right != null and is_narrowable_expr(condition.data._binary.right) and condition.data._binary.left != null and condition.data._binary.left.kind == AST_NULL:
         ref_expr = condition.data._binary.right
     end
 
@@ -1320,6 +1330,11 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
 
     current: @TypeInfo = new TypeInfo
     if resolve_expr(env, ref_expr, current, src):
+        if not resolve_type_alias(env, current, ref_expr):
+            prune current
+            return
+        end
+
         if condition.data._binary.op == TOKEN_NEQ:
             if current.is_union:
                 narrowed: @TypeInfo = new TypeInfo
@@ -1340,27 +1355,10 @@ func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): vo
                     end
                 end
                 prune narrowed
-
-            else if is_nullable_type(current):
-                current.is_nullable = false
-                if ref_expr.kind == AST_VAR_REF:
-                    push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, current)
-                end
-            end
-
-        else if condition.data._binary.op == TOKEN_COMP:
-            if current.is_union:
-                if union_has_null_member(current) != 0:
-                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
-                end
-
-            else if is_nullable_type(current):
-                if ref_expr.kind == AST_VAR_REF:
-                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
-                end
             end
         end
     end
+
     prune current
 end
 
@@ -1404,9 +1402,9 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
 
     ref_expr: @AST = null
 
-    if condition.data._binary.left != null and condition.data._binary.left.kind == AST_VAR_REF and condition.data._binary.right != null and condition.data._binary.right.kind == AST_NULL:
+    if condition.data._binary.left != null and is_narrowable_expr(condition.data._binary.left) and condition.data._binary.right != null and condition.data._binary.right.kind == AST_NULL:
         ref_expr = condition.data._binary.left
-    else if condition.data._binary.right != null and condition.data._binary.right.kind == AST_VAR_REF and condition.data._binary.left != null and condition.data._binary.left.kind == AST_NULL:
+    else if condition.data._binary.right != null and is_narrowable_expr(condition.data._binary.right) and condition.data._binary.left != null and condition.data._binary.left.kind == AST_NULL:
         ref_expr = condition.data._binary.right
     end
 
@@ -1416,6 +1414,11 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
 
     current: @TypeInfo = new TypeInfo
     if resolve_expr(env, ref_expr, current, src):
+        if not resolve_type_alias(env, current, ref_expr):
+            prune current
+            return
+        end
+
         if condition.data._binary.op == TOKEN_NEQ:
             if current.is_union:
                 if union_has_null_member(current) != 0:
@@ -1448,12 +1451,6 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
                     end
                 end
                 prune narrowed
-
-            else if is_nullable_type(current):
-                current.is_nullable = false
-                if ref_expr.kind == AST_VAR_REF:
-                    push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, current)
-                end
             end
         end
     end
@@ -1649,6 +1646,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         target_type: @TypeInfo = new TypeInfo
 
         if not resolve_expr(env, expr.data._type_test.value, value_type, src):
+            prune value_type
+            prune target_type
+            return 0
+        end
+
+        if not resolve_type_alias(env, value_type, expr.data._type_test.value):
             prune value_type
             prune target_type
             return 0
@@ -1976,6 +1979,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if not resolve_type_alias(env, value_type, expr.data._cast.value):
+            prune value_type
+            prune target_type
+            return 0
+        end
+
         copy_type(&expr.data._cast.typeInfo, target_type)
         expr.data._cast.lower_kind = CAST_LOWER_NONE
         expr.data._cast.union_member_index = 0
@@ -2170,7 +2179,14 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     end
 
     copy_type(out, &field.typeInfo)
-    copy_type(&expr.data._dot_access.resolved_type, &field.typeInfo)
+
+    if not resolve_type_alias(env, out, expr):
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+        prune object_type
+        return 0
+    end
+
+    copy_type(&expr.data._dot_access.resolved_type, out)
     prune object_type
     return 1
 end
@@ -2428,7 +2444,21 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             value_type: @TypeInfo = new TypeInfo
             copy_type(target_type, &ast.data._dot_access.resolved_type)
 
+            if not resolve_type_alias(env, target_type, ast):
+                prune target_type
+                prune value_type
+                return
+            end
+
+            copy_type(&ast.data._dot_access.resolved_type, target_type)
+
             if resolve_expr(env, ast.data._dot_access.value, value_type, src):
+                if not resolve_type_alias(env, value_type, ast.data._dot_access.value):
+                    prune target_type
+                    prune value_type
+                    return
+                end
+
                 if not allow_string_literal_for_target(ast.data._dot_access.value, target_type) and not can_implicitly_convert(target_type, value_type):
                     type_error(env, ast, "assigned value does not match field type")
                 else if target_type.is_union and not value_type.is_union:

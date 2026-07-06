@@ -17,11 +17,15 @@ struct Box {
     value: Value
 }
 
-// type MaybeValue = string | null
+type MaybeValue = string | null
 
-// struct MaybeBox {
-//     value: MaybeValue
-// }
+struct MaybeBox {
+    value: MaybeValue
+}
+
+struct Holder {
+    box: @MaybeBox
+}
 
 prop func test(): bool
     p: @Vector2 = new Vector2
@@ -87,27 +91,44 @@ prop func test(): bool
 
     prune box
 
-    // maybe_box: @MaybeBox = new MaybeBox
-    // maybe_box.value = null
+    maybe_box: @MaybeBox = new MaybeBox
+    maybe_box.value = null
 
-    // if maybe_box.value != null:
-    //     prune maybe_box
-    //     return false
-    // end
+    if maybe_box.value != null:
+        prune maybe_box
+        return false
+    end
 
-    // maybe_box.value = "Rose"
-    // if maybe_box.value != null:
-    //     label: string = maybe_box.value as string
-    //     if label != "Rose":
-    //         prune maybe_box
-    //         return false
-    //     end
-    // else:
-    //     prune maybe_box
-    //     return false
-    // end
+    maybe_box.value = "Rose"
+    if maybe_box.value != null:
+        label: string = maybe_box.value as string
+        if label != "Rose":
+            prune maybe_box
+            return false
+        end
+    else:
+        prune maybe_box
+        return false
+    end
 
-    // prune maybe_box
+    
+    holder: @Holder = new Holder
+    holder.box = maybe_box
+
+    if holder.box.value != null:
+        nested: string = holder.box.value as string
+
+        if nested != "Rose":
+            prune holder
+            return false
+        end
+    else:
+        prune holder
+        return false
+    end
+    
+    prune holder
+    prune maybe_box
 
     return true
 end
