@@ -17,7 +17,7 @@ Uniformity and obscurity are broing. Flower embraces clarity over ceremony, cont
 
 ## What Flower Is
 
-A compiled, self-hosting language that targets to C (ignore the irony in it being "born from the ashes"). You write Flower, FloC generates C (for now..), Clang builds it, you get a native binary. No runtimes, no VMs, and no magic other than the feeling of euphoria it gives off.
+A compiled, self-hosting language that currently targets to C (ignore the irony in it being "born from the ashes"). You write Flower, FloC generates C (for now..), Clang builds it, you get a native binary. No runtimes, no VMs, and no magic other than the feeling of euphoria it gives off.
 
 **Self-Hosting**: The Flower Compiler (FloC) is written in Flower, though the original FloC is written in C (can be accessed under `vendor/flower_c_reference/`).
 
@@ -83,6 +83,26 @@ make build      # Compiles from .flo source and creates new Flower binary under 
 make bootstrap  # Build with verification to ensure the new executable is valid before overwriting the stable, working one
 make test       # Run the test suite with `/bin/Flower`
 ```
+
+## Platform Support
+
+Flower currently builds and bootstraps in Unix-like environments.
+
+Current status:
+
+- **macOSX**: supported and actively used during development
+- **Linux**: expected to work with a POSIX shell and a C99-capable compiler, though platform coverage is still limited
+- **Windows**: not natively supported yet
+
+The main blocker for native Windows support is not the Flower language itself, but rather the current compiler / tooling process. The compiler currently relies on POSIX / Unix behavior such as:
+
+- shell scripts and `make`
+- `unistd`-style APIs like `getcwd(...)`
+- `realpath(...)`
+- shell commands such as `mkdir -p`
+- running produced binaries via `./output/out`
+
+The generated C backend is intended to stay as portable as possible, but the compiler executable and build flow are still Unix-oriented for now.
 
 ## Using Flower
 
