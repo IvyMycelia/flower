@@ -95,14 +95,15 @@ Flower generates C code, compiles it with Clang, and produces a binary. It will 
 
 ## Language Features
 
-- **Variables & Types**: `int`, `float`, `double`, `char`, `string`, `bool`
+- **Variables & Types**: `int`, `float`, `double`, `char`, `string`, `bool`, `null`
 - **Pointers**: `@int` for pointer to int, `&x` for address-of, `@x` for dereference
 - **Control Flow**: `if` / `else`, `while`, `for`, `continue`, `break`, `return`
 - **Functions**: Named parameters, explicit types, no overloading (YET)
-- **Structs & Unions**: Group data, no methods (use functions instead)
+- **Structs & Unions**: `struct` for grouped data, `union` for raw storage / layout, no methods (use functions instead)
 - **Memory**: `new` allocates, `prune` frees
 - **Strings**: Equality / inequality, `.length`, indexing and explicit casts to / from `@char`
 - **Imports**: Module aliases, exports via prop, private-by-default top-level declarations
+- **Advanced Types**: Transparant aliases, semantic nullable types `?T`, semantic unions `A | B`, narrowing with `is`, explicit extraction with `as`
 
 ## Experimentation & Contribution
 
@@ -120,14 +121,20 @@ Current experiments welcome. See [Docs/CONTRIBUTING.md](Docs/CONTRIBUTING.md) fo
 
 ## Project Status
 
-- **v1.3.0**: Strings & Bools
+- **v1.4.xx**: Better types is in active development and largely implemented
 - Self-hosting compiler with module-aware typechecking
+- Current backend targets C; but Flower semantics are intended to remain compiler-owned rather than C-defined
+- Current type surface includes:
+ - transparent aliases via `type Name = ExistingType`
+ - semantic nullable types via `?T`, lowered as `T | null`
+ - semantic unions via `A | B | C`
+ - explicit narrowing with `is`
+ - explicit extraction with `as`
+ - semantic union support across locals, parameters, return types, struct fields, and stable field expressions
 - Core language is usable; stdlib is still intentionally small
-- Current backend targets C; non-C codegen is planned for `v2.0.0`
 
 ## Next
 
-- `v1.4.0` Better Types
 - `v1.5.0` Documentation
 - `v1.6.0` Standard Library expansion
 - `v2.0.0` Non-C codegen

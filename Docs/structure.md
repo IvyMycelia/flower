@@ -1,64 +1,51 @@
 # Grammar
 
+> Note: This document is still being rewritten. The sections below reflect current Flower syntax where updated, but some older examples and terminology may still lag behind the compiler. When this document and the compiler disagree, the compiler (obviously) has authority.
+
 ## File Structures
 
-### Header File
+### Module Example
 
-```rust
-/* custom.floh */
-x: int
+```go
+/* math.flo */
+PI: double = 3.1415926535
 
-func mone(): void
-    // code
+prop func square(x: int): int
+    return x * x
 end
 
-func mtwo(name: type): int
-    // code
-end
-```
-
-### Module FIle
-
-```rust
-/* custom.flo */
-x: int = 0
-
-prop func mone(): void
-    // Code
-end
-
-prop func mtwo(name: type): int
-    // Code
-end
-
-func helperFunction(name: type): float // Private function because there's no `prop` keyword
-    // Code
+func helper(x: int): int
+    return x + i
 end
 ```
 
-### Importing File
+### Import Example
 
 ```rust
-// main.flo
-import "./math.flo" as math     // When given an alias, functions and variables are accessed via alias.var / alias.func()
-import <system>                 // When no alias provided, functions and variables are accessed by their names e.g; var, func()
-import "custom.flo"             // No importing specifics; everything in the header file is what is imported, but no overhead because compiler only inlines what's needed not everything (helps with file size and compile time)
-/*
-You can import absolute file path, relative file path, and assuming you have compiler configs set (to be implemented eventually), you can just do <> for system path (such as usr/opt) libs and "relative" (assuming relative filepath is set, e.g; ./include/)
-*/
+/* main.flo */
+import "./math.flo" as math
 
-let x: float64 = math.PI // Or just PI if imported with no alias
-let y: float64 = sqrt(x) // Or math.sqrt(x) if imported with alias
+func main(): int
+    x: int = math.square(4)
+
+    if x == 16:
+        prin("ok\n")
+    end
+
+    return 0
+end
 ```
+
+Current module rules:
+
+* `prop` marks exported top-level declarations
+* top-level declarations are private by default
+* imported aliases act as real namespaces
+* module / interface rules are enforced by the compiler, not deferred to generated C
 
 ### Example main.flo
 
-```rust
-/* Optional custom _start() */
-func _start(): void
-    main()
-end // NOT IMPLEMENTED YET
-
+```go
 /* Default program entry */
 func main(args: string[]): int
     if args.length > 0:
@@ -68,13 +55,43 @@ func main(args: string[]): int
         else if args[2] == "--b":
             // Empty block, stack is still pushed but nothing is inside this block. Waits for end to terminate or an else to attach
         else:
-            print("Unrecognized symbol\n"); return -1
+            print("Unrecognized symbol\n") return -1 // Flower is white-space and newline insensitive by default
         end // This end tells the compiler that if y == 0 block is done and that anything that follows is for the original if x block
-    else print("Not enough arguments\n") // No end is needed because the else only has one statement. The compiler knows this is the end of the whole block, because there's no : after the else meaning whatever follows HAS to be the last statement
+    else print("Not enough arguments\n") // No end is needed because the else only has one statement. The compiler knows this is the end of the whole block, because there's no : after the else meaning whatever follows HAS to be the last statement. NOT IMPLEMENTED YET
 
-    return 0; // Semicolons optional to end a line
+    return 0; // Semicolons optional to end a line — really doesn't do anything for reasons stated above
 end
 ```
+
+## Current Type System Snapshot
+
+```go
+type Size = int
+type MaybeName = string | null
+
+func show_name(name: ?string): void
+    if name != null:
+        real: string = name as string
+        print(real)
+    end
+end
+
+func describe(value: int | string): void
+    if value is int:
+        n: int = value as int
+        print(n)
+    end
+end
+```
+
+Current rules:
+
+* `type Name = ExistingType` is a transparent alias
+* `?T` is sugar for `T | null`
+* `A | B` is a semantic union type
+* `union` remains a raw storage / layout feature
+* `is` narrows
+* `as` extracts explicitly after narrowing
 
 ## How If Conditionals Work
 
