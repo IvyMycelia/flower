@@ -1,7 +1,26 @@
 import <stdio>
 import <stdlib>
 
+func is_null_cstr(s: @char): bool
+    return s == null
+end
+
 prop func test(): bool
     ptr: @int = null
-    return ptr == null
+    text: @char = null
+
+    if ptr != null:
+        return false
+    end
+
+    if not is_null_cstr(null):
+        return false
+    end
+
+    ptr = null
+    if ptr != null:
+        return false
+    end
+
+    return true
 end

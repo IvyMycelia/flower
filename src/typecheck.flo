@@ -5,16 +5,11 @@ import "src/parser.flo" as parser
 import "src/file.flo" as file
 import "src/stdlib/cstr.flo" as cstr
 
-forward struct StructInfo
-forward struct FieldInfo
-forward struct VarInfo
-forward struct FuncInfo
-
 struct FieldInfo {
     src: @char,
     name_start: int,
     name_length: int,
-    type: TypeInfo,
+    typeInfo: TypeInfo,
     is_hidden: int,
     is_frozen: int,
     is_readonly: int
@@ -28,11 +23,15 @@ struct StructInfo {
     field_count: int
 }
 
+VAR_BINDING_BASE:   int = 0
+VAR_BINDING_NARROW: int = 1
+
 struct VarInfo {
     src: @char,
     name_start: int,
     name_length: int,
-    type: TypeInfo
+    typeInfo: TypeInfo,
+    binding_kind: int,
 
     // Simple implementation for now.. will add scope depth and 
     // function ID tracking for more advanced system later
@@ -44,6 +43,29 @@ struct FuncInfo {
     name_length: int,
     params: @AST,
     return_type: TypeInfo
+}
+
+struct AliasInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+    target: TypeInfo
+}
+
+NARROW_NONE:            int = 0
+NARROW_UNION_MEMBER:    int = 1
+
+struct NarrowInfo {
+    src: @char,
+    name_start: int,
+    name_length: int,
+    expr: @AST,
+
+    narrowed_type: TypeInfo,
+    union_source_type: TypeInfo,
+
+    kind: int,
+    union_member_index: int,
 }
 
 // Type Environment, hosts registries and their data
@@ -59,6 +81,12 @@ struct TypeEnv {
     funcs: FuncInfo[1024],
     func_count: int,
 
+    aliases: AliasInfo[512],
+    alias_count: int,
+
+    narrowings: NarrowInfo[2048],
+    narrow_count: int,
+
     error_count: int
 }
 
@@ -69,6 +97,8 @@ current_return_type: TypeInfo
 inside_function: int = 0
 
 // Helper Functions
+
+forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
 func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: int, b_len: int): bool
     if a_len != b_len:
@@ -82,7 +112,84 @@ func same_name(a_src: @char, a_start: int, a_len: int, b_src: @char, b_start: in
     return false
 end
 
+func is_narrowable_expr(expr: @AST): bool
+    if expr == null:
+        return false
+    end
+
+    if expr.kind == AST_VAR_REF:
+        return true
+    end
+
+    if expr.kind == AST_DOT_ACCESS:
+        return is_narrowable_expr(expr.data._dot_access.object)
+    end
+
+    return false
+end
+
+func same_narrow_expr(src: @char, a: @AST, b: @AST): bool
+    if a == null or b == null:
+        return false
+    end
+
+    if a.kind != b.kind:
+        return false
+    end
+
+    if a.kind == AST_VAR_REF:
+        return same_name(src, a.data._var_ref.name_start, a.data._var_ref.name_length, src, b.data._var_ref.name_start, b.data._var_ref.name_length)
+    end
+
+    if a.kind == AST_DOT_ACCESS:
+        if a.data._dot_access.field_length != b.data._dot_access.field_length:
+            return false
+        end
+
+        if not cstr.eq_n(src + a.data._dot_access.field_start, src + b.data._dot_access.field_start, a.data._dot_access.field_length):
+            return false
+        end
+
+        return same_narrow_expr(src, a.data._dot_access.object, b.data._dot_access.object)
+    end
+
+    return false
+end
+
 func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.is_nullable = src_type.is_nullable
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_union = src_type.is_union
+    dst.union_count = src_type.union_count
+
+    i: int = 0
+    while i < src_type.union_count:
+        dst.union_members[i].base = src_type.union_members[i].base
+        dst.union_members[i].pointer_depth = src_type.union_members[i].pointer_depth
+        dst.union_members[i].array_size = src_type.union_members[i].array_size
+        dst.union_members[i].arr_size_expr = src_type.union_members[i].arr_size_expr
+        dst.union_members[i].name_start = src_type.union_members[i].name_start
+        dst.union_members[i].name_length = src_type.union_members[i].name_length
+        dst.union_members[i].name_src = src_type.union_members[i].name_src
+        dst.union_members[i].is_nullable = src_type.union_members[i].is_nullable
+        i = i + 1
+    end
+end
+
+forward func resolve_type_alias(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST): bool
+
+func copy_resolved_type(env: @TypeEnv, dst: @TypeInfo, src_type: @TypeInfo, ast: @AST): bool
+    copy_type(dst, src_type)
+    return resolve_type_alias(env, dst, ast)
+end
+
+func copy_type_atom(dst: @TypeAtom, src_type: @TypeAtom): void
     dst.base = src_type.base
     dst.pointer_depth = src_type.pointer_depth
     dst.array_size = src_type.array_size
@@ -90,62 +197,253 @@ func copy_type(dst: @TypeInfo, src_type: @TypeInfo): void
     dst.name_start = src_type.name_start
     dst.name_length = src_type.name_length
     dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+end
+
+func copy_type_to_atom(dst: @TypeAtom, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+end
+
+func copy_atom_to_type(dst: @TypeInfo, src_type: @TypeAtom): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+    dst.is_union = false
+    dst.union_count = 0
+end
+
+func clear_union_type(dst: @TypeInfo): void
+    dst.base = TOKEN_VOID
+    dst.pointer_depth = 0
+    dst.array_size = 0
+    dst.arr_size_expr = null
+    dst.name_start = 0
+    dst.name_length = 0
+    dst.name_src = null
+    dst.is_nullable = false
+    dst.is_union = true
+    dst.union_count = 0
 end
 
 forward func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
 
-func is_bool_type(type: @TypeInfo): int
-    if type.base == TOKEN_BOOL and type.pointer_depth == 0 and type.array_size == 0:
-        return 1
+func is_bool_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_nullable or typeInfo.is_union:
+        return false
+    end
+
+    if typeInfo.base == TOKEN_BOOL and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0:
+        return true
+    end
+
+    return false
+end
+
+func is_pointer_like_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return typeInfo.pointer_depth > 0 or typeInfo.array_size != 0
+end
+
+func is_void_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+end
+
+func is_null_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    if not typeInfo.is_nullable and typeInfo.base == TOKEN_VOID and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0:
+        return true
+    end
+
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_NULL and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+end
+
+func is_nullable_type(typeInfo: @TypeInfo): bool
+    return typeInfo.is_nullable
+end
+
+func type_atom_is_null(atom: @TypeAtom): bool
+    if not atom.is_nullable and atom.base == TOKEN_VOID and atom.pointer_depth == 1 and atom.array_size == 0:
+        return true
+    end
+
+    return not atom.is_nullable and atom.base == TOKEN_NULL and atom.pointer_depth == 0 and atom.array_size == 0
+end
+
+func union_has_null_member(typeInfo: @TypeInfo): int
+    if not typeInfo.is_union:
+        return 0
+    end
+
+    i: int = 0
+    while i < typeInfo.union_count:
+        if type_atom_is_null(typeInfo.union_members + i):
+            return i + 1
+        end
+        i = i + 1
     end
 
     return 0
 end
 
-func is_void_type(type: @TypeInfo): bool
-    return type.base == TOKEN_VOID and type.pointer_depth == 0 and type.array_size == 0
+forward func set_null_type(out: @TypeInfo): void
+
+func lower_nullable_to_semantic_union(env: @TypeEnv, ast: @AST, typeInfo: @TypeInfo): bool
+    if not typeInfo.is_nullable:
+        return true
+    end
+
+    if not typeInfo.is_union and typeInfo.array_size != 0 or typeInfo.arr_size_expr != null:
+        type_error(env, ast, "nullable arrays are not lowered yet")
+        return false
+    end
+
+    typeInfo.is_nullable = false
+
+    if typeInfo.is_union:
+        if union_has_null_member(typeInfo) != 0:
+            return true
+        end
+
+        if typeInfo.union_count >= 0:
+            type_error(env, ast, "semantic union supports at most 8 members")
+            return false
+        end
+
+        null_type: @TypeInfo = new TypeInfo
+        set_null_type(null_type)
+        copy_type_to_atom(typeInfo.union_members + typeInfo.union_count, null_type)
+        typeInfo.union_count = typeInfo.union_count + 1
+        prune null_type
+        return true
+    end
+
+    original: @TypeInfo = new TypeInfo
+    copy_type(original, typeInfo)
+
+    clear_union_type(typeInfo)
+    copy_type_to_atom(typeInfo.union_members + 0, original)
+    typeInfo.union_count = 1
+
+    null_type: @TypeInfo = new TypeInfo
+    set_null_type(null_type)
+    copy_type_to_atom(typeInfo.union_members + 1, null_type)
+    typeInfo.union_count = 2
+
+    prune original
+    prune null_type
+    return true
 end
 
-func is_null_type(type: @TypeInfo): bool
-    return type.base == TOKEN_VOID and type.pointer_depth == 1 and type.array_size == 0
+func validate_nullable_type(env: @TypeEnv, ast: @AST, typeInfo: @TypeInfo): bool
+    return lower_nullable_to_semantic_union(env, ast, typeInfo)
 end
 
-func is_integer_type(type: @TypeInfo): bool
-    return (type.base == TOKEN_INT or type.base == TOKEN_CHAR) and type.pointer_depth == 0 and type.array_size == 0
+func same_type_ignoring_nullability(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.base != actual.base:
+        return false
+    end
+
+    if expected.pointer_depth != actual.pointer_depth:
+        return false
+    end
+
+    if expected.base == TOKEN_IDENTIFIER:
+        return same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length)
+    end
+
+    return true
 end
 
-func is_decimal_type(type: @TypeInfo): bool
-    return (type.base == TOKEN_FLOAT or type.base == TOKEN_DOUBLE) and type.pointer_depth == 0 and type.array_size == 0
+func can_accept_null(typeInfo: @TypeInfo): bool
+    if is_null_type(typeInfo):
+        return true
+    end
+
+    if union_has_null_member(typeInfo) != 0:
+        return true
+    end
+
+    if is_nullable_type(typeInfo):
+        return true
+    end
+
+    return is_pointer_like_type(typeInfo)
 end
 
-func is_pointer_like_type(type: @TypeInfo): bool
-    return type.pointer_depth > 0 or type.array_size != 0
+func is_integer_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
-func is_condition_type(type: @TypeInfo): bool
-    return is_bool_type(type) or is_integer_type(type) or is_pointer_like_type(type)
+func is_decimal_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
-func is_string_type(type: @TypeInfo): bool
-    return type.base == TOKEN_STRING and type.pointer_depth == 0 and type.array_size == 0
+func is_condition_type(typeInfo: @TypeInfo): bool
+    return is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_pointer_like_type(typeInfo)
 end
 
-func is_cstr_type(type: @TypeInfo): bool
-    return type.base == TOKEN_CHAR and type.pointer_depth == 1 and type.array_size == 0
+func is_string_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_STRING and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
-func is_numeric_type(type: @TypeInfo): bool
-    return (type.base == TOKEN_INT or type.base == TOKEN_FLOAT or type.base == TOKEN_DOUBLE) and type.pointer_depth == 0 and type.array_size == 0
+func is_cstr_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return not typeInfo.is_nullable and typeInfo.base == TOKEN_CHAR and typeInfo.pointer_depth == 1 and typeInfo.array_size == 0
 end
 
-func numeric_rank(type: @TypeInfo): int
-    if type.base == TOKEN_INT:      
+func is_numeric_type(typeInfo: @TypeInfo): bool
+    if typeInfo.is_union:
+        return false
+    end
+
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+end
+
+func numeric_rank(typeInfo: @TypeInfo): int
+    if typeInfo.base == TOKEN_INT:      
         return 1 
     end
-    if type.base == TOKEN_FLOAT:    
+    if typeInfo.base == TOKEN_FLOAT:    
         return 2 
     end
-    if type.base == TOKEN_DOUBLE:   
+    if typeInfo.base == TOKEN_DOUBLE:   
         return 3 
     end
     return 0
@@ -159,6 +457,14 @@ func can_widen_numeric(expected: @TypeInfo, actual: @TypeInfo): bool
 end
 
 func can_implicitly_convert(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.is_union:
+        return types_match(expected, actual)
+    end
+
+    if actual.is_union:
+        return false
+    end
+
     if types_match(expected, actual):       
         return true 
     end
@@ -169,8 +475,22 @@ func can_implicitly_convert(expected: @TypeInfo, actual: @TypeInfo): bool
 end
 
 func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
+    if target.is_union:
+        return types_match(target, value)
+    end
+
+    if value.is_union:
+        return false
+    end
+
     if types_match(target, value): 
         return true 
+    end
+
+    if same_type_ignoring_nullability(target, value):
+        if is_nullable_type(target) or is_nullable_type(value):
+            return true
+        end
     end
 
     if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)): 
@@ -200,21 +520,34 @@ func can_convert_either_way(left: @TypeInfo, right: @TypeInfo): bool
     return can_implicitly_convert(left, right) or can_implicitly_convert(right, left)
 end
 
+func force_string_literal_lowering(expr: @AST): void
+    if expr != null and expr.kind == AST_STRING_LIT:
+        expr.data._string.lower_kind = STRING_LOWER_STRING
+    end
+end
+
 func allow_string_literal_for_target(expr: @AST, expected: @TypeInfo): bool
     if expr == null or expr.kind != AST_STRING_LIT:
         return false
     end
 
-    if is_cstr_type(expected):
+    lowered_target: @TypeInfo = new TypeInfo
+    copy_type(lowered_target, expected)
+    lowered_target.is_nullable = false
+
+    if is_cstr_type(lowered_target):
         expr.data._string.lower_kind = STRING_LOWER_CSTR
+        prune lowered_target
         return true
     end
 
-    if is_string_type(expected):
+    if is_string_type(lowered_target):
         expr.data._string.lower_kind = STRING_LOWER_STRING
+        prune lowered_target
         return true
     end
 
+    prune lowered_target
     return false
 end
 
@@ -275,9 +608,12 @@ func set_plain_type(out: @TypeInfo, base: int): void
     out.pointer_depth = 0
     out.array_size = 0
     out.arr_size_expr = null
+    out.is_nullable = false
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
+    out.is_union = false
+    out.union_count = 0
 end
 
 func set_cstr_type(out: @TypeInfo): void
@@ -285,9 +621,25 @@ func set_cstr_type(out: @TypeInfo): void
     out.pointer_depth = 1
     out.array_size = 0
     out.arr_size_expr = null
+    out.is_nullable = false
     out.name_start = 0
     out.name_length = 0
     out.name_src = null
+    out.is_union = false
+    out.union_count = 0
+end
+
+func set_null_type(out: @TypeInfo): void
+    out.base = TOKEN_VOID
+    out.pointer_depth = 1
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.is_nullable = false
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+    out.is_union = false
+    out.union_count = 0
 end
 
 func is_comparison_op(kind: int): bool
@@ -332,14 +684,188 @@ func can_pass_arg(expected: @TypeInfo, actual: @TypeInfo): bool
     return false
 end
 
-
-func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
-    if is_null_type(expected) and is_pointer_like_type(actual):
-        return true
+func type_atom_matches_union_info(atom: @TypeAtom, info: @TypeInfo): bool
+    if info.is_union:
+        return false
     end
 
-    if is_null_type(actual) and is_pointer_like_type(expected):
-        return true
+    if atom.base != info.base:
+        return false
+    end
+
+    if atom.pointer_depth != info.pointer_depth:
+        return false
+    end
+
+    if atom.array_size != info.array_size:
+        return false
+    end
+
+    if atom.is_nullable != info.is_nullable:
+        return false
+    end
+
+    if atom.base == TOKEN_IDENTIFIER:
+        return same_name(atom.name_src, atom.name_start, atom.name_length, info.name_src, info.name_start, info.name_length)
+    end
+    
+    return true
+end
+
+func find_union_member_index(union_type: @TypeInfo, target: @TypeInfo): int
+    if not union_type.is_union:
+        return 0
+    end
+
+    i: int = 0
+    while i < union_type.union_count:
+        if type_atom_matches_union_info(union_type.union_members + i, target):
+            return i + 1
+        end
+        i = i + 1
+    end
+
+    return 0
+end
+
+func push_union_narrow(env: @TypeEnv, src: @char, expr: @AST, target: @TypeInfo, union_type: @TypeInfo, member_index: int): void
+    if env.narrow_count >= 2048:
+        return
+    end
+
+    if expr == null or not is_narrowable_expr(expr):
+        return
+    end
+
+    info: @NarrowInfo = env.narrowings + env.narrow_count
+    info.src = src
+    info.name_start = 0
+    info.name_length = 0
+    info.expr = expr
+
+    copy_type(&info.narrowed_type, target)
+    copy_type(&info.union_source_type, union_type)
+
+    info.kind = NARROW_UNION_MEMBER
+    info.union_member_index = member_index
+
+    env.narrow_count = env.narrow_count + 1
+end
+
+func lookup_union_narrow_index(env: @TypeEnv, src: @char, expr: @AST, target: @TypeInfo, union_type: @TypeInfo): int
+    if expr == null or not is_narrowable_expr(expr):
+        return 0
+    end
+
+    i: int = env.narrow_count
+    while i > 0:
+        i = i - 1
+
+        info: @NarrowInfo = env.narrowings + i
+        if info.kind == NARROW_UNION_MEMBER and info.src == src and info.expr != null and same_narrow_expr(src, info.expr, expr):
+            if types_match(&info.narrowed_type, target) and types_match(&info.union_source_type, union_type):
+                return info.union_member_index
+            end
+        end
+    end
+
+    return 0
+end
+
+func union_atom_exact_match(a: @TypeAtom, b: @TypeAtom): bool
+    if a.base != b.base:
+        return false
+    end
+
+    if a.pointer_depth != b.pointer_depth:
+        return false
+    end
+
+    if a.array_size != b.array_size:
+        return false
+    end
+
+    if a.is_nullable != b.is_nullable:
+        return false
+    end
+
+    if a.base == TOKEN_IDENTIFIER:
+        return same_name(a.name_src, a.name_start, a.name_length, b.name_src, b.name_start, b.name_length)
+    end
+
+    return true
+end
+
+func union_types_exact_match(expected: @TypeInfo, actual: @TypeInfo): bool
+    if not expected.is_union or not actual.is_union:
+        return false
+    end
+
+    if expected.union_count != actual.union_count:
+        return false
+    end
+
+    i: int = 0
+    while i < expected.union_count:
+        if not union_atom_exact_match(expected.union_members + i, actual.union_members + i):
+            return false
+        end
+
+        i = i + 1
+    end
+
+    return true
+end
+
+func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
+    if expected.is_union and actual.is_union:
+        return union_types_exact_match(expected, actual)
+    end
+
+    if expected.is_union:
+        i: int = 0
+        while i < expected.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, expected.union_members + i)
+
+            if actual.is_union:
+                if types_match(member, actual):
+                    prune member
+                    return true
+                end
+            else if types_match(member, actual):
+                prune member
+                return true
+            end
+
+            prune member
+            i = i + 1
+        end
+        return false
+    end
+
+    if actual.is_union:
+        return false
+    end
+
+    if is_null_type(expected):
+        return can_accept_null(actual)
+    end
+
+    if is_null_type(actual):
+        return can_accept_null(expected)
+    end
+
+    if is_nullable_type(expected) or is_nullable_type(actual):
+        if not same_type_ignoring_nullability(expected, actual):
+            return false
+        end
+
+        if is_nullable_type(expected):
+            return true
+        end
+
+        return false
     end
 
     if is_decimal_type(expected) and is_decimal_type(actual):
@@ -355,10 +881,7 @@ func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
     end
 
     if expected.base == TOKEN_IDENTIFIER:
-        if same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length):
-            return true
-        end
-        return false
+        return same_name(expected.name_src, expected.name_start, expected.name_length, actual.name_src, actual.name_start, actual.name_length)
     end
 
     return true
@@ -386,6 +909,7 @@ forward func register_union(env: @TypeEnv, ast: @AST, src: @char): void
 forward func register_func(env: @TypeEnv, ast: @AST, src: @char): void
 forward func register_var(env: @TypeEnv, ast: @AST, src: @char): void
 forward func register_params(env: @TypeEnv, ast: @AST, src: @char): void
+forward func register_type_alias(env: @TypeEnv, ast: @AST, src: @char): void
 
 forward func walk_statement_list(env: @TypeEnv, list: @AST, src: @char): void
 forward func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
@@ -393,11 +917,13 @@ forward func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 forward func lookup_struct(env: @TypeEnv, src: @char, start: int, length: int): @StructInfo
 forward func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, length: int): @FieldInfo
 forward func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
+forward func lookup_alias(env: @TypeEnv, src: @char, start: int, length: int): @AliasInfo
 
 forward func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
 forward func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+forward func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
 
 forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
@@ -415,6 +941,9 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
         else if curr.kind == AST_FUNC_DEF:
             register_func(env, curr, src)
 
+        else if curr.kind == AST_TYPE_ALIAS:
+            register_type_alias(env, curr, src)
+
         else if curr.kind == AST_PROP and curr.data._prop.decl != null:
             decl: @AST = curr.data._prop.decl
 
@@ -426,6 +955,10 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
 
             else if decl.kind == AST_UNION_DEF:
                 register_union(env, decl, src)
+
+            else if decl.kind == AST_TYPE_ALIAS:
+                register_type_alias(env, decl, src)
+
             end
 
         else if curr.kind == AST_VAR_DECL:
@@ -455,7 +988,8 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
-        copy_type(&finfo.type, &field.data._struct_field.type)
+        copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
+        resolve_type_alias(env, &finfo.typeInfo, field)
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
         finfo.is_readonly = field.data._struct_field.is_readonly
@@ -485,7 +1019,11 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
-        copy_type(&finfo.type, &field.data._struct_field.type)
+        copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
+        resolve_type_alias(env, &finfo.typeInfo, field)
+        if finfo.typeInfo.is_union:
+            type_error(env, field, "semantic union fields are not lowered yet")
+        end
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
         finfo.is_readonly = field.data._struct_field.is_readonly
@@ -509,7 +1047,7 @@ func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     info.name_length = ast.data._func_def.name_length
     info.params = ast.data._func_def.params
     copy_type(&info.return_type, &ast.data._func_def.return_type)
-
+    resolve_type_alias(env, &info.return_type, ast)
     env.func_count = env.func_count + 1
 end
 
@@ -527,7 +1065,9 @@ func register_var(env: @TypeEnv, ast: @AST, src: @char): void
     info.src = src
     info.name_start = ast.data._var_decl.name_start
     info.name_length = ast.data._var_decl.name_length
-    copy_type(&info.type, &ast.data._var_decl.type)
+    copy_type(&info.typeInfo, &ast.data._var_decl.typeInfo)
+    resolve_type_alias(env, &info.typeInfo, ast)
+    info.binding_kind = VAR_BINDING_BASE
 
     env.var_count = env.var_count + 1
 end
@@ -545,11 +1085,29 @@ func register_params(env: @TypeEnv, fnc: @AST, src: @char): void
         info.src = src
         info.name_start = param.data._func_params.name_start
         info.name_length = param.data._func_params.name_length
-        copy_type(&info.type, &param.data._func_params.type)
+        copy_type(&info.typeInfo, &param.data._func_params.typeInfo)
+        info.binding_kind = VAR_BINDING_BASE
+        resolve_type_alias(env, &info.typeInfo, param)
+        info.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
         param = param.next
     end
+end
+
+func register_type_alias(env: @TypeEnv, ast: @AST, src: @char): void
+    if env.alias_count >= 512:
+        type_error(env, ast, "type environment alias table overflow")
+        return
+    end
+
+    info: @AliasInfo = env.aliases + env.alias_count
+    info.src = src
+    info.name_start = ast.data._type_alias.name_start
+    info.name_length = ast.data._type_alias.name_length
+    copy_type(&info.target, &ast.data._type_alias.target)
+
+    env.alias_count = env.alias_count + 1
 end
 
 
@@ -559,6 +1117,7 @@ forward func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int,
 forward func lookup_func_return_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
 forward func lookup_func_info(env: @TypeEnv, src: @char, start: int, length: int): @FuncInfo
 forward func lookup_func_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int): @FuncInfo
+
 forward func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): int
 
 func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
@@ -623,6 +1182,395 @@ func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @cha
     return true
 end
 
+func push_narrowed_binding(env: @TypeEnv, src: @char, start: int, length: int, narrowed: @TypeInfo): void
+    if env.var_count >= 2048:
+        return
+    end
+
+    info: @VarInfo = env.vars + env.var_count
+    info.src = src
+    info.name_start = start
+    info.name_length = length
+    copy_type(&info.typeInfo, narrowed)
+    info.binding_kind = VAR_BINDING_NARROW
+
+    env.var_count = env.var_count + 1
+end
+
+func push_null_binding(env: @TypeEnv, src: @char, start: int, length: int): void
+    null_type: @TypeInfo = new TypeInfo
+    set_null_type(null_type)
+    push_narrowed_binding(env, src, start, length, null_type)
+    prune null_type
+end
+
+func push_visible_binding(env: @TypeEnv, src: @char, start: int, length: int, visible: @TypeInfo): void
+    if env.var_count >= 2048:
+        return
+    end
+
+    info: @VarInfo = env.vars + env.var_count
+    info.src = src
+    info.name_start = start
+    info.name_length = length
+    copy_type(&info.typeInfo, visible)
+    info.binding_kind = VAR_BINDING_BASE
+
+    env.var_count = env.var_count + 1
+end
+
+func find_single_remaining_union_member(union_type: @TypeInfo, excluded_index: int): int
+    remaining_index: int = 0
+    i: int = 1
+    while i <= union_type.union_count:
+        if i != excluded_index:
+            if remaining_index != 0:
+                return 0
+            end
+
+            remaining_index = i
+        end
+
+        i = i + 1
+    end
+
+    return remaining_index
+end
+
+func build_nonnull_variant(src_type: @TypeInfo, out: @TypeInfo): bool
+    if src_type.is_union:
+        clear_union_type(out)
+
+        i: int = 0
+        while i < src_type.union_count:
+            atom: @TypeAtom = src_type.union_members + i
+            if not type_atom_is_null(atom):
+                copy_type_atom(out.union_members + out.union_count, atom)
+                out.union_count = out.union_count + 1
+            end
+            i = i + 1
+        end
+
+        if out.union_count == 0:
+            return false
+        end
+
+        if out.union_count == 1:
+            tmp: @TypeInfo = new TypeInfo
+            copy_atom_to_type(tmp, out.union_members + 0)
+            copy_type(out, tmp)
+            prune tmp
+        end
+
+        return true
+    end
+
+    if src_type.is_nullable:
+        copy_type(out, src_type)
+        out.is_nullable = false
+        return true
+    end
+
+    return false
+end
+
+func apply_condition_true_narrow(env: @TypeEnv, condition: @AST, src: @char): void
+    if condition == null:
+        return
+    end
+
+    if condition.kind == AST_TYPE_TEST:
+        if condition.data._type_test.lower_kind == TYPE_TEST_NONNULL and condition.data._type_test.value != null:
+            if condition.data._type_test.value.kind == AST_VAR_REF:
+                narrowed: @TypeInfo = new TypeInfo
+                copy_type(narrowed, &condition.data._type_test.typeInfo)
+                push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
+                prune narrowed
+            end
+
+        else if condition.data._type_test.lower_kind == TYPE_TEST_UNION_TAG and condition.data._type_test.value != null and is_narrowable_expr(condition.data._type_test.value):
+            narrowed: @TypeInfo = new TypeInfo
+            source_union: @TypeInfo = new TypeInfo
+
+            copy_type(narrowed, &condition.data._type_test.typeInfo)
+            copy_type(source_union, &condition.data._type_test.value_type)
+
+            if condition.data._type_test.value.kind == AST_VAR_REF:
+                // I'd love to have this as a multiline parameter list... but alas! Not supported :p
+                push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
+            end
+
+            push_union_narrow(env, src, condition.data._type_test.value, narrowed, source_union, condition.data._type_test.union_member_index)
+
+            prune narrowed
+            prune source_union
+        end
+        return
+    end
+
+    if condition.kind != AST_BINARY_OP:
+        return
+    end
+
+    if condition.data._binary.op != TOKEN_NEQ and condition.data._binary.op != TOKEN_COMP:
+        return
+    end
+
+    ref_expr: @AST = null
+
+    if condition.data._binary.left != null and is_narrowable_expr(condition.data._binary.left) and condition.data._binary.right != null and condition.data._binary.right.kind == AST_NULL:
+        ref_expr = condition.data._binary.left
+    else if condition.data._binary.right != null and is_narrowable_expr(condition.data._binary.right) and condition.data._binary.left != null and condition.data._binary.left.kind == AST_NULL:
+        ref_expr = condition.data._binary.right
+    end
+
+    if ref_expr == null:
+        return
+    end
+
+    current: @TypeInfo = new TypeInfo
+    if resolve_expr(env, ref_expr, current, src):
+        if not resolve_type_alias(env, current, ref_expr):
+            prune current
+            return
+        end
+
+        if condition.data._binary.op == TOKEN_NEQ:
+            if current.is_union:
+                narrowed: @TypeInfo = new TypeInfo
+                if build_nonnull_variant(current, narrowed):
+                    if ref_expr.kind == AST_VAR_REF:
+                        push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, narrowed)
+                    end
+
+                    null_index: int = union_has_null_member(current)
+                    remaining_index: int = 0
+
+                    if null_index != 0:
+                        remaining_index = find_single_remaining_union_member(current, null_index)
+                    end
+
+                    if remaining_index != 0:
+                        push_union_narrow(env, src, ref_expr, narrowed, current, remaining_index)
+                    end
+                end
+                prune narrowed
+            end
+        end
+    end
+
+    prune current
+end
+
+func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): void
+    if condition == null:
+        return
+    end
+
+    if condition.kind == AST_TYPE_TEST:
+        if condition.data._type_test.lower_kind == TYPE_TEST_NONNULL:
+            if condition.data._type_test.value != null and condition.data._type_test.value.kind == AST_VAR_REF:
+                push_null_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length)
+            end
+
+        else if condition.data._type_test.lower_kind == TYPE_TEST_UNION_TAG and condition.data._type_test.value != null and condition.data._type_test.value.kind == AST_VAR_REF:
+            source_union: @TypeInfo = new TypeInfo
+            copy_type(source_union, &condition.data._type_test.value_type)
+
+            remaining_index: int = find_single_remaining_union_member(source_union, condition.data._type_test.union_member_index)
+            if remaining_index != 0:
+                narrowed: @TypeInfo = new TypeInfo
+                copy_atom_to_type(narrowed, source_union.union_members + (remaining_index - 1))
+
+                if condition.data._type_test.value.kind == AST_VAR_REF:
+                    push_narrowed_binding(env, src, condition.data._type_test.value.data._var_ref.name_start, condition.data._type_test.value.data._var_ref.name_length, narrowed)
+                end
+
+                push_union_narrow(env, src, condition.data._type_test.value, narrowed, source_union, remaining_index)
+
+                prune narrowed
+            end
+
+            prune source_union
+        end
+        return
+    end
+
+    if condition.kind != AST_BINARY_OP:
+        return
+    end
+
+    ref_expr: @AST = null
+
+    if condition.data._binary.left != null and is_narrowable_expr(condition.data._binary.left) and condition.data._binary.right != null and condition.data._binary.right.kind == AST_NULL:
+        ref_expr = condition.data._binary.left
+    else if condition.data._binary.right != null and is_narrowable_expr(condition.data._binary.right) and condition.data._binary.left != null and condition.data._binary.left.kind == AST_NULL:
+        ref_expr = condition.data._binary.right
+    end
+
+    if ref_expr == null:
+        return
+    end
+
+    current: @TypeInfo = new TypeInfo
+    if resolve_expr(env, ref_expr, current, src):
+        if not resolve_type_alias(env, current, ref_expr):
+            prune current
+            return
+        end
+
+        if condition.data._binary.op == TOKEN_NEQ:
+            if current.is_union:
+                if union_has_null_member(current) != 0:
+                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                end
+
+            else if is_nullable_type(current):
+                if ref_expr.kind == AST_VAR_REF:
+                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                end
+            end
+
+        else if condition.data._binary.op == TOKEN_COMP:
+            if current.is_union:
+                narrowed: @TypeInfo = new TypeInfo
+                if build_nonnull_variant(current, narrowed):
+                    if ref_expr.kind == AST_VAR_REF:
+                        push_narrowed_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, narrowed)
+                    end
+
+                    null_index: int = union_has_null_member(current)
+                    remaining_index: int = 0
+
+                    if null_index != 0:
+                        remaining_index = find_single_remaining_union_member(current, null_index)
+                    end
+
+                    if remaining_index != 0:
+                        push_union_narrow(env, src, ref_expr, narrowed, current, remaining_index)
+                    end
+                end
+                prune narrowed
+            end
+        end
+    end
+
+    prune current
+end
+
+forward func statement_definitely_returns(ast: @AST): bool
+
+func statement_list_definitely_returns(list: @AST): bool
+    curr: @AST = list
+    while curr != null:
+        if statement_definitely_returns(curr):
+            return true
+        end
+        curr = curr.next
+    end
+
+    return false
+end
+
+func statement_definitely_returns(ast: @AST): bool
+    if ast == null:
+        return false
+    end
+
+    if ast.kind == AST_FLOW_CONTROL and ast.data._flow_ctrl.base != null and ast.data._flow_ctrl.base.kind == TOKEN_RETURN:
+        return true
+    end
+
+    if ast.kind == AST_IF:
+        return statement_list_definitely_returns(ast.data._if_condition.body) and statement_list_definitely_returns(ast.data._if_condition.else_branch)
+    end
+
+    return false
+end
+
+func apply_guard_clause_narrow(env: @TypeEnv, ast: @AST, src: @char): void
+    then_returns: bool = statement_list_definitely_returns(ast.data._if_condition.body)
+    else_returns: bool = statement_list_definitely_returns(ast.data._if_condition.else_branch)
+
+    if then_returns and not else_returns:
+        apply_condition_false_narrow(env, ast.data._if_condition.condition, src)
+    else if else_returns and not then_returns:
+        apply_condition_true_narrow(env, ast.data._if_condition.condition, src)
+    end
+end
+
+func try_lower_union_null_compare(expr: @AST, left_type: @TypeInfo, right_type: @TypeInfo): bool
+    expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE
+    expr.data._binary.null_union_member_index = 0
+
+    if expr.data._binary.op != TOKEN_COMP and expr.data._binary.op != TOKEN_NEQ:
+        return false
+    end
+
+    if left_type.is_union and is_null_type(right_type):
+        member_index: int = union_has_null_member(left_type)
+        if member_index != 0:
+            expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG
+            expr.data._binary.null_union_member_index = member_index
+            return true
+        end
+    end
+
+    if right_type.is_union and is_null_type(left_type):
+        member_index: int = union_has_null_member(right_type)
+        if member_index != 0:
+            expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG
+            expr.data._binary.null_union_member_index = member_index
+            return true
+        end
+    end
+
+    return false
+end
+
+forward func lookup_storage_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): bool
+
+func try_lower_storage_union_null_compare(env: @TypeEnv, expr: @AST, src: @char): bool
+    if expr == null or expr.kind != AST_BINARY_OP:
+        return false
+    end
+
+    if expr.data._binary.op != TOKEN_COMP and expr.data._binary.op != TOKEN_NEQ:
+        return false
+    end
+
+    ref_expr: @AST = null
+
+    if expr.data._binary.left != null and expr.data._binary.left.kind == AST_VAR_REF and expr.data._binary.right != null and expr.data._binary.right.kind == AST_NULL:
+        ref_expr = expr.data._binary.left
+    else if expr.data._binary.right != null and expr.data._binary.right.kind == AST_VAR_REF and expr.data._binary.left != null and expr.data._binary.left.kind == AST_NULL:
+        ref_expr = expr.data._binary.right
+    end
+
+    if ref_expr == null:
+        return false
+    end
+
+    storage_type: @TypeInfo = new TypeInfo
+    if not lookup_storage_var_type(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length, storage_type):
+        prune storage_type
+        return false
+    end
+
+    if storage_type.is_union:
+        member_index: int = union_has_null_member(storage_type)
+        if member_index != 0:
+            expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG
+            expr.data._binary.null_union_member_index = member_index
+            prune storage_type
+            return true
+        end
+    end
+        
+    prune storage_type
+    return false
+end
+
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     if expr == null:
         return 0
@@ -632,7 +1580,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return lookup_var_type(env, src, expr.data._var_ref.name_start, expr.data._var_ref.name_length, out)
     
     else if expr.kind == AST_NEW:
-        copy_type(out, &expr.data._new_alloc.type)
+        copy_type(out, &expr.data._new_alloc.typeInfo)
+
+        if not resolve_type_alias(env, out, expr):
+            return 0
+        end
+
+        out.is_nullable = false
         out.pointer_depth = out.pointer_depth + 1
         return 1
     
@@ -649,6 +1603,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
 
         out.pointer_depth = out.pointer_depth - 1
+        out.is_nullable = false
         return 1
 
     else if expr.kind == AST_GET_ADDR:
@@ -657,6 +1612,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
 
         out.pointer_depth = out.pointer_depth + 1
+        out.is_nullable = false
         return 1
 
     else if expr.kind == AST_DOT_ACCESS:
@@ -685,8 +1641,96 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     else if expr.kind == AST_ALIAS_CALL:
         return resolve_alias_call(env, expr, out, src)
 
+    else if expr.kind == AST_TYPE_TEST:
+        value_type: @TypeInfo = new TypeInfo
+        target_type: @TypeInfo = new TypeInfo
+
+        if not resolve_expr(env, expr.data._type_test.value, value_type, src):
+            prune value_type
+            prune target_type
+            return 0
+        end
+
+        if not resolve_type_alias(env, value_type, expr.data._type_test.value):
+            prune value_type
+            prune target_type
+            return 0
+        end
+
+        copy_type(target_type, &expr.data._type_test.typeInfo)
+
+        if not resolve_type_alias(env, target_type, expr):
+            prune value_type
+            prune target_type
+            return 0
+        end
+
+        if target_type.is_union:
+            type_error(env, expr, "`is` target must currently be a concrete non-union type")
+            prune value_type
+            prune target_type
+            return 0
+        end
+
+        copy_type(&expr.data._type_test.value_type, value_type)
+        expr.data._type_test.lower_kind = TYPE_TEST_UNKNOWN
+
+        copy_type(&expr.data._type_test.typeInfo, target_type)
+        copy_type(&expr.data._type_test.value_type, value_type)
+        expr.data._type_test.lower_kind = TYPE_TEST_UNKNOWN
+        expr.data._type_test.union_member_index = 0
+
+        if value_type.is_union:
+            member_index: int = find_union_member_index(value_type, target_type)
+            if member_index == 0:
+                type_error(env, expr, "`is` target is not a member of this semantic union")
+                prune value_type
+                prune target_type
+                return 0
+            end
+
+            expr.data._type_test.lower_kind = TYPE_TEST_UNION_TAG
+            expr.data._type_test.union_member_index = member_index
+            set_plain_type(out, TOKEN_BOOL)
+
+            prune value_type
+            prune target_type
+            return 1
+        end
+
+        if same_type_ignoring_nullability(value_type, target_type):
+            if is_nullable_type(value_type) and not is_nullable_type(target_type):
+                expr.data._type_test.lower_kind = TYPE_TEST_NONNULL
+            else if types_match(target_type, value_type) or (is_nullable_type(target_type) and not is_nullable_type(value_type)):
+                expr.data._type_test.lower_kind = TYPE_TEST_STATIC_TRUE
+            else:
+                type_error(env, expr, "`is` check is not meaningful for these types")
+                prune value_type
+                prune target_type
+                return 0
+            end
+        else if types_match(target_type, value_type):
+            expr.data._type_test.lower_kind = TYPE_TEST_STATIC_TRUE
+        else:
+            type_error(env, expr, "`is` check is not meaningful for these types")
+            prune value_type
+            prune target_type
+            return 0
+        end
+
+        set_plain_type(out, TOKEN_BOOL)
+
+        prune value_type
+        prune target_type
+        return 1
+
     else if expr.kind == AST_SUBSCRIPT:
         if !resolve_expr(env, expr.data._subscript.array, out, src):
+            return 0
+        end
+
+        if out.is_union:
+            type_error(env, expr, "semantic union requires explicit cast before indexing")
             return 0
         end
 
@@ -700,6 +1744,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         prune idx_type
 
         if is_string_type(out):
+            force_string_literal_lowering(expr.data._subscript.array)
             expr.data._subscript.is_string = 1
             set_plain_type(out, TOKEN_CHAR)
             return 1
@@ -708,11 +1753,13 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         if out.array_size != 0:
             out.array_size = 0
             out.arr_size_expr = null
+            out.is_nullable = false
             return 1
         end
 
         if out.pointer_depth > 0:
             out.pointer_depth = out.pointer_depth - 1
+            out.is_nullable = false
             return 1
         end
 
@@ -735,6 +1782,38 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if not resolve_type_alias(env, left_type, expr.data._binary.left):
+            prune left_type
+            prune right_type
+            return 0
+        end
+
+        if not resolve_type_alias(env, right_type, expr.data._binary.right):
+            prune left_type
+            prune right_type
+            return 0
+        end
+
+        expr.data._binary.is_string_compare = 0
+        expr.data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE
+        expr.data._binary.null_union_member_index = 0
+
+        if is_comparison_op(expr.data._binary.op):
+            if try_lower_union_null_compare(expr, left_type, right_type) or try_lower_storage_union_null_compare(env, expr, src):
+                set_plain_type(out, TOKEN_BOOL)
+                prune left_type
+                prune right_type
+                return 1
+            end
+        end
+
+        if left_type.is_union or right_type.is_union:
+            type_error(env, expr, "semantic union requires explicit cast before operator use")
+            prune left_type
+            prune right_type
+            return 0
+        end
+
         if is_logical_op(expr.data._binary.op):
             if !is_condition_type(left_type) or !is_condition_type(right_type):
                 type_error(env, expr, "logical operators require condition-compatible operands")
@@ -743,10 +1822,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 return 0
             end
 
-            out.base = TOKEN_BOOL
-            out.pointer_depth = 0
-            out.array_size = 0
-            out.arr_size_expr = null
+            set_plain_type(out, TOKEN_BOOL)
 
         else if is_comparison_op(expr.data._binary.op):
             expr.data._binary.is_string_compare = 0
@@ -754,6 +1830,9 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             if is_string_type(left_type) or is_string_type(right_type):
                 if is_string_type(left_type) and is_string_type(right_type):
                     if expr.data._binary.op == TOKEN_COMP or expr.data._binary.op == TOKEN_NEQ:
+                        force_string_literal_lowering(expr.data._binary.left)
+                        force_string_literal_lowering(expr.data._binary.right)
+
                         set_plain_type(out, TOKEN_BOOL)
                         expr.data._binary.is_string_compare = 1
                     else:
@@ -777,10 +1856,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 set_plain_type(out, TOKEN_BOOL)
             end
 
-            out.base = TOKEN_BOOL
-            out.pointer_depth = 0
-            out.array_size = 0
-            out.arr_size_expr = null
+            set_plain_type(out, TOKEN_BOOL)
 
         else:
             if is_bool_type(left_type) or is_bool_type(right_type):
@@ -844,6 +1920,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if operand_type.is_union:
+            type_error(env, expr, "semantic union requires explicit cast before unary use")
+            prune operand_type
+            return 0
+        end
+
         if !is_condition_type(operand_type):
             type_error(env, expr, "not requires a condition-compatible operand")
             prune operand_type
@@ -852,16 +1934,19 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
         prune operand_type
 
-        out.base = TOKEN_BOOL
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_BOOL)
         return 1
 
     else if expr.kind == AST_UNARY_NEG:
         operand_type: @TypeInfo = new TypeInfo
 
         if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+            prune operand_type
+            return 0
+        end
+
+        if operand_type.is_union:
+            type_error(env, expr, "semantic union requires explicit type before unary use")
             prune operand_type
             return 0
         end
@@ -878,80 +1963,122 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
     else if expr.kind == AST_CAST:
         value_type: @TypeInfo = new TypeInfo
+        target_type: @TypeInfo = new TypeInfo
+
+        copy_type(target_type, &expr.data._cast.typeInfo)
+
+        if not resolve_type_alias(env, target_type, expr):
+            prune value_type
+            prune target_type
+            return 0
+        end
+
         if not resolve_expr(env, expr.data._cast.value, value_type, src):
             prune value_type
+            prune target_type
             return 0
         end
 
-        if not can_explicitly_convert(&expr.data._cast.type, value_type):
-            type_error(env, expr, "cast is not valid for these types")
+        if not resolve_type_alias(env, value_type, expr.data._cast.value):
             prune value_type
+            prune target_type
             return 0
         end
 
-        if not can_explicitly_convert(&expr.data._cast.type, value_type):
+        copy_type(&expr.data._cast.typeInfo, target_type)
+        expr.data._cast.lower_kind = CAST_LOWER_NONE
+        expr.data._cast.union_member_index = 0
+
+        if expr.data._cast.value != null and is_narrowable_expr(expr.data._cast.value):
+            source_union: @TypeInfo = new TypeInfo
+            has_union_source: bool = false
+
+            if value_type.is_union:
+                copy_type(source_union, value_type)
+                has_union_source = true
+            else if expr.data._cast.value.kind == AST_VAR_REF and lookup_storage_var_type(env, src, expr.data._cast.value.data._var_ref.name_start, expr.data._cast.value.data._var_ref.name_length, source_union) and source_union.is_union:
+                has_union_source = true
+            end
+
+            if has_union_source:
+                member_index: int = lookup_union_narrow_index(env, src, expr.data._cast.value, target_type, source_union)
+
+                if member_index != 0:
+                    copy_type(&expr.data._cast.value_type, source_union)
+                    expr.data._cast.lower_kind = CAST_LOWER_UNION_EXTRACT
+                    expr.data._cast.union_member_index = member_index
+                    copy_type(out, target_type)
+
+                    prune source_union
+                    prune value_type
+                    prune target_type
+                    return 1
+                end
+            end
+
+            prune source_union
+        end
+
+        if target_type.is_union and not value_type.is_union:
+            member_index: int = find_union_member_index(target_type, value_type)
+            if member_index != 0:
+                copy_type(&expr.data._cast.value_type, value_type)
+                expr.data._cast.lower_kind = CAST_LOWER_UNION_PACK
+                expr.data._cast.union_member_index = member_index
+                copy_type(out, target_type)
+
+                prune value_type
+                prune target_type
+                return 1
+            end
+        end
+
+        if not can_explicitly_convert(target_type, value_type):
             type_error(env, expr, "cast is not valid for these types")
             prune value_type
+            prune target_type
             return 0
         end
-        
+
+        if expr.data._cast.value.kind == AST_STRING_LIT:
+            if is_string_type(target_type) or is_cstr_type(target_type):
+                force_string_literal_lowering(expr.data._cast.value)
+            end
+        end
+
         copy_type(&expr.data._cast.value_type, value_type)
+        copy_type(out, target_type)
+
         prune value_type
-        copy_type(out, &expr.data._cast.type)
+        prune target_type
         return 1
 
     else if expr.kind == AST_SIZEOF:
-        out.base = TOKEN_INT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_INT)
         return 1
 
     else if expr.kind == AST_LITERAL:
-        out.base = TOKEN_INT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_INT)
         return 1
 
     else if expr.kind == AST_FLOAT_LIT:
-        out.base = TOKEN_FLOAT
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_FLOAT)
         return 1
 
     else if expr.kind == AST_BOOL_LIT:
-        out.base = TOKEN_BOOL
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_BOOL)
         return 1
 
     else if expr.kind == AST_CHAR_LIT:
-        out.base = TOKEN_CHAR
-        out.pointer_depth = 0
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_plain_type(out, TOKEN_CHAR)
         return 1
 
     else if expr.kind == AST_STRING_LIT:
-        // STRING SETTING— UNNUSED UNTIL COMPILER IS UPDATED
         set_plain_type(out, TOKEN_STRING)
-        // out.base = TOKEN_CHAR
-        // out.pointer_depth = 1
-        // out.array_size = 0
-        // out.arr_size_expr = null
-        // out.name_start = 0
-        // out.name_length = 0
-        // out.name_src = null
         return 1
 
     else if expr.kind == AST_NULL:
-        out.base = TOKEN_VOID
-        out.pointer_depth = 1
-        out.array_size = 0
-        out.arr_size_expr = null
+        set_null_type(out)
         return 1
     end
 
@@ -967,7 +2094,15 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 0
     end
 
+    if object_type.is_union:
+        type_error(env, expr, "semantic union requires explicit cast before field access")
+        prune object_type
+        return 0
+    end
+
     if object_type.base == TOKEN_STRING:
+        force_string_literal_lowering(expr.data._dot_access.object)
+
         if object_type.pointer_depth == 0:
             expr.data._dot_access.access_kind = ACCESS_DOT
         else if object_type.pointer_depth == 1:
@@ -1043,8 +2178,15 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         end
     end
 
-    copy_type(out, &field.type)
-    copy_type(&expr.data._dot_access.resolved_type, &field.type)
+    copy_type(out, &field.typeInfo)
+
+    if not resolve_type_alias(env, out, expr):
+        expr.data._dot_access.access_kind = ACCESS_UNKNOWN
+        prune object_type
+        return 0
+    end
+
+    copy_type(&expr.data._dot_access.resolved_type, out)
     prune object_type
     return 1
 end
@@ -1082,21 +2224,134 @@ func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): 
     return 1
 end
 
+func resolve_type_alias(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST): bool
+    return resolve_type_alias_depth(env, typeInfo, ast, 0)
+end
+
+func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
+    if typeInfo.is_union:
+        flattened: @TypeInfo = new TypeInfo
+        clear_union_type(flattened)
+
+        i: int = 0
+        while i < typeInfo.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, typeInfo.union_members + i)
+
+            if not resolve_type_alias_depth(env, member, ast, depth + 1):
+                prune member
+                prune flattened
+                return false
+            end
+
+            if member.is_union:
+                j: int = 0
+                while j < member.union_count:
+                    if flattened.union_count >= 8:
+                        type_error(env, ast, "semantic union support at most 8 members")
+                        prune member
+                        prune flattened
+                        return false
+                    end
+
+                    copy_type_atom(flattened.union_members + flattened.union_count, member.union_members + j)
+                    flattened.union_count = flattened.union_count + 1
+                    j = j + 1
+                end
+            else:
+                if flattened.union_count >= 8:
+                    type_error(env, ast, "semantic union supports at most 8 members")
+                    prune member
+                    prune flattened
+                    return false
+                end
+
+                copy_type_to_atom(flattened.union_members + flattened.union_count, member)
+                flattened.union_count = flattened.union_count + 1
+            end
+
+            prune member
+            i = i + 1
+        end
+
+        copy_type(typeInfo, flattened)
+        prune flattened
+        return true
+    end
+
+    if typeInfo.base != TOKEN_IDENTIFIER:
+        return validate_nullable_type(env, ast, typeInfo)
+    end
+
+    alias: @AliasInfo = lookup_alias(env, typeInfo.name_src, typeInfo.name_start, typeInfo.name_length)
+    if alias == null:
+        return validate_nullable_type(env, ast, typeInfo)
+    end
+
+    if depth >= 32:
+        type_error(env, ast, "type alias circle or recursion too deep")
+        return false
+    end
+
+    outer_pointer_depth: int = typeInfo.pointer_depth
+    outer_array_size: int = typeInfo.array_size
+    outer_array_expr: @AST = typeInfo.arr_size_expr
+    outer_nullable: bool = typeInfo.is_nullable
+
+    resolved: @TypeInfo = new TypeInfo
+    copy_type(resolved, &alias.target)
+
+    if not resolve_type_alias_depth(env, resolved, ast, depth + 1):
+        prune resolved
+        return false
+    end
+
+    copy_type(typeInfo, resolved)
+    typeInfo.pointer_depth = typeInfo.pointer_depth + outer_pointer_depth
+
+    if outer_array_size != 0 or outer_array_expr != null:
+        typeInfo.array_size = outer_array_size
+        typeInfo.arr_size_expr = outer_array_expr
+    end
+
+    if outer_nullable:
+        typeInfo.is_nullable = true
+    end
+
+    prune resolved
+    return validate_nullable_type(env, ast, typeInfo)
+end
+
 func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast, src)
 
         if ast.data._var_decl.value != null:
             value_type: @TypeInfo = new TypeInfo
+            expected_type: @TypeInfo = new TypeInfo
+            copy_type(expected_type, &ast.data._var_decl.typeInfo)
+
+            if not resolve_type_alias(env, expected_type, ast):
+                prune expected_type
+                prune value_type
+                return
+            end
 
             if resolve_expr(env, ast.data._var_decl.value, value_type, src):
-                if not allow_string_literal_for_target(ast.data._var_decl.value, &ast.data._var_decl.type) and not can_implicitly_convert(&ast.data._var_decl.type, value_type):
+                if not allow_string_literal_for_target(ast.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
                     type_error(env, ast, "variable initializer does not match declared type")
+                    prune expected_type
                     prune value_type
                     return
                 end
             end
 
+            ast.data._var_decl.union_member_index = 0
+            if expected_type.is_union and not value_type.is_union:
+                ast.data._var_decl.union_member_index = find_union_member_index(expected_type, value_type)
+            end
+
+            prune expected_type
             prune value_type
         end
 
@@ -1104,17 +2359,32 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         target_type: @TypeInfo = new TypeInfo
         value_type: @TypeInfo = new TypeInfo
 
-        if !lookup_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
+        if not lookup_storage_var_type(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type):
             type_error(env, ast, "unknown variable in assignment")
             prune target_type
             prune value_type
             return
         end
 
+        copy_type(&ast.data._var_ass.resolved_type, target_type)
+
+        assignment_ok: bool = false
+
         if resolve_expr(env, ast.data._var_ass.value, value_type, src):
             if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
                 type_error(env, ast, "assigned value does not match variable type")
+            else:
+                assignment_ok = true
             end
+        end
+
+        ast.data._var_ass.union_member_index = 0
+        if target_type.is_union and not value_type.is_union:
+            ast.data._var_ass.union_member_index = find_union_member_index(target_type, value_type)
+        end
+
+        if assignment_ok: 
+            push_visible_binding(env, src, ast.data._var_ass.name_start, ast.data._var_ass.name_length, target_type)
         end
 
         prune target_type
@@ -1149,6 +2419,9 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         tmp: @TypeInfo = new TypeInfo
         resolve_expr(env, ast, tmp, src)
         prune tmp
+
+        ast.data._dot_access.union_member_index = 0
+
         if ast.data._dot_access.value != null:
             object_type: @TypeInfo = new TypeInfo
             if resolve_expr(env, ast.data._dot_access.object, object_type, src):
@@ -1167,8 +2440,33 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 end
             end
 
+            target_type: @TypeInfo = new TypeInfo
             value_type: @TypeInfo = new TypeInfo
-            resolve_expr(env, ast.data._dot_access.value, value_type, src)
+            copy_type(target_type, &ast.data._dot_access.resolved_type)
+
+            if not resolve_type_alias(env, target_type, ast):
+                prune target_type
+                prune value_type
+                return
+            end
+
+            copy_type(&ast.data._dot_access.resolved_type, target_type)
+
+            if resolve_expr(env, ast.data._dot_access.value, value_type, src):
+                if not resolve_type_alias(env, value_type, ast.data._dot_access.value):
+                    prune target_type
+                    prune value_type
+                    return
+                end
+
+                if not allow_string_literal_for_target(ast.data._dot_access.value, target_type) and not can_implicitly_convert(target_type, value_type):
+                    type_error(env, ast, "assigned value does not match field type")
+                else if target_type.is_union and not value_type.is_union:
+                    ast.data._dot_access.union_member_index = find_union_member_index(target_type, value_type)
+                end
+            end
+
+            prune target_type
             prune value_type
         end
 
@@ -1182,9 +2480,22 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             end
             prune tmp
         end
-        
+
+        saved_then_var_count: int = env.var_count
+        saved_then_narrow_count: int = env.narrow_count
+        apply_condition_true_narrow(env, ast.data._if_condition.condition, src)
         walk_statement_list(env, ast.data._if_condition.body, src)
+        env.var_count = saved_then_var_count
+        env.narrow_count = saved_then_narrow_count
+
+        apply_guard_clause_narrow(env, ast, src)
+
+        saved_else_var_count: int = env.var_count
+        saved_else_narrow_count: int = env.narrow_count
+        apply_condition_false_narrow(env, ast.data._if_condition.condition, src)
         walk_statement_list(env, ast.data._if_condition.else_branch, src)
+        env.var_count = saved_else_var_count
+        env.narrow_count = saved_else_narrow_count
 
     else if ast.kind == AST_WHILE:
         tmp: @TypeInfo = new TypeInfo
@@ -1208,13 +2519,14 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         loop_var.src = src
         loop_var.name_start = ast.data._for_loop.var_start
         loop_var.name_length = ast.data._for_loop.var_length
-        loop_var.type.base = TOKEN_INT
-        loop_var.type.pointer_depth = 0
-        loop_var.type.array_size = 0
-        loop_var.type.arr_size_expr = null
-        loop_var.type.name_start = 0
-        loop_var.type.name_length = 0
-        loop_var.type.name_src = null
+        loop_var.typeInfo.base = TOKEN_INT
+        loop_var.typeInfo.pointer_depth = 0
+        loop_var.typeInfo.array_size = 0
+        loop_var.typeInfo.arr_size_expr = null
+        loop_var.typeInfo.is_nullable = false
+        loop_var.typeInfo.name_start = 0
+        loop_var.typeInfo.name_length = 0
+        loop_var.typeInfo.name_src = null
 
         env.var_count = env.var_count + 1
 
@@ -1229,19 +2541,41 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         env.var_count = saved_var_count
     
     else if ast.kind == AST_FLOW_CONTROL:
+        ast.data._flow_ctrl.union_member_index = 0
+
         if ast.data._flow_ctrl.base != null and ast.data._flow_ctrl.base.kind == TOKEN_RETURN and inside_function:
             if ast.data._flow_ctrl.value == null:
                 if !is_void_type(&current_return_type):
                     type_error(env, ast, "return value does not match function return type")
                 end
             else:
-                tmp: @TypeInfo = new TypeInfo
-                if resolve_expr(env, ast.data._flow_ctrl.value, tmp, src):
-                    if not allow_string_literal_for_target(ast.data._flow_ctrl.value, &current_return_type) and not can_implicitly_convert(&current_return_type, tmp):
+                expected_type: @TypeInfo = new TypeInfo
+                actual_type: @TypeInfo = new TypeInfo
+
+                if not copy_resolved_type(env, expected_type, &current_return_type, ast):
+                    prune expected_type
+                    prune actual_type
+                    return
+                end
+
+                copy_type(&ast.data._flow_ctrl.resolved_type, expected_type)
+
+                if resolve_expr(env, ast.data._flow_ctrl.value, actual_type, src):
+                    if not resolve_type_alias(env, actual_type, ast.data._flow_ctrl.value):
+                        prune expected_type
+                        prune actual_type
+                        return
+                    end
+
+                    if not allow_string_literal_for_target(ast.data._flow_ctrl.value, expected_type) and not can_implicitly_convert(expected_type, actual_type):
                         type_error(env, ast, "return value does not match function return type")
+                    else if expected_type.is_union and not actual_type.is_union:
+                        ast.data._flow_ctrl.union_member_index = find_union_member_index(expected_type, actual_type)
                     end
                 end
-                prune tmp
+                
+                prune expected_type
+                prune actual_type
             end
         else if ast.data._flow_ctrl.value != null:
             tmp: @TypeInfo = new TypeInfo
@@ -1251,7 +2585,14 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
     else if ast.kind == AST_PRINT:
         tmp: @TypeInfo = new TypeInfo
+        // if tmp.is_union:
+        //     type_error(env, ast, "semantic union requires explicit cast before print")
+        // end
         if resolve_expr(env, ast.data._print.value, tmp, src):
+            if is_string_type(tmp):
+                force_string_literal_lowering(ast.data._print.value)
+            end
+
             copy_type(&ast.data._print.value_type, tmp)
         end
         prune tmp
@@ -1291,13 +2632,31 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
         else if curr.kind == AST_VAR_DECL:
             if curr.data._var_decl.value != null:
                 value_type: @TypeInfo = new TypeInfo
+                expected_type: @TypeInfo = new TypeInfo
+                copy_type(expected_type, &curr.data._var_decl.typeInfo)
 
+                if not resolve_type_alias(env, expected_type, curr):
+                    prune expected_type
+                    prune value_type
+                    return
+                end
+                
                 if resolve_expr(env, curr.data._var_decl.value, value_type, src):
-                    if not allow_string_literal_for_target(curr.data._var_decl.value, &curr.data._var_decl.type) and not can_implicitly_convert(&curr.data._var_decl.type, value_type):
+                    if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
+                        prune expected_type
+                        prune value_type
+                        return
+                    end
+                    
+                    if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
                         type_error(env, curr, "variable initializer does not match declared type")
+                        prune expected_type
+                        prune value_type
+                        return
                     end
                 end
 
+                prune expected_type
                 prune value_type
             end
         end
@@ -1330,6 +2689,23 @@ func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: int, leng
     return null
 end
 
+func lookup_storage_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): bool
+    i: int = env.var_count - 1
+
+    while i >= 0:
+        info: @VarInfo = env.vars + i
+
+        if info.binding_kind != VAR_BINDING_NARROW and same_name(info.src, info.name_start, info.name_length, src, start, length):
+            copy_type(out, &info.typeInfo)
+            return true
+        end
+        
+        i = i - 1
+    end
+
+    return false
+end
+
 func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @TypeInfo): int
     i: int = env.var_count - 1
 
@@ -1337,7 +2713,7 @@ func lookup_var_type(env: @TypeEnv, src: @char, start: int, length: int, out: @T
         info: @VarInfo = env.vars + i
 
         if same_name(info.src, info.name_start, info.name_length, src, start, length):
-            copy_type(out, &info.type)
+            copy_type(out, &info.typeInfo)
             return 1
         end
 
@@ -1397,24 +2773,87 @@ func lookup_func_in_module(env: @TypeEnv, module_src: @char, call_src: @char, st
     return null
 end
 
-func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): int
+func lookup_alias(env: @TypeEnv, src: @char, start: int, length: int): @AliasInfo
+    i: int = env.alias_count - 1
+
+    while i >= 0:
+        info: @AliasInfo = env.aliases + i
+        if info.src == src and same_name(info.src, info.name_start, info.name_length, src, start, length):
+            return info
+        end
+        i = i - 1
+    end
+
+    return null
+end
+
+func clear_call_union_metadata(call_ast: @AST): void
+    i: int = 0
+    while i < 64:
+        if call_ast.kind == AST_FUNC_CALL:
+            call_ast.data._func_call.arg_union_members[i] = 0
+        else if call_ast.kind == AST_ALIAS_CALL:
+            call_ast.data._alias_call.arg_union_members[i] = 0
+        end
+        i = i + 1
+    end
+end
+
+func set_call_union_metadata(call_ast: @AST, index: int, union_type: @TypeInfo, member_index: int): void
+    if call_ast.kind == AST_FUNC_CALL:
+        call_ast.data._func_call.arg_union_members[index] = member_index
+        copy_type(call_ast.data._func_call.arg_union_types + index, union_type)
+    else if call_ast.kind == AST_ALIAS_CALL:
+        call_ast.data._alias_call.arg_union_members[index] = member_index
+        copy_type(call_ast.data._alias_call.arg_union_types + index, union_type)
+    end
+end
+
+func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, src: @char): bool
     arg: @AST = args
     param: @AST = params
+    index: int = 0
+
+    clear_call_union_metadata(call_ast)
 
     while arg != null and param != null:
         arg_type: @TypeInfo = new TypeInfo
+        expected_type: @TypeInfo = new TypeInfo
+        copy_type(expected_type, &param.data._func_params.typeInfo)
+
+        if not resolve_type_alias(env, expected_type, param):
+            prune expected_type
+            prune arg_type
+            return false
+        end
 
         if not resolve_expr(env, arg, arg_type, src):
+            prune expected_type
             prune arg_type
-            return 0
+            return false
         end
 
-        if not allow_string_literal_for_target(arg, &param.data._func_params.type) and not can_pass_arg(&param.data._func_params.type, arg_type):
+        if not resolve_type_alias(env, arg_type, arg):
+            prune expected_type
+            prune arg_type
+            return false
+        end
+
+        if not allow_string_literal_for_target(arg, expected_type) and not can_pass_arg(expected_type, arg_type):
             type_error(env, arg, "function argument does not match parameter type")
+            prune expected_type
             prune arg_type
-            return 0
+            return false
         end
 
+        if expected_type.is_union and not arg_type.is_union:
+            member_index: int = find_union_member_index(expected_type, arg_type)
+            if member_index != 0:
+                set_call_union_metadata(call_ast, index, expected_type, member_index)
+            end
+        end
+
+        prune expected_type
         prune arg_type
         arg = arg.next
         param = param.next
@@ -1422,10 +2861,10 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
 
     if arg != null or param != null:
         type_error(env, call_ast, "function call argument count does not match parameter count")
-        return 0
+        return false
     end
 
-    return 1
+    return true
 end
 
 // Walk statement
@@ -1462,6 +2901,7 @@ func init_type_env(env: @TypeEnv): void
     env.struct_count = 0
     env.var_count = 0
     env.func_count = 0
+    env.alias_count = 0
     env.error_count = 0
 end
 

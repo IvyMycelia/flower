@@ -53,6 +53,23 @@ AST_PARAM:          int = 36    // n: int in function signatures
     
 AST_PRINT:          int = 37    // print()
 
+    // Etc
+
+AST_TYPE_ALIAS:     int = 38
+AST_TYPE_TEST:      int = 39
+
+// Type Tests
+TYPE_TEST_UNKNOWN:      int = 0
+TYPE_TEST_STATIC_TRUE:  int = 1
+TYPE_TEST_NONNULL:      int = 2
+TYPE_TEST_UNION_TAG:    int = 3
+
+CAST_LOWER_NONE:            int = 0
+CAST_LOWER_UNION_EXTRACT:   int = 1
+CAST_LOWER_UNION_PACK:      int = 2
+
+BINARY_NULL_COMPARE_NONE:       int = 0
+BINARY_NULL_COMPARE_UNION_TAG:  int = 1
 
 // FIELDS
 FIELD_FALSE: int = 0
@@ -68,21 +85,58 @@ STRING_LOWER_CSTR:   int = 1
 
 forward struct AST
 
+struct TypeAtom {
+    base: int,
+    pointer_depth: int,
+    array_size: int,
+    arr_size_expr: @AST,
+
+    name_start: int,
+    name_length: int,
+    name_src: @char,
+
+    is_nullable: bool,
+}
+
 struct TypeInfo {
     base: int,
     pointer_depth: int,
     array_size: int,
     arr_size_expr: @AST,
+
     name_start: int,
     name_length: int,
-    name_src: @char
+    name_src: @char,
+
+    is_nullable: bool,
+
+    is_union: bool,
+    union_members: TypeAtom[8],
+    union_count: int,
+}
+
+
+struct type_alias {
+    name_start: int,
+    name_length: int,
+    target: TypeInfo,
 }
 
     // === Type Casting ===
 struct cast {
     value: @AST,
-    type: TypeInfo,
-    value_type: TypeInfo
+    typeInfo: TypeInfo,
+    value_type: TypeInfo,
+    lower_kind: int,
+    union_member_index: int,
+}
+
+struct type_test {
+    value: @AST,
+    typeInfo: TypeInfo,
+    value_type: TypeInfo,
+    lower_kind: int,
+    union_member_index: int,
 }
 
 struct float_lit {
@@ -126,7 +180,7 @@ struct unary {
 
     // === Memory Management ===
 struct new_alloc {
-    type: TypeInfo,
+    typeInfo: TypeInfo,
 }
 
 struct prune_free {
@@ -134,7 +188,7 @@ struct prune_free {
 }
 
 struct size_of {
-    type: TypeInfo,
+    typeInfo: TypeInfo,
 }
 
 struct deref_ass {
@@ -187,6 +241,8 @@ struct alias_call {
     func_start: int,
     func_length: int,
     args: @AST,
+    arg_union_members: int[64],
+    arg_union_types: TypeInfo[64],
 }
 
     // === Structs ===
@@ -207,7 +263,7 @@ struct union_def {
 struct struct_field {
     name_start: int,
     name_length: int,
-    type: TypeInfo,
+    typeInfo: TypeInfo,
     is_hidden: int,
     is_frozen: int,
     is_readonly: int,
@@ -233,7 +289,8 @@ struct dot_access {
     access_kind: int,
 
     // Resulting type of this access
-    resolved_type: TypeInfo
+    resolved_type: TypeInfo,
+    union_member_index: int,
 
     is_hidden: int,
     is_frozen: int,
@@ -248,6 +305,8 @@ struct binary {
     right: @AST,  // right bin-op
     op: int,
     is_string_compare: int,
+    null_compare_kind: int,
+    null_union_member_index: int,
 }
 
     // === Variables ===
@@ -255,14 +314,17 @@ struct binary {
 struct var_decl {
     name_start: int,
     name_length: int,
-    type: TypeInfo,
+    typeInfo: TypeInfo,
     value: @AST,
+    union_member_index: int,
 }
 
 struct var_ass {
     name_start: int,
     name_length: int,
     value: @AST,
+    union_member_index: int,
+    resolved_type: TypeInfo,
 }
 
 struct var_ref {
@@ -283,13 +345,15 @@ struct func_def {
 struct func_params {
     name_start: int,
     name_length: int,
-    type: TypeInfo
+    typeInfo: TypeInfo
 }
 
 struct func_call {
     name_start: int,
     name_length: int,
     args: @AST,
+    arg_union_members: int[64],
+    arg_union_types: TypeInfo[64],
 }
 
     // === Return ===
@@ -297,6 +361,8 @@ struct func_call {
 struct flow_ctrl {
     base: @Token,
     value: @AST,
+    union_member_index: int,
+    resolved_type: TypeInfo,
 }
 
     // === Conditionals ===
@@ -310,7 +376,7 @@ struct for_loop {
     var_length: int,
     from: @AST,
     to: @AST,
-    inclusive: int,
+    inclusive: bool,
     body: @AST,
 }
 
@@ -321,6 +387,8 @@ struct if_condition {
 }
 
 union NodeData {
+    _type_test:     type_test,
+    _type_alias:    type_alias,
     _cast:          cast,
     _float_lit:     float_lit,
     _bool_lit:      bool_lit,

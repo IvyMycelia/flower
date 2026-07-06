@@ -183,67 +183,71 @@ int TOKEN_STRING = 6;
 int TOKEN_STRUCT = 7;
 int TOKEN_UNION = 8;
 int TOKEN_NULL = 9;
-int TOKEN_TILDE = 10;
-int TOKEN_IDENTIFIER = 11;
-int TOKEN_NUMBER = 12;
-int TOKEN_FLOAT_LIT = 13;
-int TOKEN_STRING_LIT = 14;
-int TOKEN_CHAR_LIT = 15;
-int TOKEN_VOID = 16;
-int TOKEN_TRUE = 17;
-int TOKEN_FALSE = 18;
-int TOKEN_RETURN = 19;
-int TOKEN_CONTINUE = 20;
-int TOKEN_BREAK = 21;
-int TOKEN_WHILE = 22;
-int TOKEN_FUNC = 23;
-int TOKEN_FOR = 24;
-int TOKEN_IN = 25;
-int TOKEN_END = 26;
-int TOKEN_IF = 27;
-int TOKEN_ELSE = 28;
-int TOKEN_NOT = 29;
-int TOKEN_AND = 30;
-int TOKEN_OR = 31;
-int TOKEN_IMPORT = 32;
-int TOKEN_FORWARD = 33;
-int TOKEN_AS = 34;
-int TOKEN_PROP = 35;
-int TOKEN_HIDDEN = 36;
-int TOKEN_READONLY = 37;
-int TOKEN_FROZEN = 38;
-int TOKEN_NEW = 39;
-int TOKEN_PRUNE = 40;
-int TOKEN_SIZEOF = 41;
-int TOKEN_PRINT = 42;
-int TOKEN_DOT = 43;
-int TOKEN_DOTDOT = 44;
-int TOKEN_DOTDOTEQ = 45;
-int TOKEN_PLUS = 46;
-int TOKEN_MINUS = 47;
-int TOKEN_STAR = 48;
-int TOKEN_CARET = 49;
-int TOKEN_SLASH = 50;
-int TOKEN_AMPERSAND = 51;
-int TOKEN_AT = 52;
-int TOKEN_ASSIGN = 53;
-int TOKEN_LT = 54;
-int TOKEN_GT = 55;
-int TOKEN_COMP = 56;
-int TOKEN_NEQ = 57;
-int TOKEN_GEQ = 58;
-int TOKEN_LEQ = 59;
-int TOKEN_LPAREN = 60;
-int TOKEN_RPAREN = 61;
-int TOKEN_LBRACK = 62;
-int TOKEN_RBRACK = 63;
-int TOKEN_LBRACE = 64;
-int TOKEN_RBRACE = 65;
-int TOKEN_COLON = 66;
-int TOKEN_COMMA = 67;
-int TOKEN_SEMI = 68;
-int TOKEN_NEWLINE = 69;
-int TOKEN_EOF = 70;
+int TOKEN_TYPE = 10;
+int TOKEN_TILDE = 11;
+int TOKEN_IDENTIFIER = 12;
+int TOKEN_NUMBER = 13;
+int TOKEN_FLOAT_LIT = 14;
+int TOKEN_STRING_LIT = 15;
+int TOKEN_CHAR_LIT = 16;
+int TOKEN_VOID = 17;
+int TOKEN_TRUE = 18;
+int TOKEN_FALSE = 19;
+int TOKEN_RETURN = 20;
+int TOKEN_CONTINUE = 21;
+int TOKEN_BREAK = 22;
+int TOKEN_WHILE = 23;
+int TOKEN_FUNC = 24;
+int TOKEN_FOR = 25;
+int TOKEN_IN = 26;
+int TOKEN_END = 27;
+int TOKEN_IF = 28;
+int TOKEN_ELSE = 29;
+int TOKEN_NOT = 30;
+int TOKEN_AND = 31;
+int TOKEN_OR = 32;
+int TOKEN_IS = 33;
+int TOKEN_IMPORT = 34;
+int TOKEN_FORWARD = 35;
+int TOKEN_AS = 36;
+int TOKEN_PROP = 37;
+int TOKEN_HIDDEN = 38;
+int TOKEN_READONLY = 39;
+int TOKEN_FROZEN = 40;
+int TOKEN_NEW = 41;
+int TOKEN_PRUNE = 42;
+int TOKEN_SIZEOF = 43;
+int TOKEN_PRINT = 44;
+int TOKEN_DOT = 45;
+int TOKEN_DOTDOT = 46;
+int TOKEN_DOTDOTEQ = 47;
+int TOKEN_PLUS = 48;
+int TOKEN_MINUS = 49;
+int TOKEN_STAR = 50;
+int TOKEN_CARET = 51;
+int TOKEN_SLASH = 52;
+int TOKEN_AMPERSAND = 53;
+int TOKEN_AT = 54;
+int TOKEN_ASSIGN = 55;
+int TOKEN_LT = 56;
+int TOKEN_GT = 57;
+int TOKEN_COMP = 58;
+int TOKEN_NEQ = 59;
+int TOKEN_GEQ = 60;
+int TOKEN_LEQ = 61;
+int TOKEN_LPAREN = 62;
+int TOKEN_RPAREN = 63;
+int TOKEN_LBRACK = 64;
+int TOKEN_RBRACK = 65;
+int TOKEN_LBRACE = 66;
+int TOKEN_RBRACE = 67;
+int TOKEN_COLON = 68;
+int TOKEN_COMMA = 69;
+int TOKEN_QUESTION = 70;
+int TOKEN_PIPE = 71;
+int TOKEN_SEMI = 72;
+int TOKEN_NEWLINE = 73;
+int TOKEN_EOF = 74;
 
 
 typedef struct Token {
@@ -393,6 +397,9 @@ mod_src_lexer_flo_add_token(ts, TOKEN_IN, start, length);
 else if (length == 2  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "or", 2)) {
 mod_src_lexer_flo_add_token(ts, TOKEN_OR, start, length);
 }
+else if (length == 2  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "is", 2)) {
+mod_src_lexer_flo_add_token(ts, TOKEN_IS, start, length);
+}
 else if (length == 3  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "int", 3)) {
 mod_src_lexer_flo_add_token(ts, TOKEN_INT, start, length);
 }
@@ -434,6 +441,9 @@ mod_src_lexer_flo_add_token(ts, TOKEN_FUNC, start, length);
 }
 else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "true", 4)) {
 mod_src_lexer_flo_add_token(ts, TOKEN_TRUE, start, length);
+}
+else if (length == 4  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "type", 4)) {
+mod_src_lexer_flo_add_token(ts, TOKEN_TYPE, start, length);
 }
 else if (length == 5  &&  mod_src_stdlib_cstr_flo_eq_n(src + start, "union", 5)) {
 mod_src_lexer_flo_add_token(ts, TOKEN_UNION, start, length);
@@ -550,6 +560,16 @@ continue;
 }
 else if (src[i] == '@') {
 mod_src_lexer_flo_add_token(ts, TOKEN_AT, i, 1);
+i = i + 1;
+continue;
+}
+else if (src[i] == '?') {
+mod_src_lexer_flo_add_token(ts, TOKEN_QUESTION, i, 1);
+i = i + 1;
+continue;
+}
+else if (src[i] == '|') {
+mod_src_lexer_flo_add_token(ts, TOKEN_PIPE, i, 1);
 i = i + 1;
 continue;
 }
@@ -676,6 +696,9 @@ return "TOKEN_CHAR";
 else if (kind == TOKEN_STRING) {
 return "TOKEN_STRING";
 }
+else if (kind == TOKEN_TYPE) {
+return "TOKEN_TYPE";
+}
 else if (kind == TOKEN_STRING_LIT) {
 return "TOKEN_STRING_LIT";
 }
@@ -739,6 +762,9 @@ return "TOKEN_IN";
 else if (kind == TOKEN_OR) {
 return "TOKEN_OR";
 }
+else if (kind == TOKEN_IS) {
+return "TOKEN_IS";
+}
 else if (kind == TOKEN_IMPORT) {
 return "TOKEN_IMPORT";
 }
@@ -795,6 +821,12 @@ return "TOKEN_SLASH";
 }
 else if (kind == TOKEN_CARET) {
 return "TOKEN_CARET";
+}
+else if (kind == TOKEN_QUESTION) {
+return "TOKEN_QUESTION";
+}
+else if (kind == TOKEN_PIPE) {
+return "TOKEN_PIPE";
 }
 else if (kind == TOKEN_AMPERSAND) {
 return "TOKEN_AMPERSAND";
@@ -930,11 +962,34 @@ int AST_FOR = 34;
 int AST_IF = 35;
 int AST_PARAM = 36;
 int AST_PRINT = 37;
+int AST_TYPE_ALIAS = 38;
+int AST_TYPE_TEST = 39;
+int TYPE_TEST_UNKNOWN = 0;
+int TYPE_TEST_STATIC_TRUE = 1;
+int TYPE_TEST_NONNULL = 2;
+int TYPE_TEST_UNION_TAG = 3;
+int CAST_LOWER_NONE = 0;
+int CAST_LOWER_UNION_EXTRACT = 1;
+int CAST_LOWER_UNION_PACK = 2;
+int BINARY_NULL_COMPARE_NONE = 0;
+int BINARY_NULL_COMPARE_UNION_TAG = 1;
 int FIELD_FALSE = 0;
 int FIELD_TRUE = 1;
 int STRING_LOWER_STRING = 0;
 int STRING_LOWER_CSTR = 1;
 typedef struct AST AST;
+
+
+typedef struct TypeAtom {
+int base;
+int pointer_depth;
+int array_size;
+AST* arr_size_expr;
+int name_start;
+int name_length;
+char* name_src;
+int is_nullable;
+} TypeAtom;
 
 
 typedef struct TypeInfo {
@@ -945,14 +1000,36 @@ AST* arr_size_expr;
 int name_start;
 int name_length;
 char* name_src;
+int is_nullable;
+int is_union;
+TypeAtom union_members[8];
+int union_count;
 } TypeInfo;
+
+
+typedef struct type_alias {
+int name_start;
+int name_length;
+TypeInfo target;
+} type_alias;
 
 
 typedef struct cast {
 AST* value;
-TypeInfo type;
+TypeInfo typeInfo;
 TypeInfo value_type;
+int lower_kind;
+int union_member_index;
 } cast;
+
+
+typedef struct type_test {
+AST* value;
+TypeInfo typeInfo;
+TypeInfo value_type;
+int lower_kind;
+int union_member_index;
+} type_test;
 
 
 typedef struct float_lit {
@@ -999,7 +1076,7 @@ AST* operand;
 
 
 typedef struct new_alloc {
-TypeInfo type;
+TypeInfo typeInfo;
 } new_alloc;
 
 
@@ -1009,7 +1086,7 @@ AST* ptr;
 
 
 typedef struct size_of {
-TypeInfo type;
+TypeInfo typeInfo;
 } size_of;
 
 
@@ -1066,6 +1143,8 @@ int alias_length;
 int func_start;
 int func_length;
 AST* args;
+int arg_union_members[64];
+TypeInfo arg_union_types[64];
 } alias_call;
 
 
@@ -1086,7 +1165,7 @@ AST* fields;
 typedef struct struct_field {
 int name_start;
 int name_length;
-TypeInfo type;
+TypeInfo typeInfo;
 int is_hidden;
 int is_frozen;
 int is_readonly;
@@ -1108,6 +1187,7 @@ int field_length;
 AST* value;
 int access_kind;
 TypeInfo resolved_type;
+int union_member_index;
 int is_hidden;
 int is_frozen;
 int is_readonly;
@@ -1120,14 +1200,17 @@ AST* left;
 AST* right;
 int op;
 int is_string_compare;
+int null_compare_kind;
+int null_union_member_index;
 } binary;
 
 
 typedef struct var_decl {
 int name_start;
 int name_length;
-TypeInfo type;
+TypeInfo typeInfo;
 AST* value;
+int union_member_index;
 } var_decl;
 
 
@@ -1135,6 +1218,8 @@ typedef struct var_ass {
 int name_start;
 int name_length;
 AST* value;
+int union_member_index;
+TypeInfo resolved_type;
 } var_ass;
 
 
@@ -1156,7 +1241,7 @@ TypeInfo return_type;
 typedef struct func_params {
 int name_start;
 int name_length;
-TypeInfo type;
+TypeInfo typeInfo;
 } func_params;
 
 
@@ -1164,12 +1249,16 @@ typedef struct func_call {
 int name_start;
 int name_length;
 AST* args;
+int arg_union_members[64];
+TypeInfo arg_union_types[64];
 } func_call;
 
 
 typedef struct flow_ctrl {
 Token* base;
 AST* value;
+int union_member_index;
+TypeInfo resolved_type;
 } flow_ctrl;
 
 
@@ -1197,6 +1286,8 @@ AST* else_branch;
 
 
 typedef union NodeData {
+type_test _type_test;
+type_alias _type_alias;
 cast _cast;
 float_lit _float_lit;
 bool_lit _bool_lit;
@@ -1280,6 +1371,7 @@ ps->error_count = 0;
 }
 void mod_src_parser_flo_parser_error(Parser* ps, char* message);
 void mod_src_parser_flo_parser_sync_until(Parser* ps, int stop_a, int stop_b);
+AST* mod_src_parser_flo_parse_type_alias(Parser* ps);
 AST* mod_src_parser_flo_parse_var_decl(Parser* ps);
 AST* mod_src_parser_flo_parse_var_ass(Parser* ps);
 AST* mod_src_parser_flo_parse_subscript_ass(Parser* ps);
@@ -1339,51 +1431,161 @@ return 1;
 }
 
 
-TypeInfo* mod_src_parser_flo_parse_type(Parser* ps) {
-TypeInfo* type = malloc(sizeof(TypeInfo));
-type->pointer_depth = 0;
-type->array_size = 0;
-type->arr_size_expr = NULL;
-type->name_src = ps->src;
+void mod_src_parser_flo_clear_parsed_type(TypeInfo* typeInfo, char* src) {
+typeInfo->base = TOKEN_VOID;
+typeInfo->pointer_depth = 0;
+typeInfo->array_size = 0;
+typeInfo->arr_size_expr = NULL;
+typeInfo->name_start = 0;
+typeInfo->name_length = 0;
+typeInfo->name_src = src;
+typeInfo->is_nullable = 0;
+typeInfo->is_union = 0;
+typeInfo->union_count = 0;
+}
+
+
+void mod_src_parser_flo_copy_parsed_type(TypeInfo* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+dst->is_union = src_type->is_union;
+dst->union_count = src_type->union_count;
+int i = 0;
+while (i < src_type->union_count) {
+dst->union_members[i].base = src_type->union_members[i].base;
+dst->union_members[i].pointer_depth = src_type->union_members[i].pointer_depth;
+dst->union_members[i].array_size = src_type->union_members[i].array_size;
+dst->union_members[i].arr_size_expr = src_type->union_members[i].arr_size_expr;
+dst->union_members[i].name_start = src_type->union_members[i].name_start;
+dst->union_members[i].name_length = src_type->union_members[i].name_length;
+dst->union_members[i].name_src = src_type->union_members[i].name_src;
+dst->union_members[i].is_nullable = src_type->union_members[i].is_nullable;
+i = i + 1;
+}
+}
+
+
+void mod_src_parser_flo_copy_type_member(TypeAtom* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+}
+
+
+int mod_src_parser_flo_parse_type_atom(Parser* ps, TypeInfo* typeInfo) {
+mod_src_parser_flo_clear_parsed_type(typeInfo, ps->src);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_QUESTION) {
+typeInfo->is_nullable = 1;
+mod_src_parser_flo_parser_advance(ps);
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing nullable type");
+return 0;
+}
+}
 while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_AT) {
-type->pointer_depth = type->pointer_depth + 1;
+typeInfo->pointer_depth = typeInfo->pointer_depth + 1;
 mod_src_parser_flo_parser_advance(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in type");
-return type;
+return 0;
 }
 }
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file while parsing type");
-return type;
+return 0;
 }
 Token* base = mod_src_parser_flo_parser_advance(ps);
-type->base = base->kind;
+if (base->kind == TOKEN_NULL) {
+typeInfo->base = TOKEN_VOID;
+typeInfo->pointer_depth = typeInfo->pointer_depth + 1;
+typeInfo->name_start = 0;
+typeInfo->name_length = 0;
+typeInfo->name_src = NULL;
+}
+else {
+typeInfo->base = base->kind;
 if (base->kind == TOKEN_IDENTIFIER) {
-type->name_start = base->start;
-type->name_length = base->length;
+typeInfo->name_start = base->start;
+typeInfo->name_length = base->length;
+}
 }
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
 mod_src_parser_flo_parser_advance(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in array type");
-return type;
+return 0;
 }
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACK) {
-type->array_size = -1;
+typeInfo->array_size = -1;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
-type->array_size = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
+typeInfo->array_size = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
 mod_src_parser_flo_parser_advance(ps);
 }
 else {
-type->arr_size_expr = mod_src_parser_flo_parse_expr(ps, 0);
+typeInfo->arr_size_expr = mod_src_parser_flo_parse_expr(ps, 0);
 }
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_RBRACK))) {
-return type;
+return 0;
 }
 }
-return type;
+return 1;
+}
+
+
+TypeInfo* mod_src_parser_flo_parse_type(Parser* ps) {
+TypeInfo* typeInfo = malloc(sizeof(TypeInfo));
+mod_src_parser_flo_clear_parsed_type(typeInfo, ps->src);
+TypeInfo* first = malloc(sizeof(TypeInfo));
+if (!(mod_src_parser_flo_parse_type_atom(ps, first))) {
+mod_src_parser_flo_copy_parsed_type(typeInfo, first);
+free(first);
+return typeInfo;
+}
+if (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_PIPE) {
+mod_src_parser_flo_copy_parsed_type(typeInfo, first);
+free(first);
+return typeInfo;
+}
+mod_src_parser_flo_clear_parsed_type(typeInfo, ps->src);
+typeInfo->is_union = 1;
+mod_src_parser_flo_copy_type_member(typeInfo->union_members + 0, first);
+typeInfo->union_count = 1;
+free(first);
+while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_PIPE) {
+mod_src_parser_flo_parser_advance(ps);
+if (typeInfo->union_count >= 8) {
+mod_src_parser_flo_parser_error(ps, "Semantic union supports at most 8 members");
+TypeInfo* scratch = malloc(sizeof(TypeInfo));
+mod_src_parser_flo_parse_type_atom(ps, scratch);
+free(scratch);
+continue;
+}
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file in semantic union");
+return typeInfo;
+}
+TypeInfo* member = malloc(sizeof(TypeInfo));
+if (!(mod_src_parser_flo_parse_type_atom(ps, member))) {
+free(member);
+return typeInfo;
+}
+mod_src_parser_flo_copy_type_member(typeInfo->union_members + typeInfo->union_count, member);
+typeInfo->union_count = typeInfo->union_count + 1;
+free(member);
+}
+return typeInfo;
 }
 
 
@@ -1394,7 +1596,7 @@ return 5;
 else if (kind == TOKEN_PLUS  ||  kind == TOKEN_MINUS) {
 return 4;
 }
-else if (kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP) {
+else if (kind == TOKEN_GT  ||  kind == TOKEN_LT  ||  kind == TOKEN_NEQ  ||  kind == TOKEN_LEQ  ||  kind == TOKEN_GEQ  ||  kind == TOKEN_COMP  ||  kind == TOKEN_IS) {
 return 3;
 }
 else if (kind == TOKEN_AND) {
@@ -1473,6 +1675,26 @@ mod_src_parser_flo_parser_advance(ps);
 }
 
 
+AST* mod_src_parser_flo_parse_type_alias(Parser* ps) {
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_TYPE))) {
+return NULL;
+}
+AST* node = mod_src_parser_flo_make_node(ps, AST_TYPE_ALIAS);
+Token* name = mod_src_parser_flo_parser_advance(ps);
+if (name->kind != TOKEN_IDENTIFIER) {
+mod_src_parser_flo_parser_error(ps, "Expected type alias name");
+return node;
+}
+node->data._type_alias.name_start = name->start;
+node->data._type_alias.name_length = name->length;
+if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
+return node;
+}
+node->data._type_alias.target = *(mod_src_parser_flo_parse_type(ps));
+return node;
+}
+
+
 AST* mod_src_parser_flo_parse_var_decl(Parser* ps) {
 AST* node = mod_src_parser_flo_make_node(ps, AST_VAR_DECL);
 Token* tok = mod_src_parser_flo_parser_advance(ps);
@@ -1489,7 +1711,7 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in variable declaration");
 return node;
 }
-node->data._var_decl.type = *(mod_src_parser_flo_parse_type(ps));
+node->data._var_decl.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN) {
 mod_src_parser_flo_parser_advance(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1775,7 +1997,7 @@ return NULL;
 }
 AST* cast = mod_src_parser_flo_make_node(ps, AST_CAST);
 cast->data._cast.value = left;
-cast->data._cast.type = *(mod_src_parser_flo_parse_type(ps));
+cast->data._cast.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 left = cast;
 }
 while (mod_src_parser_flo_get_precedence(mod_src_parser_flo_parser_peek(ps)->kind) > min_prec) {
@@ -1783,6 +2005,17 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 break;
 }
 Token* op = mod_src_parser_flo_parser_advance(ps);
+if (op->kind == TOKEN_IS) {
+if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
+mod_src_parser_flo_parser_error(ps, "Unexpected end of file after `is`");
+return left;
+}
+AST* test = mod_src_parser_flo_make_node(ps, AST_TYPE_TEST);
+test->data._type_test.value = left;
+test->data._type_test.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+left = test;
+continue;
+}
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file after binary operator");
 return left;
@@ -1795,6 +2028,9 @@ AST* bin = mod_src_parser_flo_make_node(ps, AST_BINARY_OP);
 bin->data._binary.left = left;
 bin->data._binary.right = right;
 bin->data._binary.op = op->kind;
+bin->data._binary.is_string_compare = 0;
+bin->data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE;
+bin->data._binary.null_union_member_index = 0;
 left = bin;
 }
 return left;
@@ -2028,7 +2264,7 @@ else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_STRING_LIT) {
 AST* str = mod_src_parser_flo_make_node(ps, AST_STRING_LIT);
 str->data._string.str_start = mod_src_parser_flo_parser_peek(ps)->start;
 str->data._string.str_length = mod_src_parser_flo_parser_peek(ps)->length;
-str->data._string.lower_kind = STRING_LOWER_STRING;
+str->data._string.lower_kind = STRING_LOWER_CSTR;
 mod_src_parser_flo_parser_advance(ps);
 return str;
 }
@@ -2108,7 +2344,7 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'new'");
 return NULL;
 }
 AST* new_node = mod_src_parser_flo_make_node(ps, AST_NEW);
-new_node->data._new_alloc.type = *(mod_src_parser_flo_parse_type(ps));
+new_node->data._new_alloc.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 return new_node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NOT) {
@@ -2161,7 +2397,7 @@ if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return NULL;
 }
 AST* node = mod_src_parser_flo_make_node(ps, AST_SIZEOF);
-node->data._size_of.type = *(mod_src_parser_flo_parse_type(ps));
+node->data._size_of.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return node;
 }
@@ -2372,7 +2608,7 @@ node->data._func_params.name_length = name->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
-node->data._func_params.type = *(mod_src_parser_flo_parse_type(ps));
+node->data._func_params.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 return node;
 }
 
@@ -2417,7 +2653,7 @@ field->data._struct_field.name_length = fname->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.type = *(mod_src_parser_flo_parse_type(ps));
+field->data._struct_field.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 if (field_head == NULL) {
 field_head = field;
 }
@@ -2475,7 +2711,7 @@ field->data._struct_field.name_length = fname->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.type = *(mod_src_parser_flo_parse_type(ps));
+field->data._struct_field.typeInfo = *(mod_src_parser_flo_parse_type(ps));
 if (field_head == NULL) {
 field_head = field;
 }
@@ -2635,6 +2871,9 @@ decl = mod_src_parser_flo_parse_struct(ps);
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_UNION) {
 decl = mod_src_parser_flo_parse_union(ps);
 }
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_TYPE) {
+decl = mod_src_parser_flo_parse_type_alias(ps);
+}
 else {
 mod_src_parser_flo_parser_error(ps, "Expected declaration after prop");
 }
@@ -2655,6 +2894,9 @@ node = mod_src_parser_flo_parse_forward(ps);
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_IDENTIFIER  &&  mod_src_lexer_flo_peek(ps->ts, ps->pos + 1)->kind == TOKEN_COLON) {
 node = mod_src_parser_flo_parse_var_decl(ps);
+}
+else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_TYPE) {
+node = mod_src_parser_flo_parse_type_alias(ps);
 }
 else {
 mod_src_parser_flo_parser_error(ps, "Unexpected top-level statement or declaration");
@@ -2688,7 +2930,6 @@ buffer[length] = '\0';
 fclose(f);
 return buffer;
 }
-typedef struct Module Module;
 int EXPORT_FUNC = 1;
 int EXPORT_STRUCT = 2;
 int EXPORT_UNION = 3;
@@ -2941,17 +3182,13 @@ set->count = set->count + 1;
 mod_src_module_flo_load_imports(set, m);
 return m;
 }
-typedef struct StructInfo StructInfo;
-typedef struct FieldInfo FieldInfo;
-typedef struct VarInfo VarInfo;
-typedef struct FuncInfo FuncInfo;
 
 
 typedef struct FieldInfo {
 char* src;
 int name_start;
 int name_length;
-TypeInfo type;
+TypeInfo typeInfo;
 int is_hidden;
 int is_frozen;
 int is_readonly;
@@ -2965,13 +3202,16 @@ int name_length;
 FieldInfo fields[128];
 int field_count;
 } StructInfo;
+int VAR_BINDING_BASE = 0;
+int VAR_BINDING_NARROW = 1;
 
 
 typedef struct VarInfo {
 char* src;
 int name_start;
 int name_length;
-TypeInfo type;
+TypeInfo typeInfo;
+int binding_kind;
 } VarInfo;
 
 
@@ -2984,6 +3224,28 @@ TypeInfo return_type;
 } FuncInfo;
 
 
+typedef struct AliasInfo {
+char* src;
+int name_start;
+int name_length;
+TypeInfo target;
+} AliasInfo;
+int NARROW_NONE = 0;
+int NARROW_UNION_MEMBER = 1;
+
+
+typedef struct NarrowInfo {
+char* src;
+int name_start;
+int name_length;
+AST* expr;
+TypeInfo narrowed_type;
+TypeInfo union_source_type;
+int kind;
+int union_member_index;
+} NarrowInfo;
+
+
 typedef struct TypeEnv {
 char* src;
 StructInfo structs[1024];
@@ -2992,12 +3254,17 @@ VarInfo vars[2048];
 int var_count;
 FuncInfo funcs[1024];
 int func_count;
+AliasInfo aliases[512];
+int alias_count;
+NarrowInfo narrowings[2048];
+int narrow_count;
 int error_count;
 } TypeEnv;
 ModuleSet* active_type_modules;
 Module* current_type_module;
 TypeInfo current_return_type;
 int inside_function = 0;
+void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
 
 
 int mod_src_typecheck_flo_same_name(char* a_src, int a_start, int a_len, char* b_src, int b_start, int b_len) {
@@ -3011,7 +3278,77 @@ return 0;
 }
 
 
+int mod_src_typecheck_flo_is_narrowable_expr(AST* expr) {
+if (expr == NULL) {
+return 0;
+}
+if (expr->kind == AST_VAR_REF) {
+return 1;
+}
+if (expr->kind == AST_DOT_ACCESS) {
+return mod_src_typecheck_flo_is_narrowable_expr(expr->data._dot_access.object);
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_same_narrow_expr(char* src, AST* a, AST* b) {
+if (a == NULL  ||  b == NULL) {
+return 0;
+}
+if (a->kind != b->kind) {
+return 0;
+}
+if (a->kind == AST_VAR_REF) {
+return mod_src_typecheck_flo_same_name(src, a->data._var_ref.name_start, a->data._var_ref.name_length, src, b->data._var_ref.name_start, b->data._var_ref.name_length);
+}
+if (a->kind == AST_DOT_ACCESS) {
+if (a->data._dot_access.field_length != b->data._dot_access.field_length) {
+return 0;
+}
+if (!(mod_src_stdlib_cstr_flo_eq_n(src + a->data._dot_access.field_start, src + b->data._dot_access.field_start, a->data._dot_access.field_length))) {
+return 0;
+}
+return mod_src_typecheck_flo_same_narrow_expr(src, a->data._dot_access.object, b->data._dot_access.object);
+}
+return 0;
+}
+
+
 void mod_src_typecheck_flo_copy_type(TypeInfo* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->is_nullable = src_type->is_nullable;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_union = src_type->is_union;
+dst->union_count = src_type->union_count;
+int i = 0;
+while (i < src_type->union_count) {
+dst->union_members[i].base = src_type->union_members[i].base;
+dst->union_members[i].pointer_depth = src_type->union_members[i].pointer_depth;
+dst->union_members[i].array_size = src_type->union_members[i].array_size;
+dst->union_members[i].arr_size_expr = src_type->union_members[i].arr_size_expr;
+dst->union_members[i].name_start = src_type->union_members[i].name_start;
+dst->union_members[i].name_length = src_type->union_members[i].name_length;
+dst->union_members[i].name_src = src_type->union_members[i].name_src;
+dst->union_members[i].is_nullable = src_type->union_members[i].is_nullable;
+i = i + 1;
+}
+}
+int mod_src_typecheck_flo_resolve_type_alias(TypeEnv* env, TypeInfo* typeInfo, AST* ast);
+
+
+int mod_src_typecheck_flo_copy_resolved_type(TypeEnv* env, TypeInfo* dst, TypeInfo* src_type, AST* ast) {
+mod_src_typecheck_flo_copy_type(dst, src_type);
+return mod_src_typecheck_flo_resolve_type_alias(env, dst, ast);
+}
+
+
+void mod_src_typecheck_flo_copy_type_atom(TypeAtom* dst, TypeAtom* src_type) {
 dst->base = src_type->base;
 dst->pointer_depth = src_type->pointer_depth;
 dst->array_size = src_type->array_size;
@@ -3019,71 +3356,243 @@ dst->arr_size_expr = src_type->arr_size_expr;
 dst->name_start = src_type->name_start;
 dst->name_length = src_type->name_length;
 dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+}
+
+
+void mod_src_typecheck_flo_copy_type_to_atom(TypeAtom* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+}
+
+
+void mod_src_typecheck_flo_copy_atom_to_type(TypeInfo* dst, TypeAtom* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+dst->is_union = 0;
+dst->union_count = 0;
+}
+
+
+void mod_src_typecheck_flo_clear_union_type(TypeInfo* dst) {
+dst->base = TOKEN_VOID;
+dst->pointer_depth = 0;
+dst->array_size = 0;
+dst->arr_size_expr = NULL;
+dst->name_start = 0;
+dst->name_length = 0;
+dst->name_src = NULL;
+dst->is_nullable = 0;
+dst->is_union = 1;
+dst->union_count = 0;
 }
 int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual);
 
 
-int mod_src_typecheck_flo_is_bool_type(TypeInfo* type) {
-if (type->base == TOKEN_BOOL  &&  type->pointer_depth == 0  &&  type->array_size == 0) {
+int mod_src_typecheck_flo_is_bool_type(TypeInfo* typeInfo) {
+if (typeInfo->is_nullable  ||  typeInfo->is_union) {
+return 0;
+}
+if (typeInfo->base == TOKEN_BOOL  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0) {
 return 1;
 }
 return 0;
 }
 
 
-int mod_src_typecheck_flo_is_void_type(TypeInfo* type) {
-return type->base == TOKEN_VOID  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return typeInfo->pointer_depth > 0  ||  typeInfo->array_size != 0;
 }
 
 
-int mod_src_typecheck_flo_is_null_type(TypeInfo* type) {
-return type->base == TOKEN_VOID  &&  type->pointer_depth == 1  &&  type->array_size == 0;
+int mod_src_typecheck_flo_is_void_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
 }
 
 
-int mod_src_typecheck_flo_is_integer_type(TypeInfo* type) {
-return type->base == TOKEN_INT  ||  type->base == TOKEN_CHAR  &&  type->pointer_depth == 0  &&  type->array_size == 0;
+int mod_src_typecheck_flo_is_null_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
 }
-
-
-int mod_src_typecheck_flo_is_decimal_type(TypeInfo* type) {
-return type->base == TOKEN_FLOAT  ||  type->base == TOKEN_DOUBLE  &&  type->pointer_depth == 0  &&  type->array_size == 0;
-}
-
-
-int mod_src_typecheck_flo_is_pointer_like_type(TypeInfo* type) {
-return type->pointer_depth > 0  ||  type->array_size != 0;
-}
-
-
-int mod_src_typecheck_flo_is_condition_type(TypeInfo* type) {
-return mod_src_typecheck_flo_is_bool_type(type)  ||  mod_src_typecheck_flo_is_integer_type(type)  ||  mod_src_typecheck_flo_is_pointer_like_type(type);
-}
-
-
-int mod_src_typecheck_flo_is_string_type(TypeInfo* type) {
-return type->base == TOKEN_STRING  &&  type->pointer_depth == 0  &&  type->array_size == 0;
-}
-
-
-int mod_src_typecheck_flo_is_cstr_type(TypeInfo* type) {
-return type->base == TOKEN_CHAR  &&  type->pointer_depth == 1  &&  type->array_size == 0;
-}
-
-
-int mod_src_typecheck_flo_is_numeric_type(TypeInfo* type) {
-return type->base == TOKEN_INT  ||  type->base == TOKEN_FLOAT  ||  type->base == TOKEN_DOUBLE  &&  type->pointer_depth == 0  &&  type->array_size == 0;
-}
-
-
-int mod_src_typecheck_flo_numeric_rank(TypeInfo* type) {
-if (type->base == TOKEN_INT) {
+if (!(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_VOID  &&  typeInfo->pointer_depth == 1  &&  typeInfo->array_size == 0) {
 return 1;
 }
-if (type->base == TOKEN_FLOAT) {
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_NULL  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_nullable_type(TypeInfo* typeInfo) {
+return typeInfo->is_nullable;
+}
+
+
+int mod_src_typecheck_flo_type_atom_is_null(TypeAtom* atom) {
+if (!(atom->is_nullable)  &&  atom->base == TOKEN_VOID  &&  atom->pointer_depth == 1  &&  atom->array_size == 0) {
+return 1;
+}
+return !(atom->is_nullable)  &&  atom->base == TOKEN_NULL  &&  atom->pointer_depth == 0  &&  atom->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_union_has_null_member(TypeInfo* typeInfo) {
+if (!(typeInfo->is_union)) {
+return 0;
+}
+int i = 0;
+while (i < typeInfo->union_count) {
+if (mod_src_typecheck_flo_type_atom_is_null(typeInfo->union_members + i)) {
+return i + 1;
+}
+i = i + 1;
+}
+return 0;
+}
+void mod_src_typecheck_flo_set_null_type(TypeInfo* out);
+
+
+int mod_src_typecheck_flo_lower_nullable_to_semantic_union(TypeEnv* env, AST* ast, TypeInfo* typeInfo) {
+if (!(typeInfo->is_nullable)) {
+return 1;
+}
+if (!(typeInfo->is_union)  &&  typeInfo->array_size != 0  ||  typeInfo->arr_size_expr != NULL) {
+mod_src_typecheck_flo_type_error(env, ast, "nullable arrays are not lowered yet");
+return 0;
+}
+typeInfo->is_nullable = 0;
+if (typeInfo->is_union) {
+if (mod_src_typecheck_flo_union_has_null_member(typeInfo) != 0) {
+return 1;
+}
+if (typeInfo->union_count >= 0) {
+mod_src_typecheck_flo_type_error(env, ast, "semantic union supports at most 8 members");
+return 0;
+}
+TypeInfo* null_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_set_null_type(null_type);
+mod_src_typecheck_flo_copy_type_to_atom(typeInfo->union_members + typeInfo->union_count, null_type);
+typeInfo->union_count = typeInfo->union_count + 1;
+free(null_type);
+return 1;
+}
+TypeInfo* original = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(original, typeInfo);
+mod_src_typecheck_flo_clear_union_type(typeInfo);
+mod_src_typecheck_flo_copy_type_to_atom(typeInfo->union_members + 0, original);
+typeInfo->union_count = 1;
+TypeInfo* null_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_set_null_type(null_type);
+mod_src_typecheck_flo_copy_type_to_atom(typeInfo->union_members + 1, null_type);
+typeInfo->union_count = 2;
+free(original);
+free(null_type);
+return 1;
+}
+
+
+int mod_src_typecheck_flo_validate_nullable_type(TypeEnv* env, AST* ast, TypeInfo* typeInfo) {
+return mod_src_typecheck_flo_lower_nullable_to_semantic_union(env, ast, typeInfo);
+}
+
+
+int mod_src_typecheck_flo_same_type_ignoring_nullability(TypeInfo* expected, TypeInfo* actual) {
+if (expected->base != actual->base) {
+return 0;
+}
+if (expected->pointer_depth != actual->pointer_depth) {
+return 0;
+}
+if (expected->base == TOKEN_IDENTIFIER) {
+return mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length);
+}
+return 1;
+}
+
+
+int mod_src_typecheck_flo_can_accept_null(TypeInfo* typeInfo) {
+if (mod_src_typecheck_flo_is_null_type(typeInfo)) {
+return 1;
+}
+if (mod_src_typecheck_flo_union_has_null_member(typeInfo) != 0) {
+return 1;
+}
+if (mod_src_typecheck_flo_is_nullable_type(typeInfo)) {
+return 1;
+}
+return mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
+}
+
+
+int mod_src_typecheck_flo_is_integer_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_decimal_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_condition_type(TypeInfo* typeInfo) {
+return mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_is_integer_type(typeInfo)  ||  mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
+}
+
+
+int mod_src_typecheck_flo_is_string_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_STRING  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_cstr_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_CHAR  &&  typeInfo->pointer_depth == 1  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_is_numeric_type(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return 0;
+}
+return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_INT  ||  typeInfo->base == TOKEN_FLOAT  ||  typeInfo->base == TOKEN_DOUBLE  &&  typeInfo->pointer_depth == 0  &&  typeInfo->array_size == 0;
+}
+
+
+int mod_src_typecheck_flo_numeric_rank(TypeInfo* typeInfo) {
+if (typeInfo->base == TOKEN_INT) {
+return 1;
+}
+if (typeInfo->base == TOKEN_FLOAT) {
 return 2;
 }
-if (type->base == TOKEN_DOUBLE) {
+if (typeInfo->base == TOKEN_DOUBLE) {
 return 3;
 }
 return 0;
@@ -3099,6 +3608,12 @@ return mod_src_typecheck_flo_numeric_rank(actual) <= mod_src_typecheck_flo_numer
 
 
 int mod_src_typecheck_flo_can_implicitly_convert(TypeInfo* expected, TypeInfo* actual) {
+if (expected->is_union) {
+return mod_src_typecheck_flo_types_match(expected, actual);
+}
+if (actual->is_union) {
+return 0;
+}
 if (mod_src_typecheck_flo_types_match(expected, actual)) {
 return 1;
 }
@@ -3110,8 +3625,19 @@ return 0;
 
 
 int mod_src_typecheck_flo_can_explicitly_convert(TypeInfo* target, TypeInfo* value) {
+if (target->is_union) {
+return mod_src_typecheck_flo_types_match(target, value);
+}
+if (value->is_union) {
+return 0;
+}
 if (mod_src_typecheck_flo_types_match(target, value)) {
 return 1;
+}
+if (mod_src_typecheck_flo_same_type_ignoring_nullability(target, value)) {
+if (mod_src_typecheck_flo_is_nullable_type(target)  ||  mod_src_typecheck_flo_is_nullable_type(value)) {
+return 1;
+}
 }
 if (mod_src_typecheck_flo_is_integer_type(target)  ||  mod_src_typecheck_flo_is_decimal_type(target)  &&  mod_src_typecheck_flo_is_integer_type(value)  ||  mod_src_typecheck_flo_is_decimal_type(value)) {
 return 1;
@@ -3137,18 +3663,31 @@ return mod_src_typecheck_flo_can_implicitly_convert(left, right)  ||  mod_src_ty
 }
 
 
+void mod_src_typecheck_flo_force_string_literal_lowering(AST* expr) {
+if (expr != NULL  &&  expr->kind == AST_STRING_LIT) {
+expr->data._string.lower_kind = STRING_LOWER_STRING;
+}
+}
+
+
 int mod_src_typecheck_flo_allow_string_literal_for_target(AST* expr, TypeInfo* expected) {
 if (expr == NULL  ||  expr->kind != AST_STRING_LIT) {
 return 0;
 }
-if (mod_src_typecheck_flo_is_cstr_type(expected)) {
+TypeInfo* lowered_target = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(lowered_target, expected);
+lowered_target->is_nullable = 0;
+if (mod_src_typecheck_flo_is_cstr_type(lowered_target)) {
 expr->data._string.lower_kind = STRING_LOWER_CSTR;
+free(lowered_target);
 return 1;
 }
-if (mod_src_typecheck_flo_is_string_type(expected)) {
+if (mod_src_typecheck_flo_is_string_type(lowered_target)) {
 expr->data._string.lower_kind = STRING_LOWER_STRING;
+free(lowered_target);
 return 1;
 }
+free(lowered_target);
 return 0;
 }
 
@@ -3208,9 +3747,12 @@ out->base = base;
 out->pointer_depth = 0;
 out->array_size = 0;
 out->arr_size_expr = NULL;
+out->is_nullable = 0;
 out->name_start = 0;
 out->name_length = 0;
 out->name_src = NULL;
+out->is_union = 0;
+out->union_count = 0;
 }
 
 
@@ -3219,9 +3761,26 @@ out->base = TOKEN_CHAR;
 out->pointer_depth = 1;
 out->array_size = 0;
 out->arr_size_expr = NULL;
+out->is_nullable = 0;
 out->name_start = 0;
 out->name_length = 0;
 out->name_src = NULL;
+out->is_union = 0;
+out->union_count = 0;
+}
+
+
+void mod_src_typecheck_flo_set_null_type(TypeInfo* out) {
+out->base = TOKEN_VOID;
+out->pointer_depth = 1;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->is_nullable = 0;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+out->is_union = 0;
+out->union_count = 0;
 }
 
 
@@ -3265,12 +3824,159 @@ return 0;
 }
 
 
-int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual) {
-if (mod_src_typecheck_flo_is_null_type(expected)  &&  mod_src_typecheck_flo_is_pointer_like_type(actual)) {
+int mod_src_typecheck_flo_type_atom_matches_union_info(TypeAtom* atom, TypeInfo* info) {
+if (info->is_union) {
+return 0;
+}
+if (atom->base != info->base) {
+return 0;
+}
+if (atom->pointer_depth != info->pointer_depth) {
+return 0;
+}
+if (atom->array_size != info->array_size) {
+return 0;
+}
+if (atom->is_nullable != info->is_nullable) {
+return 0;
+}
+if (atom->base == TOKEN_IDENTIFIER) {
+return mod_src_typecheck_flo_same_name(atom->name_src, atom->name_start, atom->name_length, info->name_src, info->name_start, info->name_length);
+}
 return 1;
 }
-if (mod_src_typecheck_flo_is_null_type(actual)  &&  mod_src_typecheck_flo_is_pointer_like_type(expected)) {
+
+
+int mod_src_typecheck_flo_find_union_member_index(TypeInfo* union_type, TypeInfo* target) {
+if (!(union_type->is_union)) {
+return 0;
+}
+int i = 0;
+while (i < union_type->union_count) {
+if (mod_src_typecheck_flo_type_atom_matches_union_info(union_type->union_members + i, target)) {
+return i + 1;
+}
+i = i + 1;
+}
+return 0;
+}
+
+
+void mod_src_typecheck_flo_push_union_narrow(TypeEnv* env, char* src, AST* expr, TypeInfo* target, TypeInfo* union_type, int member_index) {
+if (env->narrow_count >= 2048) {
+return;}
+if (expr == NULL  ||  !(mod_src_typecheck_flo_is_narrowable_expr(expr))) {
+return;}
+NarrowInfo* info = env->narrowings + env->narrow_count;
+info->src = src;
+info->name_start = 0;
+info->name_length = 0;
+info->expr = expr;
+mod_src_typecheck_flo_copy_type(&(info->narrowed_type), target);
+mod_src_typecheck_flo_copy_type(&(info->union_source_type), union_type);
+info->kind = NARROW_UNION_MEMBER;
+info->union_member_index = member_index;
+env->narrow_count = env->narrow_count + 1;
+}
+
+
+int mod_src_typecheck_flo_lookup_union_narrow_index(TypeEnv* env, char* src, AST* expr, TypeInfo* target, TypeInfo* union_type) {
+if (expr == NULL  ||  !(mod_src_typecheck_flo_is_narrowable_expr(expr))) {
+return 0;
+}
+int i = env->narrow_count;
+while (i > 0) {
+i = i - 1;
+NarrowInfo* info = env->narrowings + i;
+if (info->kind == NARROW_UNION_MEMBER  &&  info->src == src  &&  info->expr != NULL  &&  mod_src_typecheck_flo_same_narrow_expr(src, info->expr, expr)) {
+if (mod_src_typecheck_flo_types_match(&(info->narrowed_type), target)  &&  mod_src_typecheck_flo_types_match(&(info->union_source_type), union_type)) {
+return info->union_member_index;
+}
+}
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_union_atom_exact_match(TypeAtom* a, TypeAtom* b) {
+if (a->base != b->base) {
+return 0;
+}
+if (a->pointer_depth != b->pointer_depth) {
+return 0;
+}
+if (a->array_size != b->array_size) {
+return 0;
+}
+if (a->is_nullable != b->is_nullable) {
+return 0;
+}
+if (a->base == TOKEN_IDENTIFIER) {
+return mod_src_typecheck_flo_same_name(a->name_src, a->name_start, a->name_length, b->name_src, b->name_start, b->name_length);
+}
 return 1;
+}
+
+
+int mod_src_typecheck_flo_union_types_exact_match(TypeInfo* expected, TypeInfo* actual) {
+if (!(expected->is_union)  ||  !(actual->is_union)) {
+return 0;
+}
+if (expected->union_count != actual->union_count) {
+return 0;
+}
+int i = 0;
+while (i < expected->union_count) {
+if (!(mod_src_typecheck_flo_union_atom_exact_match(expected->union_members + i, actual->union_members + i))) {
+return 0;
+}
+i = i + 1;
+}
+return 1;
+}
+
+
+int mod_src_typecheck_flo_types_match(TypeInfo* expected, TypeInfo* actual) {
+if (expected->is_union  &&  actual->is_union) {
+return mod_src_typecheck_flo_union_types_exact_match(expected, actual);
+}
+if (expected->is_union) {
+int i = 0;
+while (i < expected->union_count) {
+TypeInfo* member = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_atom_to_type(member, expected->union_members + i);
+if (actual->is_union) {
+if (mod_src_typecheck_flo_types_match(member, actual)) {
+free(member);
+return 1;
+}
+}
+else if (mod_src_typecheck_flo_types_match(member, actual)) {
+free(member);
+return 1;
+}
+free(member);
+i = i + 1;
+}
+return 0;
+}
+if (actual->is_union) {
+return 0;
+}
+if (mod_src_typecheck_flo_is_null_type(expected)) {
+return mod_src_typecheck_flo_can_accept_null(actual);
+}
+if (mod_src_typecheck_flo_is_null_type(actual)) {
+return mod_src_typecheck_flo_can_accept_null(expected);
+}
+if (mod_src_typecheck_flo_is_nullable_type(expected)  ||  mod_src_typecheck_flo_is_nullable_type(actual)) {
+if (!(mod_src_typecheck_flo_same_type_ignoring_nullability(expected, actual))) {
+return 0;
+}
+if (mod_src_typecheck_flo_is_nullable_type(expected)) {
+return 1;
+}
+return 0;
 }
 if (mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual)) {
 return 1;
@@ -3282,10 +3988,7 @@ if (expected->pointer_depth != actual->pointer_depth) {
 return 0;
 }
 if (expected->base == TOKEN_IDENTIFIER) {
-if (mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length)) {
-return 1;
-}
-return 0;
+return mod_src_typecheck_flo_same_name(expected->name_src, expected->name_start, expected->name_length, actual->name_src, actual->name_start, actual->name_length);
 }
 return 1;
 }
@@ -3307,15 +4010,18 @@ void mod_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src);
 void mod_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src);
 void mod_src_typecheck_flo_register_var(TypeEnv* env, AST* ast, char* src);
 void mod_src_typecheck_flo_register_params(TypeEnv* env, AST* ast, char* src);
+void mod_src_typecheck_flo_register_type_alias(TypeEnv* env, AST* ast, char* src);
 void mod_src_typecheck_flo_walk_statement_list(TypeEnv* env, AST* list, char* src);
 void mod_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src);
 StructInfo* mod_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int start, int length);
 FieldInfo* mod_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int start, int length);
 int mod_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int start, int length, TypeInfo* out);
+AliasInfo* mod_src_typecheck_flo_lookup_alias(TypeEnv* env, char* src, int start, int length);
 void mod_src_typecheck_flo_resolve_expr_list(TypeEnv* env, AST* list, char* src);
 int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
 int mod_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
 int mod_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
+int mod_src_typecheck_flo_resolve_type_alias_depth(TypeEnv* env, TypeInfo* typeInfo, AST* ast, int depth);
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
 
 
@@ -3331,6 +4037,9 @@ mod_src_typecheck_flo_register_union(env, curr, src);
 else if (curr->kind == AST_FUNC_DEF) {
 mod_src_typecheck_flo_register_func(env, curr, src);
 }
+else if (curr->kind == AST_TYPE_ALIAS) {
+mod_src_typecheck_flo_register_type_alias(env, curr, src);
+}
 else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
 AST* decl = curr->data._prop.decl;
 if (decl->kind == AST_FUNC_DEF) {
@@ -3341,6 +4050,9 @@ mod_src_typecheck_flo_register_struct(env, decl, src);
 }
 else if (decl->kind == AST_UNION_DEF) {
 mod_src_typecheck_flo_register_union(env, decl, src);
+}
+else if (decl->kind == AST_TYPE_ALIAS) {
+mod_src_typecheck_flo_register_type_alias(env, decl, src);
 }
 }
 else if (curr->kind == AST_VAR_DECL) {
@@ -3366,7 +4078,8 @@ FieldInfo* finfo = info->fields + info->field_count;
 finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
-mod_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
+mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.typeInfo));
+mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
 finfo->is_hidden = field->data._struct_field.is_hidden;
 finfo->is_frozen = field->data._struct_field.is_frozen;
 finfo->is_readonly = field->data._struct_field.is_readonly;
@@ -3392,7 +4105,11 @@ FieldInfo* finfo = info->fields + info->field_count;
 finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
-mod_src_typecheck_flo_copy_type(&(finfo->type), &(field->data._struct_field.type));
+mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.typeInfo));
+mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
+if (finfo->typeInfo.is_union) {
+mod_src_typecheck_flo_type_error(env, field, "semantic union fields are not lowered yet");
+}
 finfo->is_hidden = field->data._struct_field.is_hidden;
 finfo->is_frozen = field->data._struct_field.is_frozen;
 finfo->is_readonly = field->data._struct_field.is_readonly;
@@ -3413,6 +4130,7 @@ info->name_start = ast->data._func_def.name_start;
 info->name_length = ast->data._func_def.name_length;
 info->params = ast->data._func_def.params;
 mod_src_typecheck_flo_copy_type(&(info->return_type), &(ast->data._func_def.return_type));
+mod_src_typecheck_flo_resolve_type_alias(env, &(info->return_type), ast);
 env->func_count = env->func_count + 1;
 }
 
@@ -3427,7 +4145,9 @@ VarInfo* info = env->vars + env->var_count;
 info->src = src;
 info->name_start = ast->data._var_decl.name_start;
 info->name_length = ast->data._var_decl.name_length;
-mod_src_typecheck_flo_copy_type(&(info->type), &(ast->data._var_decl.type));
+mod_src_typecheck_flo_copy_type(&(info->typeInfo), &(ast->data._var_decl.typeInfo));
+mod_src_typecheck_flo_resolve_type_alias(env, &(info->typeInfo), ast);
+info->binding_kind = VAR_BINDING_BASE;
 env->var_count = env->var_count + 1;
 }
 
@@ -3442,10 +4162,26 @@ VarInfo* info = env->vars + env->var_count;
 info->src = src;
 info->name_start = param->data._func_params.name_start;
 info->name_length = param->data._func_params.name_length;
-mod_src_typecheck_flo_copy_type(&(info->type), &(param->data._func_params.type));
+mod_src_typecheck_flo_copy_type(&(info->typeInfo), &(param->data._func_params.typeInfo));
+info->binding_kind = VAR_BINDING_BASE;
+mod_src_typecheck_flo_resolve_type_alias(env, &(info->typeInfo), param);
+info->binding_kind = VAR_BINDING_BASE;
 env->var_count = env->var_count + 1;
 param = param->next;
 }
+}
+
+
+void mod_src_typecheck_flo_register_type_alias(TypeEnv* env, AST* ast, char* src) {
+if (env->alias_count >= 512) {
+mod_src_typecheck_flo_type_error(env, ast, "type environment alias table overflow");
+return;}
+AliasInfo* info = env->aliases + env->alias_count;
+info->src = src;
+info->name_start = ast->data._type_alias.name_start;
+info->name_length = ast->data._type_alias.name_length;
+mod_src_typecheck_flo_copy_type(&(info->target), &(ast->data._type_alias.target));
+env->alias_count = env->alias_count + 1;
 }
 int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
 int mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
@@ -3514,6 +4250,334 @@ return 1;
 }
 
 
+void mod_src_typecheck_flo_push_narrowed_binding(TypeEnv* env, char* src, int start, int length, TypeInfo* narrowed) {
+if (env->var_count >= 2048) {
+return;}
+VarInfo* info = env->vars + env->var_count;
+info->src = src;
+info->name_start = start;
+info->name_length = length;
+mod_src_typecheck_flo_copy_type(&(info->typeInfo), narrowed);
+info->binding_kind = VAR_BINDING_NARROW;
+env->var_count = env->var_count + 1;
+}
+
+
+void mod_src_typecheck_flo_push_null_binding(TypeEnv* env, char* src, int start, int length) {
+TypeInfo* null_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_set_null_type(null_type);
+mod_src_typecheck_flo_push_narrowed_binding(env, src, start, length, null_type);
+free(null_type);
+}
+
+
+void mod_src_typecheck_flo_push_visible_binding(TypeEnv* env, char* src, int start, int length, TypeInfo* visible) {
+if (env->var_count >= 2048) {
+return;}
+VarInfo* info = env->vars + env->var_count;
+info->src = src;
+info->name_start = start;
+info->name_length = length;
+mod_src_typecheck_flo_copy_type(&(info->typeInfo), visible);
+info->binding_kind = VAR_BINDING_BASE;
+env->var_count = env->var_count + 1;
+}
+
+
+int mod_src_typecheck_flo_find_single_remaining_union_member(TypeInfo* union_type, int excluded_index) {
+int remaining_index = 0;
+int i = 1;
+while (i <= union_type->union_count) {
+if (i != excluded_index) {
+if (remaining_index != 0) {
+return 0;
+}
+remaining_index = i;
+}
+i = i + 1;
+}
+return remaining_index;
+}
+
+
+int mod_src_typecheck_flo_build_nonnull_variant(TypeInfo* src_type, TypeInfo* out) {
+if (src_type->is_union) {
+mod_src_typecheck_flo_clear_union_type(out);
+int i = 0;
+while (i < src_type->union_count) {
+TypeAtom* atom = src_type->union_members + i;
+if (!(mod_src_typecheck_flo_type_atom_is_null(atom))) {
+mod_src_typecheck_flo_copy_type_atom(out->union_members + out->union_count, atom);
+out->union_count = out->union_count + 1;
+}
+i = i + 1;
+}
+if (out->union_count == 0) {
+return 0;
+}
+if (out->union_count == 1) {
+TypeInfo* tmp = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_atom_to_type(tmp, out->union_members + 0);
+mod_src_typecheck_flo_copy_type(out, tmp);
+free(tmp);
+}
+return 1;
+}
+if (src_type->is_nullable) {
+mod_src_typecheck_flo_copy_type(out, src_type);
+out->is_nullable = 0;
+return 1;
+}
+return 0;
+}
+
+
+void mod_src_typecheck_flo_apply_condition_true_narrow(TypeEnv* env, AST* condition, char* src) {
+if (condition == NULL) {
+return;}
+if (condition->kind == AST_TYPE_TEST) {
+if (condition->data._type_test.lower_kind == TYPE_TEST_NONNULL  &&  condition->data._type_test.value != NULL) {
+if (condition->data._type_test.value->kind == AST_VAR_REF) {
+TypeInfo* narrowed = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(narrowed, &(condition->data._type_test.typeInfo));
+mod_src_typecheck_flo_push_narrowed_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed);
+free(narrowed);
+}
+}
+else if (condition->data._type_test.lower_kind == TYPE_TEST_UNION_TAG  &&  condition->data._type_test.value != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(condition->data._type_test.value)) {
+TypeInfo* narrowed = malloc(sizeof(TypeInfo));
+TypeInfo* source_union = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(narrowed, &(condition->data._type_test.typeInfo));
+mod_src_typecheck_flo_copy_type(source_union, &(condition->data._type_test.value_type));
+if (condition->data._type_test.value->kind == AST_VAR_REF) {
+mod_src_typecheck_flo_push_narrowed_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed);
+}
+mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value, narrowed, source_union, condition->data._type_test.union_member_index);
+free(narrowed);
+free(source_union);
+}
+return;}
+if (condition->kind != AST_BINARY_OP) {
+return;}
+if (condition->data._binary.op != TOKEN_NEQ  &&  condition->data._binary.op != TOKEN_COMP) {
+return;}
+AST* ref_expr = NULL;
+if (condition->data._binary.left != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(condition->data._binary.left)  &&  condition->data._binary.right != NULL  &&  condition->data._binary.right->kind == AST_NULL) {
+ref_expr = condition->data._binary.left;
+}
+else if (condition->data._binary.right != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(condition->data._binary.right)  &&  condition->data._binary.left != NULL  &&  condition->data._binary.left->kind == AST_NULL) {
+ref_expr = condition->data._binary.right;
+}
+if (ref_expr == NULL) {
+return;}
+TypeInfo* current = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, ref_expr, current, src)) {
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, current, ref_expr))) {
+free(current);
+return;}
+if (condition->data._binary.op == TOKEN_NEQ) {
+if (current->is_union) {
+TypeInfo* narrowed = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_build_nonnull_variant(current, narrowed)) {
+if (ref_expr->kind == AST_VAR_REF) {
+mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, narrowed);
+}
+int null_index = mod_src_typecheck_flo_union_has_null_member(current);
+int remaining_index = 0;
+if (null_index != 0) {
+remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(current, null_index);
+}
+if (remaining_index != 0) {
+mod_src_typecheck_flo_push_union_narrow(env, src, ref_expr, narrowed, current, remaining_index);
+}
+}
+free(narrowed);
+}
+}
+}
+free(current);
+}
+
+
+void mod_src_typecheck_flo_apply_condition_false_narrow(TypeEnv* env, AST* condition, char* src) {
+if (condition == NULL) {
+return;}
+if (condition->kind == AST_TYPE_TEST) {
+if (condition->data._type_test.lower_kind == TYPE_TEST_NONNULL) {
+if (condition->data._type_test.value != NULL  &&  condition->data._type_test.value->kind == AST_VAR_REF) {
+mod_src_typecheck_flo_push_null_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length);
+}
+}
+else if (condition->data._type_test.lower_kind == TYPE_TEST_UNION_TAG  &&  condition->data._type_test.value != NULL  &&  condition->data._type_test.value->kind == AST_VAR_REF) {
+TypeInfo* source_union = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(source_union, &(condition->data._type_test.value_type));
+int remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(source_union, condition->data._type_test.union_member_index);
+if (remaining_index != 0) {
+TypeInfo* narrowed = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_atom_to_type(narrowed, source_union->union_members + remaining_index - 1);
+if (condition->data._type_test.value->kind == AST_VAR_REF) {
+mod_src_typecheck_flo_push_narrowed_binding(env, src, condition->data._type_test.value->data._var_ref.name_start, condition->data._type_test.value->data._var_ref.name_length, narrowed);
+}
+mod_src_typecheck_flo_push_union_narrow(env, src, condition->data._type_test.value, narrowed, source_union, remaining_index);
+free(narrowed);
+}
+free(source_union);
+}
+return;}
+if (condition->kind != AST_BINARY_OP) {
+return;}
+AST* ref_expr = NULL;
+if (condition->data._binary.left != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(condition->data._binary.left)  &&  condition->data._binary.right != NULL  &&  condition->data._binary.right->kind == AST_NULL) {
+ref_expr = condition->data._binary.left;
+}
+else if (condition->data._binary.right != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(condition->data._binary.right)  &&  condition->data._binary.left != NULL  &&  condition->data._binary.left->kind == AST_NULL) {
+ref_expr = condition->data._binary.right;
+}
+if (ref_expr == NULL) {
+return;}
+TypeInfo* current = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_resolve_expr(env, ref_expr, current, src)) {
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, current, ref_expr))) {
+free(current);
+return;}
+if (condition->data._binary.op == TOKEN_NEQ) {
+if (current->is_union) {
+if (mod_src_typecheck_flo_union_has_null_member(current) != 0) {
+mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
+}
+else if (mod_src_typecheck_flo_is_nullable_type(current)) {
+if (ref_expr->kind == AST_VAR_REF) {
+mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
+}
+}
+else if (condition->data._binary.op == TOKEN_COMP) {
+if (current->is_union) {
+TypeInfo* narrowed = malloc(sizeof(TypeInfo));
+if (mod_src_typecheck_flo_build_nonnull_variant(current, narrowed)) {
+if (ref_expr->kind == AST_VAR_REF) {
+mod_src_typecheck_flo_push_narrowed_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, narrowed);
+}
+int null_index = mod_src_typecheck_flo_union_has_null_member(current);
+int remaining_index = 0;
+if (null_index != 0) {
+remaining_index = mod_src_typecheck_flo_find_single_remaining_union_member(current, null_index);
+}
+if (remaining_index != 0) {
+mod_src_typecheck_flo_push_union_narrow(env, src, ref_expr, narrowed, current, remaining_index);
+}
+}
+free(narrowed);
+}
+}
+}
+free(current);
+}
+int mod_src_typecheck_flo_statement_definitely_returns(AST* ast);
+
+
+int mod_src_typecheck_flo_statement_list_definitely_returns(AST* list) {
+AST* curr = list;
+while (curr != NULL) {
+if (mod_src_typecheck_flo_statement_definitely_returns(curr)) {
+return 1;
+}
+curr = curr->next;
+}
+return 0;
+}
+
+
+int mod_src_typecheck_flo_statement_definitely_returns(AST* ast) {
+if (ast == NULL) {
+return 0;
+}
+if (ast->kind == AST_FLOW_CONTROL  &&  ast->data._flow_ctrl.base != NULL  &&  ast->data._flow_ctrl.base->kind == TOKEN_RETURN) {
+return 1;
+}
+if (ast->kind == AST_IF) {
+return mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.body)  &&  mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.else_branch);
+}
+return 0;
+}
+
+
+void mod_src_typecheck_flo_apply_guard_clause_narrow(TypeEnv* env, AST* ast, char* src) {
+int then_returns = mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.body);
+int else_returns = mod_src_typecheck_flo_statement_list_definitely_returns(ast->data._if_condition.else_branch);
+if (then_returns  &&  !(else_returns)) {
+mod_src_typecheck_flo_apply_condition_false_narrow(env, ast->data._if_condition.condition, src);
+}
+else if (else_returns  &&  !(then_returns)) {
+mod_src_typecheck_flo_apply_condition_true_narrow(env, ast->data._if_condition.condition, src);
+}
+}
+
+
+int mod_src_typecheck_flo_try_lower_union_null_compare(AST* expr, TypeInfo* left_type, TypeInfo* right_type) {
+expr->data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE;
+expr->data._binary.null_union_member_index = 0;
+if (expr->data._binary.op != TOKEN_COMP  &&  expr->data._binary.op != TOKEN_NEQ) {
+return 0;
+}
+if (left_type->is_union  &&  mod_src_typecheck_flo_is_null_type(right_type)) {
+int member_index = mod_src_typecheck_flo_union_has_null_member(left_type);
+if (member_index != 0) {
+expr->data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG;
+expr->data._binary.null_union_member_index = member_index;
+return 1;
+}
+}
+if (right_type->is_union  &&  mod_src_typecheck_flo_is_null_type(left_type)) {
+int member_index = mod_src_typecheck_flo_union_has_null_member(right_type);
+if (member_index != 0) {
+expr->data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG;
+expr->data._binary.null_union_member_index = member_index;
+return 1;
+}
+}
+return 0;
+}
+int mod_src_typecheck_flo_lookup_storage_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out);
+
+
+int mod_src_typecheck_flo_try_lower_storage_union_null_compare(TypeEnv* env, AST* expr, char* src) {
+if (expr == NULL  ||  expr->kind != AST_BINARY_OP) {
+return 0;
+}
+if (expr->data._binary.op != TOKEN_COMP  &&  expr->data._binary.op != TOKEN_NEQ) {
+return 0;
+}
+AST* ref_expr = NULL;
+if (expr->data._binary.left != NULL  &&  expr->data._binary.left->kind == AST_VAR_REF  &&  expr->data._binary.right != NULL  &&  expr->data._binary.right->kind == AST_NULL) {
+ref_expr = expr->data._binary.left;
+}
+else if (expr->data._binary.right != NULL  &&  expr->data._binary.right->kind == AST_VAR_REF  &&  expr->data._binary.left != NULL  &&  expr->data._binary.left->kind == AST_NULL) {
+ref_expr = expr->data._binary.right;
+}
+if (ref_expr == NULL) {
+return 0;
+}
+TypeInfo* storage_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_lookup_storage_var_type(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length, storage_type))) {
+free(storage_type);
+return 0;
+}
+if (storage_type->is_union) {
+int member_index = mod_src_typecheck_flo_union_has_null_member(storage_type);
+if (member_index != 0) {
+expr->data._binary.null_compare_kind = BINARY_NULL_COMPARE_UNION_TAG;
+expr->data._binary.null_union_member_index = member_index;
+free(storage_type);
+return 1;
+}
+}
+free(storage_type);
+return 0;
+}
+
+
 int mod_src_typecheck_flo_resolve_expr(TypeEnv* env, AST* expr, TypeInfo* out, char* src) {
 if (expr == NULL) {
 return 0;
@@ -3522,7 +4586,11 @@ if (expr->kind == AST_VAR_REF) {
 return mod_src_typecheck_flo_lookup_var_type(env, src, expr->data._var_ref.name_start, expr->data._var_ref.name_length, out);
 }
 else if (expr->kind == AST_NEW) {
-mod_src_typecheck_flo_copy_type(out, &(expr->data._new_alloc.type));
+mod_src_typecheck_flo_copy_type(out, &(expr->data._new_alloc.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, out, expr))) {
+return 0;
+}
+out->is_nullable = 0;
 out->pointer_depth = out->pointer_depth + 1;
 return 1;
 }
@@ -3535,6 +4603,7 @@ if (out->pointer_depth <= 0) {
 return 0;
 }
 out->pointer_depth = out->pointer_depth - 1;
+out->is_nullable = 0;
 return 1;
 }
 else if (expr->kind == AST_GET_ADDR) {
@@ -3542,6 +4611,7 @@ if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._get_addr.operand, out,
 return 0;
 }
 out->pointer_depth = out->pointer_depth + 1;
+out->is_nullable = 0;
 return 1;
 }
 else if (expr->kind == AST_DOT_ACCESS) {
@@ -3566,8 +4636,86 @@ return 1;
 else if (expr->kind == AST_ALIAS_CALL) {
 return mod_src_typecheck_flo_resolve_alias_call(env, expr, out, src);
 }
+else if (expr->kind == AST_TYPE_TEST) {
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+TypeInfo* target_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._type_test.value, value_type, src))) {
+free(value_type);
+free(target_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, expr->data._type_test.value))) {
+free(value_type);
+free(target_type);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(target_type, &(expr->data._type_test.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target_type, expr))) {
+free(value_type);
+free(target_type);
+return 0;
+}
+if (target_type->is_union) {
+mod_src_typecheck_flo_type_error(env, expr, "`is` target must currently be a concrete non-union type");
+free(value_type);
+free(target_type);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(&(expr->data._type_test.value_type), value_type);
+expr->data._type_test.lower_kind = TYPE_TEST_UNKNOWN;
+mod_src_typecheck_flo_copy_type(&(expr->data._type_test.typeInfo), target_type);
+mod_src_typecheck_flo_copy_type(&(expr->data._type_test.value_type), value_type);
+expr->data._type_test.lower_kind = TYPE_TEST_UNKNOWN;
+expr->data._type_test.union_member_index = 0;
+if (value_type->is_union) {
+int member_index = mod_src_typecheck_flo_find_union_member_index(value_type, target_type);
+if (member_index == 0) {
+mod_src_typecheck_flo_type_error(env, expr, "`is` target is not a member of this semantic union");
+free(value_type);
+free(target_type);
+return 0;
+}
+expr->data._type_test.lower_kind = TYPE_TEST_UNION_TAG;
+expr->data._type_test.union_member_index = member_index;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
+free(value_type);
+free(target_type);
+return 1;
+}
+if (mod_src_typecheck_flo_same_type_ignoring_nullability(value_type, target_type)) {
+if (mod_src_typecheck_flo_is_nullable_type(value_type)  &&  !(mod_src_typecheck_flo_is_nullable_type(target_type))) {
+expr->data._type_test.lower_kind = TYPE_TEST_NONNULL;
+}
+else if (mod_src_typecheck_flo_types_match(target_type, value_type)  ||  mod_src_typecheck_flo_is_nullable_type(target_type)  &&  !(mod_src_typecheck_flo_is_nullable_type(value_type))) {
+expr->data._type_test.lower_kind = TYPE_TEST_STATIC_TRUE;
+}
+else {
+mod_src_typecheck_flo_type_error(env, expr, "`is` check is not meaningful for these types");
+free(value_type);
+free(target_type);
+return 0;
+}
+}
+else if (mod_src_typecheck_flo_types_match(target_type, value_type)) {
+expr->data._type_test.lower_kind = TYPE_TEST_STATIC_TRUE;
+}
+else {
+mod_src_typecheck_flo_type_error(env, expr, "`is` check is not meaningful for these types");
+free(value_type);
+free(target_type);
+return 0;
+}
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
+free(value_type);
+free(target_type);
+return 1;
+}
 else if (expr->kind == AST_SUBSCRIPT) {
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
+return 0;
+}
+if (out->is_union) {
+mod_src_typecheck_flo_type_error(env, expr, "semantic union requires explicit cast before indexing");
 return 0;
 }
 expr->data._subscript.is_string = 0;
@@ -3578,6 +4726,7 @@ return 0;
 }
 free(idx_type);
 if (mod_src_typecheck_flo_is_string_type(out)) {
+mod_src_typecheck_flo_force_string_literal_lowering(expr->data._subscript.array);
 expr->data._subscript.is_string = 1;
 mod_src_typecheck_flo_set_plain_type(out, TOKEN_CHAR);
 return 1;
@@ -3585,10 +4734,12 @@ return 1;
 if (out->array_size != 0) {
 out->array_size = 0;
 out->arr_size_expr = NULL;
+out->is_nullable = 0;
 return 1;
 }
 if (out->pointer_depth > 0) {
 out->pointer_depth = out->pointer_depth - 1;
+out->is_nullable = 0;
 return 1;
 }
 mod_src_typecheck_flo_type_error(env, expr, "cannot subscript non-indexable type");
@@ -3607,6 +4758,33 @@ free(left_type);
 free(right_type);
 return 0;
 }
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, left_type, expr->data._binary.left))) {
+free(left_type);
+free(right_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, right_type, expr->data._binary.right))) {
+free(left_type);
+free(right_type);
+return 0;
+}
+expr->data._binary.is_string_compare = 0;
+expr->data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE;
+expr->data._binary.null_union_member_index = 0;
+if (mod_src_typecheck_flo_is_comparison_op(expr->data._binary.op)) {
+if (mod_src_typecheck_flo_try_lower_union_null_compare(expr, left_type, right_type)  ||  mod_src_typecheck_flo_try_lower_storage_union_null_compare(env, expr, src)) {
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
+free(left_type);
+free(right_type);
+return 1;
+}
+}
+if (left_type->is_union  ||  right_type->is_union) {
+mod_src_typecheck_flo_type_error(env, expr, "semantic union requires explicit cast before operator use");
+free(left_type);
+free(right_type);
+return 0;
+}
 if (mod_src_typecheck_flo_is_logical_op(expr->data._binary.op)) {
 if (!(mod_src_typecheck_flo_is_condition_type(left_type))  ||  !(mod_src_typecheck_flo_is_condition_type(right_type))) {
 mod_src_typecheck_flo_type_error(env, expr, "logical operators require condition-compatible operands");
@@ -3614,16 +4792,15 @@ free(left_type);
 free(right_type);
 return 0;
 }
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 }
 else if (mod_src_typecheck_flo_is_comparison_op(expr->data._binary.op)) {
 expr->data._binary.is_string_compare = 0;
 if (mod_src_typecheck_flo_is_string_type(left_type)  ||  mod_src_typecheck_flo_is_string_type(right_type)) {
 if (mod_src_typecheck_flo_is_string_type(left_type)  &&  mod_src_typecheck_flo_is_string_type(right_type)) {
 if (expr->data._binary.op == TOKEN_COMP  ||  expr->data._binary.op == TOKEN_NEQ) {
+mod_src_typecheck_flo_force_string_literal_lowering(expr->data._binary.left);
+mod_src_typecheck_flo_force_string_literal_lowering(expr->data._binary.right);
 mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 expr->data._binary.is_string_compare = 1;
 }
@@ -3650,10 +4827,7 @@ return 0;
 else {
 mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 }
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 }
 else {
 if (mod_src_typecheck_flo_is_bool_type(left_type)  ||  mod_src_typecheck_flo_is_bool_type(right_type)) {
@@ -3707,21 +4881,28 @@ if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand
 free(operand_type);
 return 0;
 }
+if (operand_type->is_union) {
+mod_src_typecheck_flo_type_error(env, expr, "semantic union requires explicit cast before unary use");
+free(operand_type);
+return 0;
+}
 if (!(mod_src_typecheck_flo_is_condition_type(operand_type))) {
 mod_src_typecheck_flo_type_error(env, expr, "not requires a condition-compatible operand");
 free(operand_type);
 return 0;
 }
 free(operand_type);
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 return 1;
 }
 else if (expr->kind == AST_UNARY_NEG) {
 TypeInfo* operand_type = malloc(sizeof(TypeInfo));
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._unary.operand, operand_type, src))) {
+free(operand_type);
+return 0;
+}
+if (operand_type->is_union) {
+mod_src_typecheck_flo_type_error(env, expr, "semantic union requires explicit type before unary use");
 free(operand_type);
 return 0;
 }
@@ -3736,58 +4917,98 @@ return 1;
 }
 else if (expr->kind == AST_CAST) {
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
+TypeInfo* target_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(target_type, &(expr->data._cast.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target_type, expr))) {
+free(value_type);
+free(target_type);
+return 0;
+}
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._cast.value, value_type, src))) {
 free(value_type);
+free(target_type);
 return 0;
 }
-if (!(mod_src_typecheck_flo_can_explicitly_convert(&(expr->data._cast.type), value_type))) {
-mod_src_typecheck_flo_type_error(env, expr, "cast is not valid for these types");
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, expr->data._cast.value))) {
 free(value_type);
+free(target_type);
 return 0;
 }
-if (!(mod_src_typecheck_flo_can_explicitly_convert(&(expr->data._cast.type), value_type))) {
+mod_src_typecheck_flo_copy_type(&(expr->data._cast.typeInfo), target_type);
+expr->data._cast.lower_kind = CAST_LOWER_NONE;
+expr->data._cast.union_member_index = 0;
+if (expr->data._cast.value != NULL  &&  mod_src_typecheck_flo_is_narrowable_expr(expr->data._cast.value)) {
+TypeInfo* source_union = malloc(sizeof(TypeInfo));
+int has_union_source = 0;
+if (value_type->is_union) {
+mod_src_typecheck_flo_copy_type(source_union, value_type);
+has_union_source = 1;
+}
+else if (expr->data._cast.value->kind == AST_VAR_REF  &&  mod_src_typecheck_flo_lookup_storage_var_type(env, src, expr->data._cast.value->data._var_ref.name_start, expr->data._cast.value->data._var_ref.name_length, source_union)  &&  source_union->is_union) {
+has_union_source = 1;
+}
+if (has_union_source) {
+int member_index = mod_src_typecheck_flo_lookup_union_narrow_index(env, src, expr->data._cast.value, target_type, source_union);
+if (member_index != 0) {
+mod_src_typecheck_flo_copy_type(&(expr->data._cast.value_type), source_union);
+expr->data._cast.lower_kind = CAST_LOWER_UNION_EXTRACT;
+expr->data._cast.union_member_index = member_index;
+mod_src_typecheck_flo_copy_type(out, target_type);
+free(source_union);
+free(value_type);
+free(target_type);
+return 1;
+}
+}
+free(source_union);
+}
+if (target_type->is_union  &&  !(value_type->is_union)) {
+int member_index = mod_src_typecheck_flo_find_union_member_index(target_type, value_type);
+if (member_index != 0) {
+mod_src_typecheck_flo_copy_type(&(expr->data._cast.value_type), value_type);
+expr->data._cast.lower_kind = CAST_LOWER_UNION_PACK;
+expr->data._cast.union_member_index = member_index;
+mod_src_typecheck_flo_copy_type(out, target_type);
+free(value_type);
+free(target_type);
+return 1;
+}
+}
+if (!(mod_src_typecheck_flo_can_explicitly_convert(target_type, value_type))) {
 mod_src_typecheck_flo_type_error(env, expr, "cast is not valid for these types");
 free(value_type);
+free(target_type);
 return 0;
+}
+if (expr->data._cast.value->kind == AST_STRING_LIT) {
+if (mod_src_typecheck_flo_is_string_type(target_type)  ||  mod_src_typecheck_flo_is_cstr_type(target_type)) {
+mod_src_typecheck_flo_force_string_literal_lowering(expr->data._cast.value);
+}
 }
 mod_src_typecheck_flo_copy_type(&(expr->data._cast.value_type), value_type);
+mod_src_typecheck_flo_copy_type(out, target_type);
 free(value_type);
-mod_src_typecheck_flo_copy_type(out, &(expr->data._cast.type));
+free(target_type);
 return 1;
 }
 else if (expr->kind == AST_SIZEOF) {
-out->base = TOKEN_INT;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
 return 1;
 }
 else if (expr->kind == AST_LITERAL) {
-out->base = TOKEN_INT;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_INT);
 return 1;
 }
 else if (expr->kind == AST_FLOAT_LIT) {
-out->base = TOKEN_FLOAT;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_FLOAT);
 return 1;
 }
 else if (expr->kind == AST_BOOL_LIT) {
-out->base = TOKEN_BOOL;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_BOOL);
 return 1;
 }
 else if (expr->kind == AST_CHAR_LIT) {
-out->base = TOKEN_CHAR;
-out->pointer_depth = 0;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_CHAR);
 return 1;
 }
 else if (expr->kind == AST_STRING_LIT) {
@@ -3795,10 +5016,7 @@ mod_src_typecheck_flo_set_plain_type(out, TOKEN_STRING);
 return 1;
 }
 else if (expr->kind == AST_NULL) {
-out->base = TOKEN_VOID;
-out->pointer_depth = 1;
-out->array_size = 0;
-out->arr_size_expr = NULL;
+mod_src_typecheck_flo_set_null_type(out);
 return 1;
 }
 return 0;
@@ -3812,7 +5030,13 @@ mod_src_typecheck_flo_type_error(env, expr, "could not resolve object type for f
 free(object_type);
 return 0;
 }
+if (object_type->is_union) {
+mod_src_typecheck_flo_type_error(env, expr, "semantic union requires explicit cast before field access");
+free(object_type);
+return 0;
+}
 if (object_type->base == TOKEN_STRING) {
+mod_src_typecheck_flo_force_string_literal_lowering(expr->data._dot_access.object);
 if (object_type->pointer_depth == 0) {
 expr->data._dot_access.access_kind = ACCESS_DOT;
 }
@@ -3882,8 +5106,13 @@ free(object_type);
 return 0;
 }
 }
-mod_src_typecheck_flo_copy_type(out, &(field->type));
-mod_src_typecheck_flo_copy_type(&(expr->data._dot_access.resolved_type), &(field->type));
+mod_src_typecheck_flo_copy_type(out, &(field->typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, out, expr))) {
+expr->data._dot_access.access_kind = ACCESS_UNKNOWN;
+free(object_type);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(&(expr->data._dot_access.resolved_type), out);
 free(object_type);
 return 1;
 }
@@ -3918,32 +5147,140 @@ return 1;
 }
 
 
+int mod_src_typecheck_flo_resolve_type_alias(TypeEnv* env, TypeInfo* typeInfo, AST* ast) {
+return mod_src_typecheck_flo_resolve_type_alias_depth(env, typeInfo, ast, 0);
+}
+
+
+int mod_src_typecheck_flo_resolve_type_alias_depth(TypeEnv* env, TypeInfo* typeInfo, AST* ast, int depth) {
+if (typeInfo->is_union) {
+TypeInfo* flattened = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_clear_union_type(flattened);
+int i = 0;
+while (i < typeInfo->union_count) {
+TypeInfo* member = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_atom_to_type(member, typeInfo->union_members + i);
+if (!(mod_src_typecheck_flo_resolve_type_alias_depth(env, member, ast, depth + 1))) {
+free(member);
+free(flattened);
+return 0;
+}
+if (member->is_union) {
+int j = 0;
+while (j < member->union_count) {
+if (flattened->union_count >= 8) {
+mod_src_typecheck_flo_type_error(env, ast, "semantic union support at most 8 members");
+free(member);
+free(flattened);
+return 0;
+}
+mod_src_typecheck_flo_copy_type_atom(flattened->union_members + flattened->union_count, member->union_members + j);
+flattened->union_count = flattened->union_count + 1;
+j = j + 1;
+}
+}
+else {
+if (flattened->union_count >= 8) {
+mod_src_typecheck_flo_type_error(env, ast, "semantic union supports at most 8 members");
+free(member);
+free(flattened);
+return 0;
+}
+mod_src_typecheck_flo_copy_type_to_atom(flattened->union_members + flattened->union_count, member);
+flattened->union_count = flattened->union_count + 1;
+}
+free(member);
+i = i + 1;
+}
+mod_src_typecheck_flo_copy_type(typeInfo, flattened);
+free(flattened);
+return 1;
+}
+if (typeInfo->base != TOKEN_IDENTIFIER) {
+return mod_src_typecheck_flo_validate_nullable_type(env, ast, typeInfo);
+}
+AliasInfo* alias = mod_src_typecheck_flo_lookup_alias(env, typeInfo->name_src, typeInfo->name_start, typeInfo->name_length);
+if (alias == NULL) {
+return mod_src_typecheck_flo_validate_nullable_type(env, ast, typeInfo);
+}
+if (depth >= 32) {
+mod_src_typecheck_flo_type_error(env, ast, "type alias circle or recursion too deep");
+return 0;
+}
+int outer_pointer_depth = typeInfo->pointer_depth;
+int outer_array_size = typeInfo->array_size;
+AST* outer_array_expr = typeInfo->arr_size_expr;
+int outer_nullable = typeInfo->is_nullable;
+TypeInfo* resolved = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(resolved, &(alias->target));
+if (!(mod_src_typecheck_flo_resolve_type_alias_depth(env, resolved, ast, depth + 1))) {
+free(resolved);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(typeInfo, resolved);
+typeInfo->pointer_depth = typeInfo->pointer_depth + outer_pointer_depth;
+if (outer_array_size != 0  ||  outer_array_expr != NULL) {
+typeInfo->array_size = outer_array_size;
+typeInfo->arr_size_expr = outer_array_expr;
+}
+if (outer_nullable) {
+typeInfo->is_nullable = 1;
+}
+free(resolved);
+return mod_src_typecheck_flo_validate_nullable_type(env, ast, typeInfo);
+}
+
+
 void mod_src_typecheck_flo_typecheck_statement(TypeEnv* env, AST* ast, char* src) {
 if (ast->kind == AST_VAR_DECL) {
 mod_src_typecheck_flo_register_var(env, ast, src);
 if (ast->data._var_decl.value != NULL) {
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
+TypeInfo* expected_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(expected_type, &(ast->data._var_decl.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, expected_type, ast))) {
+free(expected_type);
+free(value_type);
+return;}
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._var_decl.value, value_type, src)) {
-if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_decl.value, &(ast->data._var_decl.type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(ast->data._var_decl.type), value_type))) {
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_decl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, value_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "variable initializer does not match declared type");
+free(expected_type);
 free(value_type);
 return;}
 }
+ast->data._var_decl.union_member_index = 0;
+if (expected_type->is_union  &&  !(value_type->is_union)) {
+ast->data._var_decl.union_member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, value_type);
+}
+free(expected_type);
 free(value_type);
 }
 }
 else if (ast->kind == AST_VAR_ASS) {
 TypeInfo* target_type = malloc(sizeof(TypeInfo));
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
-if (!(mod_src_typecheck_flo_lookup_var_type(env, src, ast->data._var_ass.name_start, ast->data._var_ass.name_length, target_type))) {
+if (!(mod_src_typecheck_flo_lookup_storage_var_type(env, src, ast->data._var_ass.name_start, ast->data._var_ass.name_length, target_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "unknown variable in assignment");
 free(target_type);
 free(value_type);
 return;}
+mod_src_typecheck_flo_copy_type(&(ast->data._var_ass.resolved_type), target_type);
+int assignment_ok = 0;
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._var_ass.value, value_type, src)) {
 if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_ass.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match variable type");
 }
+else {
+assignment_ok = 1;
+}
+}
+ast->data._var_ass.union_member_index = 0;
+if (target_type->is_union  &&  !(value_type->is_union)) {
+ast->data._var_ass.union_member_index = mod_src_typecheck_flo_find_union_member_index(target_type, value_type);
+}
+if (assignment_ok) {
+mod_src_typecheck_flo_push_visible_binding(env, src, ast->data._var_ass.name_start, ast->data._var_ass.name_length, target_type);
 }
 free(target_type);
 free(value_type);
@@ -3972,6 +5309,7 @@ else if (ast->kind == AST_DOT_ACCESS) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_resolve_expr(env, ast, tmp, src);
 free(tmp);
+ast->data._dot_access.union_member_index = 0;
 if (ast->data._dot_access.value != NULL) {
 TypeInfo* object_type = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.object, object_type, src)) {
@@ -3986,8 +5324,27 @@ if (ast->data._dot_access.is_readonly) {
 mod_src_typecheck_flo_type_error(env, ast, "field is readonly from this scope");
 return;}
 }
+TypeInfo* target_type = malloc(sizeof(TypeInfo));
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
-mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src);
+mod_src_typecheck_flo_copy_type(target_type, &(ast->data._dot_access.resolved_type));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target_type, ast))) {
+free(target_type);
+free(value_type);
+return;}
+mod_src_typecheck_flo_copy_type(&(ast->data._dot_access.resolved_type), target_type);
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._dot_access.value, value_type, src)) {
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, ast->data._dot_access.value))) {
+free(target_type);
+free(value_type);
+return;}
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._dot_access.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
+mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match field type");
+}
+else if (target_type->is_union  &&  !(value_type->is_union)) {
+ast->data._dot_access.union_member_index = mod_src_typecheck_flo_find_union_member_index(target_type, value_type);
+}
+}
+free(target_type);
 free(value_type);
 }
 }
@@ -4001,8 +5358,19 @@ mod_src_typecheck_flo_type_error(env, ast, "if condition must be a condition-com
 }
 free(tmp);
 }
+int saved_then_var_count = env->var_count;
+int saved_then_narrow_count = env->narrow_count;
+mod_src_typecheck_flo_apply_condition_true_narrow(env, ast->data._if_condition.condition, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.body, src);
+env->var_count = saved_then_var_count;
+env->narrow_count = saved_then_narrow_count;
+mod_src_typecheck_flo_apply_guard_clause_narrow(env, ast, src);
+int saved_else_var_count = env->var_count;
+int saved_else_narrow_count = env->narrow_count;
+mod_src_typecheck_flo_apply_condition_false_narrow(env, ast->data._if_condition.condition, src);
 mod_src_typecheck_flo_walk_statement_list(env, ast->data._if_condition.else_branch, src);
+env->var_count = saved_else_var_count;
+env->narrow_count = saved_else_narrow_count;
 }
 else if (ast->kind == AST_WHILE) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
@@ -4023,13 +5391,14 @@ VarInfo* loop_var = env->vars + env->var_count;
 loop_var->src = src;
 loop_var->name_start = ast->data._for_loop.var_start;
 loop_var->name_length = ast->data._for_loop.var_length;
-loop_var->type.base = TOKEN_INT;
-loop_var->type.pointer_depth = 0;
-loop_var->type.array_size = 0;
-loop_var->type.arr_size_expr = NULL;
-loop_var->type.name_start = 0;
-loop_var->type.name_length = 0;
-loop_var->type.name_src = NULL;
+loop_var->typeInfo.base = TOKEN_INT;
+loop_var->typeInfo.pointer_depth = 0;
+loop_var->typeInfo.array_size = 0;
+loop_var->typeInfo.arr_size_expr = NULL;
+loop_var->typeInfo.is_nullable = 0;
+loop_var->typeInfo.name_start = 0;
+loop_var->typeInfo.name_length = 0;
+loop_var->typeInfo.name_src = NULL;
 env->var_count = env->var_count + 1;
 TypeInfo* from_type = malloc(sizeof(TypeInfo));
 TypeInfo* to_type = malloc(sizeof(TypeInfo));
@@ -4041,6 +5410,7 @@ free(to_type);
 env->var_count = saved_var_count;
 }
 else if (ast->kind == AST_FLOW_CONTROL) {
+ast->data._flow_ctrl.union_member_index = 0;
 if (ast->data._flow_ctrl.base != NULL  &&  ast->data._flow_ctrl.base->kind == TOKEN_RETURN  &&  inside_function) {
 if (ast->data._flow_ctrl.value == NULL) {
 if (!(mod_src_typecheck_flo_is_void_type(&(current_return_type)))) {
@@ -4048,13 +5418,27 @@ mod_src_typecheck_flo_type_error(env, ast, "return value does not match function
 }
 }
 else {
-TypeInfo* tmp = malloc(sizeof(TypeInfo));
-if (mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, tmp, src)) {
-if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._flow_ctrl.value, &(current_return_type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(current_return_type), tmp))) {
+TypeInfo* expected_type = malloc(sizeof(TypeInfo));
+TypeInfo* actual_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_copy_resolved_type(env, expected_type, &(current_return_type), ast))) {
+free(expected_type);
+free(actual_type);
+return;}
+mod_src_typecheck_flo_copy_type(&(ast->data._flow_ctrl.resolved_type), expected_type);
+if (mod_src_typecheck_flo_resolve_expr(env, ast->data._flow_ctrl.value, actual_type, src)) {
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, actual_type, ast->data._flow_ctrl.value))) {
+free(expected_type);
+free(actual_type);
+return;}
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._flow_ctrl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, actual_type))) {
 mod_src_typecheck_flo_type_error(env, ast, "return value does not match function return type");
 }
+else if (expected_type->is_union  &&  !(actual_type->is_union)) {
+ast->data._flow_ctrl.union_member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, actual_type);
 }
-free(tmp);
+}
+free(expected_type);
+free(actual_type);
 }
 }
 else if (ast->data._flow_ctrl.value != NULL) {
@@ -4066,6 +5450,9 @@ free(tmp);
 else if (ast->kind == AST_PRINT) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._print.value, tmp, src)) {
+if (mod_src_typecheck_flo_is_string_type(tmp)) {
+mod_src_typecheck_flo_force_string_literal_lowering(ast->data._print.value);
+}
 mod_src_typecheck_flo_copy_type(&(ast->data._print.value_type), tmp);
 }
 free(tmp);
@@ -4105,11 +5492,24 @@ inside_function = 0;
 else if (curr->kind == AST_VAR_DECL) {
 if (curr->data._var_decl.value != NULL) {
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
+TypeInfo* expected_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(expected_type, &(curr->data._var_decl.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, expected_type, curr))) {
+free(expected_type);
+free(value_type);
+return;}
 if (mod_src_typecheck_flo_resolve_expr(env, curr->data._var_decl.value, value_type, src)) {
-if (!(mod_src_typecheck_flo_allow_string_literal_for_target(curr->data._var_decl.value, &(curr->data._var_decl.type)))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(&(curr->data._var_decl.type), value_type))) {
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, curr->data._var_decl.value))) {
+free(expected_type);
+free(value_type);
+return;}
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(curr->data._var_decl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, value_type))) {
 mod_src_typecheck_flo_type_error(env, curr, "variable initializer does not match declared type");
+free(expected_type);
+free(value_type);
+return;}
 }
-}
+free(expected_type);
 free(value_type);
 }
 }
@@ -4140,12 +5540,26 @@ return NULL;
 }
 
 
+int mod_src_typecheck_flo_lookup_storage_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
+int i = env->var_count - 1;
+while (i >= 0) {
+VarInfo* info = env->vars + i;
+if (info->binding_kind != VAR_BINDING_NARROW  &&  mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+mod_src_typecheck_flo_copy_type(out, &(info->typeInfo));
+return 1;
+}
+i = i - 1;
+}
+return 0;
+}
+
+
 int mod_src_typecheck_flo_lookup_var_type(TypeEnv* env, char* src, int start, int length, TypeInfo* out) {
 int i = env->var_count - 1;
 while (i >= 0) {
 VarInfo* info = env->vars + i;
 if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
-mod_src_typecheck_flo_copy_type(out, &(info->type));
+mod_src_typecheck_flo_copy_type(out, &(info->typeInfo));
 return 1;
 }
 i = i - 1;
@@ -4204,20 +5618,82 @@ return NULL;
 }
 
 
+AliasInfo* mod_src_typecheck_flo_lookup_alias(TypeEnv* env, char* src, int start, int length) {
+int i = env->alias_count - 1;
+while (i >= 0) {
+AliasInfo* info = env->aliases + i;
+if (info->src == src  &&  mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
+return info;
+}
+i = i - 1;
+}
+return NULL;
+}
+
+
+void mod_src_typecheck_flo_clear_call_union_metadata(AST* call_ast) {
+int i = 0;
+while (i < 64) {
+if (call_ast->kind == AST_FUNC_CALL) {
+call_ast->data._func_call.arg_union_members[i] = 0;
+}
+else if (call_ast->kind == AST_ALIAS_CALL) {
+call_ast->data._alias_call.arg_union_members[i] = 0;
+}
+i = i + 1;
+}
+}
+
+
+void mod_src_typecheck_flo_set_call_union_metadata(AST* call_ast, int index, TypeInfo* union_type, int member_index) {
+if (call_ast->kind == AST_FUNC_CALL) {
+call_ast->data._func_call.arg_union_members[index] = member_index;
+mod_src_typecheck_flo_copy_type(call_ast->data._func_call.arg_union_types + index, union_type);
+}
+else if (call_ast->kind == AST_ALIAS_CALL) {
+call_ast->data._alias_call.arg_union_members[index] = member_index;
+mod_src_typecheck_flo_copy_type(call_ast->data._alias_call.arg_union_types + index, union_type);
+}
+}
+
+
 int mod_src_typecheck_flo_check_call_args(TypeEnv* env, AST* call_ast, AST* args, AST* params, char* src) {
 AST* arg = args;
 AST* param = params;
+int index = 0;
+mod_src_typecheck_flo_clear_call_union_metadata(call_ast);
 while (arg != NULL  &&  param != NULL) {
 TypeInfo* arg_type = malloc(sizeof(TypeInfo));
+TypeInfo* expected_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(expected_type, &(param->data._func_params.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, expected_type, param))) {
+free(expected_type);
+free(arg_type);
+return 0;
+}
 if (!(mod_src_typecheck_flo_resolve_expr(env, arg, arg_type, src))) {
+free(expected_type);
 free(arg_type);
 return 0;
 }
-if (!(mod_src_typecheck_flo_allow_string_literal_for_target(arg, &(param->data._func_params.type)))  &&  !(mod_src_typecheck_flo_can_pass_arg(&(param->data._func_params.type), arg_type))) {
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, arg_type, arg))) {
+free(expected_type);
+free(arg_type);
+return 0;
+}
+if (!(mod_src_typecheck_flo_allow_string_literal_for_target(arg, expected_type))  &&  !(mod_src_typecheck_flo_can_pass_arg(expected_type, arg_type))) {
 mod_src_typecheck_flo_type_error(env, arg, "function argument does not match parameter type");
+free(expected_type);
 free(arg_type);
 return 0;
 }
+if (expected_type->is_union  &&  !(arg_type->is_union)) {
+int member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, arg_type);
+if (member_index != 0) {
+mod_src_typecheck_flo_set_call_union_metadata(call_ast, index, expected_type, member_index);
+}
+}
+free(expected_type);
 free(arg_type);
 arg = arg->next;
 param = param->next;
@@ -4243,6 +5719,7 @@ void mod_src_typecheck_flo_init_type_env(TypeEnv* env) {
 env->struct_count = 0;
 env->var_count = 0;
 env->func_count = 0;
+env->alias_count = 0;
 env->error_count = 0;
 }
 
@@ -4268,6 +5745,8 @@ return count;
 }
 int has_stdlib = 0;
 int has_stdio = 0;
+ModuleSet* active_modules;
+Module* current_codegen_module;
 
 
 void mod_src_codegen_flo_emit_string_runtime(FILE* out) {
@@ -4478,21 +5957,254 @@ return "ERROR";
 }
 
 
-void mod_src_codegen_flo_typeinfo_to_string(TypeInfo* type, FILE* out, char* src) {
-if (type->base == TOKEN_IDENTIFIER) {
-fprintf(out, "%.*s", type->name_length, src + type->name_start);
+void mod_src_codegen_flo_copy_typeInfo(TypeInfo* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->is_nullable = src_type->is_nullable;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_union = src_type->is_union;
+dst->union_count = src_type->union_count;
+int i = 0;
+while (i < src_type->union_count) {
+dst->union_members[i].base = src_type->union_members[i].base;
+dst->union_members[i].pointer_depth = src_type->union_members[i].pointer_depth;
+dst->union_members[i].array_size = src_type->union_members[i].array_size;
+dst->union_members[i].arr_size_expr = src_type->union_members[i].arr_size_expr;
+dst->union_members[i].name_start = src_type->union_members[i].name_start;
+dst->union_members[i].name_length = src_type->union_members[i].name_length;
+dst->union_members[i].name_src = src_type->union_members[i].name_src;
+dst->union_members[i].is_nullable = src_type->union_members[i].is_nullable;
+i = i + 1;
 }
-else if (type->base == TOKEN_STRING) {
+}
+
+
+void mod_src_codegen_flo_copy_type_to_atom(TypeAtom* dst, TypeInfo* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+}
+
+
+void mod_src_codegen_flo_copy_atom_to_type(TypeInfo* dst, TypeAtom* src_type) {
+dst->base = src_type->base;
+dst->pointer_depth = src_type->pointer_depth;
+dst->array_size = src_type->array_size;
+dst->arr_size_expr = src_type->arr_size_expr;
+dst->name_start = src_type->name_start;
+dst->name_length = src_type->name_length;
+dst->name_src = src_type->name_src;
+dst->is_nullable = src_type->is_nullable;
+dst->is_union = 0;
+dst->union_count = 0;
+}
+
+
+int mod_src_codegen_flo_find_type_alias(char* src, int start, int length, TypeInfo* out) {
+for (int i = 0; ((0) > (active_modules->count)) ? i > (active_modules->count) : i < (active_modules->count); ((0) > (active_modules->count)) ? i-- : i++) {
+Module* m = active_modules->modules + i;
+if (m->src != src) {
+continue;
+}
+AST* curr = m->ast;
+while (curr != NULL) {
+AST* decl = curr;
+if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
+decl = curr->data._prop.decl;
+}
+if (decl->kind == AST_TYPE_ALIAS) {
+if (decl->data._type_alias.name_length == length  &&  mod_src_stdlib_cstr_flo_eq_n(src + decl->data._type_alias.name_start, src + start, length)) {
+mod_src_codegen_flo_copy_typeInfo(out, &(decl->data._type_alias.target));
+return 1;
+}
+}
+curr = curr->next;
+}
+}
+return 0;
+}
+
+
+void mod_src_codegen_flo_set_codegen_null_type(TypeInfo* out) {
+out->base = TOKEN_VOID;
+out->pointer_depth = 1;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->is_nullable = 0;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+out->is_union = 0;
+out->union_count = 0;
+}
+
+
+void mod_src_codegen_flo_clear_codegen_union_type(TypeInfo* out) {
+out->base = TOKEN_VOID;
+out->pointer_depth = 0;
+out->array_size = 0;
+out->arr_size_expr = NULL;
+out->is_nullable = 0;
+out->name_start = 0;
+out->name_length = 0;
+out->name_src = NULL;
+out->is_union = 1;
+out->union_count = 0;
+}
+
+
+int mod_src_codegen_flo_codegen_type_atom_is_null(TypeAtom* atom) {
+return !(atom->is_nullable)  &&  atom->base == TOKEN_VOID  &&  atom->pointer_depth == 1  &&  atom->array_size == 0;
+}
+
+
+int mod_src_codegen_flo_codegen_union_has_null_member(TypeInfo* typeInfo) {
+if (!(typeInfo->is_union)) {
+return 0;
+}
+int i = 0;
+while (i < typeInfo->union_count) {
+if (mod_src_codegen_flo_codegen_type_atom_is_null(typeInfo->union_members + i)) {
+return i + 1;
+}
+i = i + 1;
+}
+return 0;
+}
+
+
+int mod_src_codegen_flo_lower_nullable_codegen_type(TypeInfo* typeInfo) {
+if (!(typeInfo->is_nullable)) {
+return 1;
+}
+if (!(typeInfo->is_union)  &&  typeInfo->array_size != 0  ||  typeInfo->arr_size_expr != NULL) {
+return 0;
+}
+typeInfo->is_nullable = 0;
+if (typeInfo->is_union) {
+if (mod_src_codegen_flo_codegen_union_has_null_member(typeInfo) != 0) {
+return 1;
+}
+if (typeInfo->union_count >= 8) {
+return 0;
+}
+TypeInfo* null_type = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_set_codegen_null_type(null_type);
+mod_src_codegen_flo_copy_type_to_atom(typeInfo->union_members + typeInfo->union_count, null_type);
+typeInfo->union_count = typeInfo->union_count + 1;
+free(null_type);
+return 1;
+}
+TypeInfo* original = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_typeInfo(original, typeInfo);
+mod_src_codegen_flo_clear_codegen_union_type(typeInfo);
+mod_src_codegen_flo_copy_type_to_atom(typeInfo->union_members + 0, original);
+typeInfo->union_count = 1;
+TypeInfo* null_type = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_set_codegen_null_type(null_type);
+mod_src_codegen_flo_copy_type_to_atom(typeInfo->union_members + 1, null_type);
+typeInfo->union_count = 2;
+free(original);
+free(null_type);
+return 1;
+}
+
+
+int mod_src_codegen_flo_canonicalize_codegen_type(TypeInfo* typeInfo, int depth) {
+if (typeInfo->is_union) {
+int i = 0;
+while (i < typeInfo->union_count) {
+TypeInfo* member = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_atom_to_type(member, typeInfo->union_members + i);
+if (!(mod_src_codegen_flo_canonicalize_codegen_type(member, depth + 1))) {
+free(member);
+return 0;
+}
+if (member->is_union) {
+free(member);
+return 0;
+}
+mod_src_codegen_flo_copy_type_to_atom(typeInfo->union_members + i, member);
+free(member);
+i = i + 1;
+}
+return mod_src_codegen_flo_lower_nullable_codegen_type(typeInfo);
+}
+if (typeInfo->base != TOKEN_IDENTIFIER) {
+return mod_src_codegen_flo_lower_nullable_codegen_type(typeInfo);
+}
+if (depth >= 32) {
+return 0;
+}
+TypeInfo* target = malloc(sizeof(TypeInfo));
+if (!(mod_src_codegen_flo_find_type_alias(typeInfo->name_src, typeInfo->name_start, typeInfo->name_length, target))) {
+free(target);
+return mod_src_codegen_flo_lower_nullable_codegen_type(typeInfo);
+}
+int outer_pointer_depth = typeInfo->pointer_depth;
+int outer_array_size = typeInfo->array_size;
+AST* outer_array_expr = typeInfo->arr_size_expr;
+int outer_nullable = typeInfo->is_nullable;
+if (!(mod_src_codegen_flo_canonicalize_codegen_type(target, depth + 1))) {
+free(target);
+return 0;
+}
+if (target->array_size != 0  ||  target->arr_size_expr != NULL) {
+free(target);
+return 0;
+}
+mod_src_codegen_flo_copy_typeInfo(typeInfo, target);
+if (outer_nullable) {
+typeInfo->is_nullable = 1;
+}
+typeInfo->pointer_depth = typeInfo->pointer_depth + outer_pointer_depth;
+if (outer_array_size != 0  ||  outer_array_expr != NULL) {
+typeInfo->array_size = outer_array_size;
+typeInfo->arr_size_expr = outer_array_expr;
+}
+free(target);
+return mod_src_codegen_flo_lower_nullable_codegen_type(typeInfo);
+}
+int mod_src_codegen_flo_ensure_semantic_union_shape(TypeInfo* typeInfo);
+
+
+void mod_src_codegen_flo_typeinfo_to_string(TypeInfo* typeInfo, FILE* out, char* src) {
+TypeInfo* resolved = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_typeInfo(resolved, typeInfo);
+mod_src_codegen_flo_canonicalize_codegen_type(resolved, 0);
+if (resolved->is_union) {
+int union_id = mod_src_codegen_flo_ensure_semantic_union_shape(resolved);
+fprintf(out, "flower_sem_union_%d", union_id);
+free(resolved);
+return;}
+if (resolved->base == TOKEN_IDENTIFIER) {
+char* name_src = resolved->name_src;
+if (name_src == NULL) {
+name_src = src;
+}
+fprintf(out, "%.*s", resolved->name_length, name_src + resolved->name_start);
+}
+else if (resolved->base == TOKEN_STRING) {
 fprintf(out, "flower_string");
 }
 else {
-fprintf(out, "%s", mod_src_codegen_flo_token_to_string(type->base));
+fprintf(out, "%s", mod_src_codegen_flo_token_to_string(resolved->base));
 }
 int i = 0;
-while (i < type->pointer_depth) {
+while (i < resolved->pointer_depth) {
 i = i + 1;
 fprintf(out, "*");
 }
+free(resolved);
 }
 void mod_src_codegen_flo_gen_expr(AST* ast, FILE* out, char* src);
 void mod_src_codegen_flo_gen_statement(AST* ast, FILE* out, char* src);
@@ -4602,6 +6314,7 @@ statement = statement->next;
 }
 fprintf(out, "}\n");
 }
+void mod_src_codegen_flo_gen_packed_union_value(TypeInfo* union_type, int member_index, AST* value, FILE* out, char* src);
 
 
 void mod_src_codegen_flo_gen_return(AST* ast, FILE* out, char* src) {
@@ -4610,7 +6323,12 @@ fprintf(out, "return;");
 }
 else {
 fprintf(out, "return ");
+if (ast->data._flow_ctrl.union_member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._flow_ctrl.resolved_type), ast->data._flow_ctrl.union_member_index, ast->data._flow_ctrl.value, out, src);
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._flow_ctrl.value, out, src);
+}
 fprintf(out, ";\n");
 }
 }
@@ -4642,17 +6360,17 @@ return;}
 fprintf(out, "\n\ntypedef struct %.*s {\n", ast->data._struct_def.name_length, src + ast->data._struct_def.name_start);
 AST* field = ast->data._struct_def.fields;
 while (field != NULL) {
-mod_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.typeInfo), out, src);
 fprintf(out, " %.*s", field->data._struct_field.name_length, src + field->data._struct_field.name_start);
-if (field->data._struct_field.type.array_size == -1) {
+if (field->data._struct_field.typeInfo.array_size == -1) {
 fprintf(out, "[]");
 }
-else if (field->data._struct_field.type.array_size > 0) {
-fprintf(out, "[%d]", field->data._struct_field.type.array_size);
+else if (field->data._struct_field.typeInfo.array_size > 0) {
+fprintf(out, "[%d]", field->data._struct_field.typeInfo.array_size);
 }
-else if (field->data._struct_field.type.arr_size_expr != NULL) {
+else if (field->data._struct_field.typeInfo.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod_src_codegen_flo_gen_expr(field->data._struct_field.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(field->data._struct_field.typeInfo.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 fprintf(out, ";\n");
@@ -4662,6 +6380,197 @@ fprintf(out, "} %.*s;\n", ast->data._struct_def.name_length, src + ast->data._st
 defined_structs[defined_count].name = mod_src_stdlib_cstr_flo_dup_n(src + ast->data._struct_def.name_start, ast->data._struct_def.name_length);
 defined_structs[defined_count].length = ast->data._struct_def.name_length;
 defined_count = defined_count + 1;
+}
+
+
+typedef struct semantic_union_def {
+TypeInfo shape;
+} semantic_union_def;
+semantic_union_def semantic_unions[256];
+int semantic_union_count = 0;
+
+
+int mod_src_codegen_flo_semantic_union_atom_equals(TypeAtom* a, TypeAtom* b) {
+if (a->base != b->base) {
+return 0;
+}
+if (a->pointer_depth != b->pointer_depth) {
+return 0;
+}
+if (a->array_size != b->array_size) {
+return 0;
+}
+if (a->is_nullable != b->is_nullable) {
+return 0;
+}
+if (a->base == TOKEN_IDENTIFIER) {
+if (a->name_length != b->name_length) {
+return 0;
+}
+return mod_src_stdlib_cstr_flo_eq_n(a->name_src + a->name_start, b->name_src + b->name_start, a->name_length);
+}
+return 1;
+}
+
+
+int mod_src_codegen_flo_semantic_union_shape_equal(TypeInfo* a, TypeInfo* b) {
+if (!(a->is_union)  ||  !(b->is_union)) {
+return 0;
+}
+if (a->union_count != b->union_count) {
+return 0;
+}
+int i = 0;
+while (i < a->union_count) {
+if (!(mod_src_codegen_flo_semantic_union_atom_equals(a->union_members + i, b->union_members + i))) {
+return 0;
+}
+i = i + 1;
+}
+return 1;
+}
+
+
+int mod_src_codegen_flo_ensure_semantic_union_shape(TypeInfo* typeInfo) {
+int i = 0;
+while (i < semantic_union_count) {
+if (mod_src_codegen_flo_semantic_union_shape_equal(&(semantic_unions[i].shape), typeInfo)) {
+return i;
+}
+i = i + 1;
+}
+mod_src_codegen_flo_copy_typeInfo(&(semantic_unions[semantic_union_count].shape), typeInfo);
+semantic_union_count = semantic_union_count + 1;
+return semantic_union_count - 1;
+}
+
+
+void mod_src_codegen_flo_collect_semantic_union_type(TypeInfo* typeInfo) {
+TypeInfo* resolved = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_typeInfo(resolved, typeInfo);
+if (mod_src_codegen_flo_canonicalize_codegen_type(resolved, 0)  &&  resolved->is_union) {
+mod_src_codegen_flo_ensure_semantic_union_shape(resolved);
+}
+free(resolved);
+}
+
+
+void mod_src_codegen_flo_collect_semantic_union_types_in_list(AST* list) {
+AST* curr = list;
+while (curr != NULL) {
+if (curr->kind == AST_VAR_DECL) {
+mod_src_codegen_flo_collect_semantic_union_type(&(curr->data._var_decl.typeInfo));
+}
+else if (curr->kind == AST_FUNC_DEF) {
+AST* param = curr->data._func_def.params;
+while (param != NULL) {
+mod_src_codegen_flo_collect_semantic_union_type(&(param->data._func_params.typeInfo));
+param = param->next;
+}
+mod_src_codegen_flo_collect_semantic_union_type(&(curr->data._func_def.return_type));
+mod_src_codegen_flo_collect_semantic_union_types_in_list(curr->data._func_def.body);
+}
+else if (curr->kind == AST_FORWARD) {
+if (curr->data._forward.is_func) {
+AST* param = curr->data._forward.params;
+while (param != NULL) {
+mod_src_codegen_flo_collect_semantic_union_type(&(param->data._func_params.typeInfo));
+param = param->next;
+}
+mod_src_codegen_flo_collect_semantic_union_type(&(curr->data._forward.return_type));
+}
+}
+else if (curr->kind == AST_IF) {
+mod_src_codegen_flo_collect_semantic_union_types_in_list(curr->data._if_condition.body);
+mod_src_codegen_flo_collect_semantic_union_types_in_list(curr->data._if_condition.else_branch);
+}
+else if (curr->kind == AST_WHILE) {
+mod_src_codegen_flo_collect_semantic_union_types_in_list(curr->data._while_loop.body);
+}
+else if (curr->kind == AST_FOR) {
+mod_src_codegen_flo_collect_semantic_union_types_in_list(curr->data._for_loop.body);
+}
+else if (curr->kind == AST_PROP  &&  curr->data._prop.decl != NULL) {
+AST* decl = curr->data._prop.decl;
+if (decl->kind == AST_VAR_DECL) {
+mod_src_codegen_flo_collect_semantic_union_type(&(decl->data._var_decl.typeInfo));
+}
+else if (decl->kind == AST_FUNC_DEF) {
+AST* param = decl->data._func_def.params;
+while (param != NULL) {
+mod_src_codegen_flo_collect_semantic_union_type(&(param->data._func_params.typeInfo));
+param = param->next;
+}
+mod_src_codegen_flo_collect_semantic_union_type(&(decl->data._func_def.return_type));
+mod_src_codegen_flo_collect_semantic_union_types_in_list(decl->data._func_def.body);
+}
+}
+curr = curr->next;
+}
+}
+
+
+void mod_src_codegen_flo_collect_semantic_union_types(ModuleSet* mods) {
+int i = 0;
+while (i < mods->count) {
+mod_src_codegen_flo_collect_semantic_union_types_in_list(mods->modules[i].ast);
+i = i + 1;
+}
+}
+
+
+void mod_src_codegen_flo_gen_packed_union_value(TypeInfo* union_type, int member_index, AST* value, FILE* out, char* src) {
+TypeInfo* resolved = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_typeInfo(resolved, union_type);
+mod_src_codegen_flo_canonicalize_codegen_type(resolved, 0);
+int union_id = mod_src_codegen_flo_ensure_semantic_union_shape(resolved);
+TypeInfo* member_type = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_atom_to_type(member_type, resolved->union_members + member_index - 1);
+if (value != NULL  &&  value->kind == AST_STRING_LIT) {
+if (member_type->base == TOKEN_STRING  &&  member_type->pointer_depth == 0  &&  member_type->array_size == 0) {
+value->data._string.lower_kind = STRING_LOWER_STRING;
+}
+else if (member_type->base == TOKEN_CHAR  &&  member_type->pointer_depth == 1  &&  member_type->array_size == 0) {
+value->data._string.lower_kind = STRING_LOWER_CSTR;
+}
+}
+fprintf(out, "((flower_sem_union_%d){ .tag = %d, .data = { .m%d = ", union_id, member_index, member_index - 1);
+mod_src_codegen_flo_gen_expr(value, out, src);
+fprintf(out, " } })");
+free(resolved);
+}
+
+
+void mod_src_codegen_flo_gen_union_aware_call_arg(AST* arg, TypeInfo* union_type, int member_index, FILE* out, char* src) {
+if (member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(union_type, member_index, arg, out, src);
+}
+else {
+mod_src_codegen_flo_gen_expr(arg, out, src);
+}
+}
+
+
+void mod_src_codegen_flo_emit_semantic_union_defs(FILE* out) {
+int i = 0;
+while (i < semantic_union_count) {
+fprintf(out, "\n\ntypedef struct flower_sem_union_%d {\n", i);
+fprintf(out, "  int tag;\n");
+fprintf(out, "  union {\n");
+int j = 0;
+while (j < semantic_unions[i].shape.union_count) {
+TypeInfo* member = malloc(sizeof(TypeInfo));
+mod_src_codegen_flo_copy_atom_to_type(member, semantic_unions[i].shape.union_members + j);
+fprintf(out, "      ");
+mod_src_codegen_flo_typeinfo_to_string(member, out, member->name_src);
+fprintf(out, " m%d;\n", j);
+free(member);
+j = j + 1;
+}
+fprintf(out, "  } data;\n");
+fprintf(out, "} flower_sem_union_%d;\n", i);
+i = i + 1;
+}
 }
 
 
@@ -4681,17 +6590,17 @@ return;}
 fprintf(out, "\n\ntypedef union %.*s {\n", ast->data._union_def.name_length, src + ast->data._union_def.name_start);
 AST* field = ast->data._union_def.fields;
 while (field != NULL) {
-mod_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.type), out, src);
-fprintf(out, " %.*s", field->data._union_def.name_length, src + field->data._union_def.name_start);
-if (field->data._struct_field.type.array_size == -1) {
+mod_src_codegen_flo_typeinfo_to_string(&(field->data._struct_field.typeInfo), out, src);
+fprintf(out, " %.*s", field->data._struct_field.name_length, src + field->data._union_def.name_start);
+if (field->data._struct_field.typeInfo.array_size == -1) {
 fprintf(out, "[]");
 }
-else if (field->data._struct_field.type.array_size > 0) {
-fprintf(out, "[%d]", ast->data._struct_field.type.array_size);
+else if (field->data._struct_field.typeInfo.array_size > 0) {
+fprintf(out, "[%d]", field->data._struct_field.typeInfo.array_size);
 }
-else if (field->data._struct_field.type.arr_size_expr != NULL) {
+else if (field->data._struct_field.typeInfo.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod_src_codegen_flo_gen_expr(field->data._struct_field.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(field->data._struct_field.typeInfo.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 fprintf(out, ";\n");
@@ -4710,24 +6619,22 @@ char* alias;
 } EmittedImport;
 EmittedImport emitted_imports[256];
 int emitted_count = 0;
-ModuleSet* active_modules;
-Module* current_codegen_module;
 void mod_src_codegen_flo_emit_lowered_func_name(Module* mod, FILE* out, char* src, int start, int length);
 Module* mod_src_codegen_flo_resolve_called_function_module(char* src, int start, int length);
 
 
 void mod_src_codegen_flo_gen_param(AST* param, FILE* out, char* src) {
-mod_src_codegen_flo_typeinfo_to_string(&(param->data._func_params.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(param->data._func_params.typeInfo), out, src);
 fprintf(out, " %.*s", param->data._func_params.name_length, src + param->data._func_params.name_start);
-if (param->data._func_params.type.array_size == -1) {
+if (param->data._func_params.typeInfo.array_size == -1) {
 fprintf(out, "[]");
 }
-else if (param->data._func_params.type.array_size != 0) {
-fprintf(out, "[%d]", param->data._func_params.type.array_size);
+else if (param->data._func_params.typeInfo.array_size != 0) {
+fprintf(out, "[%d]", param->data._func_params.typeInfo.array_size);
 }
-else if (param->data._func_params.type.arr_size_expr != NULL) {
+else if (param->data._func_params.typeInfo.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod_src_codegen_flo_gen_expr(param->data._func_params.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(param->data._func_params.typeInfo.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 }
@@ -4792,34 +6699,41 @@ fprintf(out, "%.*s", ast->data._func_call.name_length, src + ast->data._func_cal
 }
 fprintf(out, "(");
 AST* arg = ast->data._func_call.args;
+int arg_index = 0;
 while (arg != NULL) {
-mod_src_codegen_flo_gen_expr(arg, out, src);
+mod_src_codegen_flo_gen_union_aware_call_arg(arg, ast->data._func_call.arg_union_types + arg_index, ast->data._func_call.arg_union_members[arg_index], out, src);
 if (arg->next != NULL) {
 fprintf(out, ", ");
 }
 arg = arg->next;
+arg_index = arg_index + 1;
 }
 fprintf(out, ")");
 }
 
 
 void mod_src_codegen_flo_gen_var_decl(AST* ast, FILE* out, char* src) {
-mod_src_codegen_flo_typeinfo_to_string(&(ast->data._var_decl.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._var_decl.typeInfo), out, src);
 fprintf(out, " %.*s", ast->data._var_decl.name_length, src + ast->data._var_decl.name_start);
-if (ast->data._var_decl.type.array_size == -1) {
+if (ast->data._var_decl.typeInfo.array_size == -1) {
 fprintf(out, "[]");
 }
-else if (ast->data._var_decl.type.array_size != 0) {
-fprintf(out, "[%d]", ast->data._var_decl.type.array_size);
+else if (ast->data._var_decl.typeInfo.array_size != 0) {
+fprintf(out, "[%d]", ast->data._var_decl.typeInfo.array_size);
 }
-else if (ast->data._var_decl.type.arr_size_expr != NULL) {
+else if (ast->data._var_decl.typeInfo.arr_size_expr != NULL) {
 fprintf(out, "[");
-mod_src_codegen_flo_gen_expr(ast->data._var_decl.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._var_decl.typeInfo.arr_size_expr, out, src);
 fprintf(out, "]");
 }
 if (ast->data._var_decl.value != NULL) {
 fprintf(out, " = ");
+if (ast->data._var_decl.union_member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._var_decl.typeInfo), ast->data._var_decl.union_member_index, ast->data._var_decl.value, out, src);
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._var_decl.value, out, src);
+}
 }
 fprintf(out, ";\n");
 }
@@ -4827,7 +6741,12 @@ fprintf(out, ";\n");
 
 void mod_src_codegen_flo_gen_var_ass(AST* ast, FILE* out, char* src) {
 fprintf(out, "%.*s = ", ast->data._var_ass.name_length, src + ast->data._var_ass.name_start);
+if (ast->data._var_ass.union_member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._var_ass.resolved_type), ast->data._var_ass.union_member_index, ast->data._var_ass.value, out, src);
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._var_ass.value, out, src);
+}
 fprintf(out, ";\n");
 }
 
@@ -4948,6 +6867,21 @@ fprintf(out, "%d", ast->data._bool_lit.value);
 else if (ast->kind == AST_NULL) {
 fprintf(out, "NULL");
 }
+else if (ast->kind == AST_TYPE_TEST) {
+if (ast->data._type_test.lower_kind == TYPE_TEST_NONNULL) {
+fprintf(out, "(");
+mod_src_codegen_flo_gen_expr(ast->data._type_test.value, out, src);
+fprintf(out, " != NULL)");
+}
+else if (ast->data._type_test.lower_kind == TYPE_TEST_UNION_TAG) {
+fprintf(out, "((");
+mod_src_codegen_flo_gen_expr(ast->data._type_test.value, out, src);
+fprintf(out, ").tag == %d)", ast->data._type_test.union_member_index);
+}
+else {
+fprintf(out, "1");
+}
+}
 else if (ast->kind == AST_BINARY_OP) {
 if (ast->data._binary.is_string_compare) {
 if (ast->data._binary.op == TOKEN_NEQ) {
@@ -4965,6 +6899,15 @@ fprintf(out, "))");
 else {
 fprintf(out, ")");
 }
+}
+else if (ast->data._binary.null_compare_kind == BINARY_NULL_COMPARE_UNION_TAG) {
+AST* value_expr = ast->data._binary.left;
+if (value_expr != NULL  &&  value_expr->kind == AST_NULL) {
+value_expr = ast->data._binary.right;
+}
+fprintf(out, "((");
+mod_src_codegen_flo_gen_expr(value_expr, out, src);
+fprintf(out, ").tag %s %d)", mod_src_codegen_flo_token_to_string(ast->data._binary.op), ast->data._binary.null_union_member_index);
 }
 else {
 mod_src_codegen_flo_gen_expr(ast->data._binary.left, out, src);
@@ -5012,24 +6955,32 @@ struct_elem = struct_elem->next;
 fprintf(out, "}");
 }
 else if (ast->kind == AST_CAST) {
-if (ast->data._cast.type.base == TOKEN_CHAR  &&  ast->data._cast.type.pointer_depth == 1  &&  ast->data._cast.type.array_size == 0  &&  ast->data._cast.value_type.base == TOKEN_STRING  &&  ast->data._cast.value_type.pointer_depth == 0  &&  ast->data._cast.value_type.array_size == 0) {
+if (ast->data._cast.lower_kind == CAST_LOWER_UNION_EXTRACT) {
+fprintf(out, "((");
+mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
+fprintf(out, ").data.m%d)", ast->data._cast.union_member_index - 1);
+}
+else if (ast->data._cast.lower_kind == CAST_LOWER_UNION_PACK) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._cast.typeInfo), ast->data._cast.union_member_index, ast->data._cast.value, out, src);
+}
+else if (ast->data._cast.typeInfo.base == TOKEN_CHAR  &&  ast->data._cast.typeInfo.pointer_depth == 1  &&  ast->data._cast.typeInfo.array_size == 0  &&  ast->data._cast.value_type.base == TOKEN_STRING  &&  ast->data._cast.value_type.pointer_depth == 0  &&  ast->data._cast.value_type.array_size == 0) {
 fprintf(out, "(");
 mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
 fprintf(out, ").data");
 }
-else if (ast->data._cast.type.base == TOKEN_STRING  &&  ast->data._cast.type.pointer_depth == 0  &&  ast->data._cast.type.array_size == 0  &&  ast->data._cast.value_type.base == TOKEN_CHAR  &&  ast->data._cast.value_type.pointer_depth == 1  &&  ast->data._cast.value_type.array_size == 0) {
+else if (ast->data._cast.typeInfo.base == TOKEN_STRING  &&  ast->data._cast.typeInfo.pointer_depth == 0  &&  ast->data._cast.typeInfo.array_size == 0  &&  ast->data._cast.value_type.base == TOKEN_CHAR  &&  ast->data._cast.value_type.pointer_depth == 1  &&  ast->data._cast.value_type.array_size == 0) {
 fprintf(out, "flower_string_from_cstr(");
 mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
 fprintf(out, ")");
 }
-else if (ast->data._cast.type.base == TOKEN_BOOL  &&  ast->data._cast.type.pointer_depth == 0  &&  ast->data._cast.type.array_size == 0) {
+else if (ast->data._cast.typeInfo.base == TOKEN_BOOL  &&  ast->data._cast.typeInfo.pointer_depth == 0  &&  ast->data._cast.typeInfo.array_size == 0) {
 fprintf(out, "((");
 mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
 fprintf(out, ") != 0");
 }
 else {
 fprintf(out, "(");
-mod_src_codegen_flo_typeinfo_to_string(&(ast->data._cast.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._cast.typeInfo), out, src);
 fprintf(out, ")(");
 mod_src_codegen_flo_gen_expr(ast->data._cast.value, out, src);
 fprintf(out, ")");
@@ -5065,15 +7016,15 @@ fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_
 }
 else if (ast->kind == AST_NEW) {
 fprintf(out, "malloc(sizeof(");
-mod_src_codegen_flo_typeinfo_to_string(&(ast->data._new_alloc.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._new_alloc.typeInfo), out, src);
 fprintf(out, ")");
-if (ast->data._new_alloc.type.arr_size_expr != NULL) {
+if (ast->data._new_alloc.typeInfo.arr_size_expr != NULL) {
 fprintf(out, " * (");
-mod_src_codegen_flo_gen_expr(ast->data._new_alloc.type.arr_size_expr, out, src);
+mod_src_codegen_flo_gen_expr(ast->data._new_alloc.typeInfo.arr_size_expr, out, src);
 fprintf(out, ")");
 }
-else if (ast->data._new_alloc.type.array_size > 0) {
-fprintf(out, " * %d", ast->data._new_alloc.type.array_size);
+else if (ast->data._new_alloc.typeInfo.array_size > 0) {
+fprintf(out, " * %d", ast->data._new_alloc.typeInfo.array_size);
 }
 fprintf(out, ")");
 }
@@ -5087,12 +7038,14 @@ fprintf(out, "%.*s_%.*s", ast->data._alias_call.alias_length, src + ast->data._a
 }
 fprintf(out, "(");
 AST* arg = ast->data._alias_call.args;
+int arg_index = 0;
 while (arg != NULL) {
-mod_src_codegen_flo_gen_expr(arg, out, src);
+mod_src_codegen_flo_gen_union_aware_call_arg(arg, ast->data._alias_call.arg_union_types + arg_index, ast->data._alias_call.arg_union_members[arg_index], out, src);
 if (arg->next != NULL) {
 fprintf(out, ", ");
 }
 arg = arg->next;
+arg_index = arg_index + 1;
 }
 fprintf(out, ")");
 }
@@ -5117,7 +7070,7 @@ fprintf(out, ")");
 }
 else if (ast->kind == AST_SIZEOF) {
 fprintf(out, "sizeof(");
-mod_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.type), out, src);
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.typeInfo), out, src);
 fprintf(out, ")");
 }
 else if (ast->kind == AST_CHAR_LIT) {
@@ -5207,7 +7160,12 @@ fprintf(out, "->%.*s", ast->data._dot_access.field_length, src + ast->data._dot_
 }
 if (ast->data._dot_access.value != NULL) {
 fprintf(out, " = ");
+if (ast->data._dot_access.union_member_index != 0) {
+mod_src_codegen_flo_gen_packed_union_value(&(ast->data._dot_access.resolved_type), ast->data._dot_access.union_member_index, ast->data._dot_access.value, out, src);
+}
+else {
 mod_src_codegen_flo_gen_expr(ast->data._dot_access.value, out, src);
+}
 fprintf(out, ";\n");
 }
 }
@@ -5279,6 +7237,8 @@ void mod_src_codegen_flo_codegen(ModuleSet* mods, FILE* out) {
 active_modules = mods;
 if (mods->count == 0) {
 return;}
+mod_src_codegen_flo_collect_semantic_union_types(mods);
+mod_src_codegen_flo_emit_semantic_union_defs(out);
 Module* main_mod = mods->modules + 0;
 mod_src_codegen_flo_emit_module(main_mod, out, "", 0, 0);
 }

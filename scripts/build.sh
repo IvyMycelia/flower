@@ -21,8 +21,10 @@ echo "=== Building new version ==="
 
 echo "=== Compiling new binary ==="
 "$CC" $BOOTSTRAP_CFLAGS "$NEW_C" -o "$NEW_BIN"
+"$CC" $BOOTSTRAP_CFLAGS "$NEW_C" -o "$NEW_BIN"
 
 echo "=== Testing new compiler ==="
+"$NEW_BIN" ./src/main.flo ./bin/Flower_test
 "$NEW_BIN" ./src/main.flo ./bin/Flower_test
 
 echo "=== Idempotency check ==="

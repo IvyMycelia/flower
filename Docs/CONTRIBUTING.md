@@ -15,7 +15,7 @@ Flower values simplicity, so before adding a feature, ask:
 ```bash
 git clone https://github.com/ivymycelia/flower.git
 cd flower
-clang -o ./bin/Flower ./bin/Flower.c
+cc -std=c99 -o ./bin/Flower ./bin/Flower.c
 make bootstrap
 make test
 ```
@@ -59,11 +59,14 @@ make test      # Run test suite to ensure no regression
 3. Write clear commit messages:
 
 ```md
-feature: add boolean type to language
-* Implement boolean as an alias over `1` and `0` truth values
-* Add boolean literal `true` / `false`
-* Update parser for boolean syntax
-* Add examples in examples/types/bool.flo
+feat: add nullable field-expression narrowing
+
+Typecheck
+- record narrowings for stable dot-access expressions
+- allow `box.value != null` to narrow inside the branch
+
+Examples
+- add nullable field access coverage under `examples/types/struct.flo`
 ```
 
 4. Push and create a **Pull Request**:
@@ -76,13 +79,19 @@ git push origin <prefix>/<your-idea>
 
 ## Testing
 
-All changes that effect the **Flower Compiler** must **pass** the *full test suite*:
+All changes that effect the **Flower Compiler** must **pass** BOTH the bootstrap pass and the full test suite:
 
 ```bash
+make bootstrap
+make bootstrap
 make test
 ```
 
-If a contribution implements a new feature or changes an existing feature's syntax, tests must be added / updated under examples:
+For safety, run `make bootstrap` twice in a row to ensure there's no compiler corruption — this is especially prevalent when making parser changes
+
+If a contribution implements a new feature or changes an existing feature's syntax, tests must be added / updated under `examples/`.
+
+Example useful areas:
 
 - `examples/types/`     — Type features
 - `examples/control/`   — Control flow
@@ -119,12 +128,12 @@ The compiler pipeline (all in Flower):
 1. **Lexer** (`src/lexer.flo`, `include/lexer_h.flo`)   — Tokenizes source
 2. **Parser** (`src/parser.flo`, `src/ast.flo`)         — Builds AST
 3. **Module Loader** (`src/module.flo`)                 - Loads imports and module metadata
-4. **Typecheck** (`src/typecheck.flo`)                  - Resolves types, access kinds, and module visibility
+4. **Typecheck** (`src/typecheck.flo`)                  - Resolves types, aliases, narrowings, access kinds, and module visibility
 5. **Codegen** (`src/codegen.flo`)                      — Generates C code
 
-Output: Cfile —> Compiled with Clang —> Executable
+Output: Flower source -> C Output —> Compiled with Clang —> Executable
 
-Changes to any party needs testing through the full pipeline.
+Changes to any compiler stage needs to be tested through the full pipeline, not in isolation.
 
 ## Experiments
 

@@ -51,16 +51,36 @@ Current shipped scope:
 
 ## v1.4.0 (Better Types)
 
-Improve the type system.
+Focus: Make Flower's type system more expressive while keeping semantics explicit and compiler-owned.
 
-- [ ] Type alias: `type MyInt = int`
-- [ ] Nullable types: `?int` for optional values
-- [ ] Better type inference in some contexts
-- [ ] Union types (experimental)
+- [x] Transparent type aliases: `type Name = ExistingType`
+- [x] Built-in `null` as a real language value
+- [x] Nullable sugar: `?T == T | null`
+- [x] Semantic unions: `A | B | C`
+- [x] Explicit narrowing with `is`
+- [x] Explicit extraction with `as`
+- [x] Semantic union support in locals, parameters, return types, and struct fields
+- [x] Field-expression narrowing on stable dot chains
+- [x] Nullable field-expression narrowing on stable dot chains
+- [x] Better inference in narrow, obvious contexts
+
+Current v1.4 scope notes:
+
+- Semantic unions are exprimental, but they are a real Flower-level semantics raher than C-only
+- `union` remains the raw storage / layout construct; `A | B` is the semantic union construct
+- Flower still requires explicit `as` after narrowing
+- Narrowing on call results and subscript expressions is intentionally deferred for now
 
 ## v1.5.0 (Documentation)
 
-- [ ] Documentation: Complete language spec examples
+Focus: Turn Flower's current behavior into a coherent reference.
+
+- [ ] Rewrite `Docs/structure.md` into a current language surface document
+- [ ] Write a real type-system reference for `type`, `null`, `?T`, `A | B`, `is`, and `as`
+- [ ] Document module / import / export semantics clearly
+- [ ] Document memory and ownership basics
+- [ ] Audit README / ROADMAP / Milestone docs for drift
+- [ ] Expand examples into reference-quality spec examples
 
 ## v1.6.0 (Standard Library)
 

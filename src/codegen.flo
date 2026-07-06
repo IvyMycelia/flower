@@ -7,6 +7,10 @@ import "src/stdlib/cstr.flo" as cstr
 has_stdlib: int = 0
 has_stdio: int = 0
 
+// Currently processing (for circular detection)
+active_modules: @ModuleSet
+current_codegen_module: @Module
+
 // === UTILITIES ===
 
 func emit_string_runtime(out: @FILE): void
@@ -226,19 +230,283 @@ func token_to_string(kind: int): @char
     end
 end
 
-func typeinfo_to_string(type: @TypeInfo, out: @FILE, src: @char): void
-    if type.base == TOKEN_IDENTIFIER:
-        fprintf(out, "%.*s", type.name_length, src + type.name_start)
-    else if type.base == TOKEN_STRING:
-        fprintf(out, "flower_string")
-    else:
-        fprintf(out, "%s", token_to_string(type.base))
-    end
+func copy_typeInfo(dst: @TypeInfo, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.is_nullable = src_type.is_nullable
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_union = src_type.is_union
+    dst.union_count = src_type.union_count
+
     i: int = 0
-    while i < type.pointer_depth:
+    while i < src_type.union_count:
+        dst.union_members[i].base = src_type.union_members[i].base
+        dst.union_members[i].pointer_depth = src_type.union_members[i].pointer_depth
+        dst.union_members[i].array_size = src_type.union_members[i].array_size
+        dst.union_members[i].arr_size_expr = src_type.union_members[i].arr_size_expr
+        dst.union_members[i].name_start = src_type.union_members[i].name_start
+        dst.union_members[i].name_length = src_type.union_members[i].name_length
+        dst.union_members[i].name_src = src_type.union_members[i].name_src
+        dst.union_members[i].is_nullable = src_type.union_members[i].is_nullable
+        i = i + 1
+    end
+end
+
+func copy_type_to_atom(dst: @TypeAtom, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+end
+
+func copy_atom_to_type(dst: @TypeInfo, src_type: @TypeAtom): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+    dst.is_union = false
+    dst.union_count = 0
+end
+
+func find_type_alias(src: @char, start: int, length: int, out: @TypeInfo): bool
+    for i in 0..active_modules.count:
+        m: @Module = active_modules.modules + i
+
+        if m.src != src:
+            continue
+        end
+
+        curr: @AST = m.ast
+        while curr != null:
+            decl: @AST = curr
+
+            if curr.kind == AST_PROP and curr.data._prop.decl != null:
+                decl = curr.data._prop.decl
+            end
+
+            if decl.kind == AST_TYPE_ALIAS:
+                if decl.data._type_alias.name_length == length and cstr.eq_n(src + decl.data._type_alias.name_start, src + start, length):
+                    copy_typeInfo(out, &decl.data._type_alias.target)
+                    return true
+                end
+            end
+
+            curr = curr.next
+        end
+    end
+
+    return false
+end
+
+func set_codegen_null_type(out: @TypeInfo): void
+    out.base = TOKEN_VOID
+    out.pointer_depth = 1
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.is_nullable = false
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+    out.is_union = false
+    out.union_count = 0
+end
+
+func clear_codegen_union_type(out: @TypeInfo): void
+    out.base = TOKEN_VOID
+    out.pointer_depth = 0
+    out.array_size = 0
+    out.arr_size_expr = null
+    out.is_nullable = false
+    out.name_start = 0
+    out.name_length = 0
+    out.name_src = null
+    out.is_union = true
+    out.union_count = 0
+end
+
+func codegen_type_atom_is_null(atom: @TypeAtom): bool
+    return not atom.is_nullable and atom.base == TOKEN_VOID and atom.pointer_depth == 1 and atom.array_size == 0
+end
+
+func codegen_union_has_null_member(typeInfo: @TypeInfo): int
+    if not typeInfo.is_union:
+        return 0
+    end
+
+    i: int = 0
+    while i < typeInfo.union_count:
+        if codegen_type_atom_is_null(typeInfo.union_members + i):
+            return i + 1
+        end
+        i = i +1
+    end
+
+    return 0
+end
+
+func lower_nullable_codegen_type(typeInfo: @TypeInfo): bool
+    if not typeInfo.is_nullable:
+        return true
+    end
+
+    if not typeInfo.is_union and (typeInfo.array_size != 0 or typeInfo.arr_size_expr != null):
+        return false
+    end
+
+    typeInfo.is_nullable = false
+
+    if typeInfo.is_union:
+        if codegen_union_has_null_member(typeInfo) != 0:
+            return true
+        end
+
+        if typeInfo.union_count >= 8:
+            return false
+        end
+
+        null_type: @TypeInfo = new TypeInfo
+        set_codegen_null_type(null_type)
+        copy_type_to_atom(typeInfo.union_members + typeInfo.union_count, null_type)
+        typeInfo.union_count = typeInfo.union_count + 1
+        prune null_type
+        return true
+    end
+
+    original: @TypeInfo = new TypeInfo
+    copy_typeInfo(original, typeInfo)
+
+    clear_codegen_union_type(typeInfo)
+    copy_type_to_atom(typeInfo.union_members + 0, original)
+    typeInfo.union_count = 1
+
+    null_type: @TypeInfo = new TypeInfo
+    set_codegen_null_type(null_type)
+    copy_type_to_atom(typeInfo.union_members + 1, null_type)
+    typeInfo.union_count = 2
+
+    prune original
+    prune null_type
+    return true
+end
+
+func canonicalize_codegen_type(typeInfo: @TypeInfo, depth: int): bool
+    if typeInfo.is_union:
+        i: int = 0
+        while i < typeInfo.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, typeInfo.union_members + i)
+
+            if not canonicalize_codegen_type(member, depth + 1):
+                prune member
+                return false
+            end
+
+            if member.is_union:
+                prune member
+                return false
+            end
+
+            copy_type_to_atom(typeInfo.union_members + i, member)
+            prune member
+            i = i + 1
+        end
+
+        return lower_nullable_codegen_type(typeInfo)
+    end
+
+    if typeInfo.base != TOKEN_IDENTIFIER:
+        return lower_nullable_codegen_type(typeInfo)
+    end
+
+    if depth >= 32:
+        return false
+    end
+
+    target: @TypeInfo = new TypeInfo
+    if not find_type_alias(typeInfo.name_src, typeInfo.name_start, typeInfo.name_length, target):
+        prune target
+        return lower_nullable_codegen_type(typeInfo)
+    end
+
+    outer_pointer_depth: int = typeInfo.pointer_depth
+    outer_array_size: int = typeInfo.array_size
+    outer_array_expr: @AST = typeInfo.arr_size_expr
+    outer_nullable: bool = typeInfo.is_nullable
+
+    if not canonicalize_codegen_type(target, depth + 1):
+        prune target
+        return false
+    end
+
+    if target.array_size != 0 or target.arr_size_expr != null:
+        prune target
+        return false
+    end
+
+    copy_typeInfo(typeInfo, target)
+
+    if outer_nullable:
+        typeInfo.is_nullable = true
+    end
+
+    typeInfo.pointer_depth = typeInfo.pointer_depth + outer_pointer_depth
+
+    if outer_array_size != 0 or outer_array_expr != null:
+        typeInfo.array_size = outer_array_size
+        typeInfo.arr_size_expr = outer_array_expr
+    end
+
+    prune target
+    return lower_nullable_codegen_type(typeInfo)
+end
+
+forward func ensure_semantic_union_shape(typeInfo: @TypeInfo): int
+
+func typeinfo_to_string(typeInfo: @TypeInfo, out: @FILE, src: @char): void
+    resolved: @TypeInfo = new TypeInfo
+    copy_typeInfo(resolved, typeInfo)
+    canonicalize_codegen_type(resolved, 0)
+
+    if resolved.is_union:
+        union_id: int = ensure_semantic_union_shape(resolved)
+        fprintf(out, "flower_sem_union_%d", union_id)
+        prune resolved
+        return
+    end
+    
+    if resolved.base == TOKEN_IDENTIFIER:
+        name_src: @char = resolved.name_src
+        if name_src == null:
+            name_src = src
+        end
+        fprintf(out, "%.*s", resolved.name_length, name_src + resolved.name_start)
+
+    else if resolved.base == TOKEN_STRING:
+        fprintf(out, "flower_string")
+
+    else:
+        fprintf(out, "%s", token_to_string(resolved.base))
+    end
+
+    i: int = 0
+    while i < resolved.pointer_depth:
         i = i + 1
         fprintf(out, "*")
     end
+
+    prune resolved
 end
 
 
@@ -363,13 +631,19 @@ end
 
 // === CONTROL FLOW ===
 
+forward func gen_packed_union_value(union_type: @TypeInfo, member_index: int, value: @AST, out: @FILE, src: @char): void
+
 func gen_return(ast: @AST, out: @FILE, src: @char): void
     // Emit: return n
     if ast.data._flow_ctrl.value == null:
         fprintf(out, "return;")
     else:
         fprintf(out, "return ")
-        gen_expr(ast.data._flow_ctrl.value, out, src)
+        if ast.data._flow_ctrl.union_member_index != 0:
+            gen_packed_union_value(&ast.data._flow_ctrl.resolved_type, ast.data._flow_ctrl.union_member_index, ast.data._flow_ctrl.value, out, src)
+        else:
+            gen_expr(ast.data._flow_ctrl.value, out, src)
+        end
         fprintf(out, ";\n")
     end
 end
@@ -404,16 +678,16 @@ func gen_struct(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "\n\ntypedef struct %.*s {\n", ast.data._struct_def.name_length, src + ast.data._struct_def.name_start)
     field: @AST = ast.data._struct_def.fields
     while field != null:
-        typeinfo_to_string(&field.data._struct_field.type, out, src)
+        typeinfo_to_string(&field.data._struct_field.typeInfo, out, src)
         fprintf(out, " %.*s", field.data._struct_field.name_length, src + field.data._struct_field.name_start)
 
-        if field.data._struct_field.type.array_size == -1:
+        if field.data._struct_field.typeInfo.array_size == -1:
             fprintf(out, "[]")
-        else if field.data._struct_field.type.array_size > 0:
-            fprintf(out, "[%d]", field.data._struct_field.type.array_size)
-        else if field.data._struct_field.type.arr_size_expr != null:
+        else if field.data._struct_field.typeInfo.array_size > 0:
+            fprintf(out, "[%d]", field.data._struct_field.typeInfo.array_size)
+        else if field.data._struct_field.typeInfo.arr_size_expr != null:
             fprintf(out, "[")
-            gen_expr(field.data._struct_field.type.arr_size_expr, out, src)
+            gen_expr(field.data._struct_field.typeInfo.arr_size_expr, out, src)
             fprintf(out, "]")
         end
 
@@ -425,6 +699,213 @@ func gen_struct(ast: @AST, out: @FILE, src: @char): void
     defined_structs[defined_count].name = cstr.dup_n(src + ast.data._struct_def.name_start, ast.data._struct_def.name_length)
     defined_structs[defined_count].length = ast.data._struct_def.name_length
     defined_count = defined_count + 1
+end
+
+struct semantic_union_def {
+    shape: TypeInfo
+}
+
+semantic_unions: semantic_union_def[256]
+semantic_union_count: int = 0
+
+func semantic_union_atom_equals(a: @TypeAtom, b: @TypeAtom): bool
+    if a.base != b.base:
+        return false
+    end
+
+    if a.pointer_depth != b.pointer_depth:
+        return false
+    end
+
+    if a.array_size != b.array_size:
+        return false
+    end
+
+    if a.is_nullable != b.is_nullable:
+        return false
+    end
+
+    if a.base == TOKEN_IDENTIFIER:
+        if a.name_length != b.name_length:
+            return false
+        end
+
+        return cstr.eq_n(a.name_src + a.name_start, b.name_src + b.name_start, a.name_length)
+    end
+
+    return true
+end
+
+func semantic_union_shape_equal(a: @TypeInfo, b: @TypeInfo): bool
+    if not a.is_union or not b.is_union:
+        return false
+    end
+
+    if a.union_count != b.union_count:
+        return false
+    end
+
+    i: int = 0
+    while i < a.union_count:
+        if not semantic_union_atom_equals(a.union_members + i, b.union_members + i):
+            return false
+        end
+
+        i = i + 1
+    end
+
+    return true
+end
+
+func ensure_semantic_union_shape(typeInfo: @TypeInfo): int
+    i: int = 0
+    while i < semantic_union_count:
+        if semantic_union_shape_equal(&semantic_unions[i].shape, typeInfo):
+            return i
+        end
+        i = i + 1
+    end
+
+    copy_typeInfo(&semantic_unions[semantic_union_count].shape, typeInfo)
+    semantic_union_count = semantic_union_count + 1
+    return semantic_union_count - 1
+end
+
+func collect_semantic_union_type(typeInfo: @TypeInfo): void
+    resolved: @TypeInfo = new TypeInfo
+    copy_typeInfo(resolved, typeInfo)
+
+    if canonicalize_codegen_type(resolved, 0) and resolved.is_union:
+        ensure_semantic_union_shape(resolved)
+    end
+
+    prune resolved
+end
+
+func collect_semantic_union_types_in_list(list: @AST): void
+    curr: @AST = list
+    while curr != null:
+        if curr.kind == AST_VAR_DECL:
+            collect_semantic_union_type(&curr.data._var_decl.typeInfo)
+
+        else if curr.kind == AST_FUNC_DEF:
+            param: @AST = curr.data._func_def.params
+            while param != null:
+                collect_semantic_union_type(&param.data._func_params.typeInfo)
+                param = param.next
+            end
+
+            collect_semantic_union_type(&curr.data._func_def.return_type)
+            collect_semantic_union_types_in_list(curr.data._func_def.body)
+
+        else if curr.kind == AST_FORWARD:
+            if curr.data._forward.is_func:
+                param: @AST = curr.data._forward.params
+                while param != null:
+                    collect_semantic_union_type(&param.data._func_params.typeInfo)
+                    param = param.next
+                end
+
+                collect_semantic_union_type(&curr.data._forward.return_type)
+            end
+
+        else if curr.kind == AST_IF:
+            collect_semantic_union_types_in_list(curr.data._if_condition.body)
+            collect_semantic_union_types_in_list(curr.data._if_condition.else_branch)
+
+        else if curr.kind == AST_WHILE:
+            collect_semantic_union_types_in_list(curr.data._while_loop.body)
+
+        else if curr.kind == AST_FOR:
+            collect_semantic_union_types_in_list(curr.data._for_loop.body)
+
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            decl: @AST = curr.data._prop.decl
+
+            if decl.kind == AST_VAR_DECL:
+                collect_semantic_union_type(&decl.data._var_decl.typeInfo)
+            else if decl.kind == AST_FUNC_DEF:
+                param: @AST = decl.data._func_def.params
+                while param != null:
+                    collect_semantic_union_type(&param.data._func_params.typeInfo)
+                    param = param.next
+                end
+
+                collect_semantic_union_type(&decl.data._func_def.return_type)
+                collect_semantic_union_types_in_list(decl.data._func_def.body)
+            end
+        end
+
+        curr = curr.next
+    end
+end
+
+func collect_semantic_union_types(mods: @ModuleSet): void
+    i: int = 0
+    while i < mods.count:
+        collect_semantic_union_types_in_list(mods.modules[i].ast)
+        i = i + 1
+    end
+end
+
+func gen_packed_union_value(union_type: @TypeInfo, member_index: int, value: @AST, out: @FILE, src: @char): void
+    resolved: @TypeInfo = new TypeInfo
+    copy_typeInfo(resolved, union_type)
+    canonicalize_codegen_type(resolved, 0)
+
+    union_id: int = ensure_semantic_union_shape(resolved)
+
+    member_type: @TypeInfo = new TypeInfo
+    copy_atom_to_type(member_type, resolved.union_members + (member_index - 1))
+
+    if value != null and value.kind == AST_STRING_LIT:
+        if member_type.base == TOKEN_STRING and member_type.pointer_depth == 0 and member_type.array_size == 0:
+            value.data._string.lower_kind = STRING_LOWER_STRING
+        else if member_type.base == TOKEN_CHAR and member_type.pointer_depth == 1 and member_type.array_size == 0:
+            value.data._string.lower_kind = STRING_LOWER_CSTR
+        end
+    end
+
+    fprintf(out, "((flower_sem_union_%d){ .tag = %d, .data = { .m%d = ", union_id, member_index, member_index - 1)
+    gen_expr(value, out, src)
+    fprintf(out, " } })")
+
+    prune resolved
+end
+
+func gen_union_aware_call_arg(arg: @AST, union_type: @TypeInfo, member_index: int, out: @FILE, src: @char): void
+    if member_index != 0:
+        gen_packed_union_value(union_type, member_index, arg, out, src)
+    else:
+        gen_expr(arg, out, src)
+    end
+end
+
+func emit_semantic_union_defs(out: @FILE): void
+    i: int = 0
+    while i < semantic_union_count:
+        fprintf(out, "\n\ntypedef struct flower_sem_union_%d {\n", i)
+        fprintf(out, "  int tag;\n")
+        fprintf(out, "  union {\n")
+
+        j: int = 0
+        while j < semantic_unions[i].shape.union_count:
+            member: @TypeInfo = new TypeInfo
+            copy_atom_to_type(member, semantic_unions[i].shape.union_members + j)
+
+            fprintf(out, "      ")
+            typeinfo_to_string(member, out, member.name_src)
+            fprintf(out, " m%d;\n", j)
+
+            prune member
+            j = j + 1
+        end
+
+        fprintf(out, "  } data;\n")
+        fprintf(out, "} flower_sem_union_%d;\n", i)
+
+        i = i + 1
+    end
 end
 
 struct defined_union {
@@ -443,16 +924,16 @@ func gen_union(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "\n\ntypedef union %.*s {\n", ast.data._union_def.name_length, src + ast.data._union_def.name_start)
     field: @AST = ast.data._union_def.fields
     while field != null:
-        typeinfo_to_string(&field.data._struct_field.type, out, src)
-        fprintf(out, " %.*s", field.data._union_def.name_length, src + field.data._union_def.name_start)
+        typeinfo_to_string(&field.data._struct_field.typeInfo, out, src)
+        fprintf(out, " %.*s", field.data._struct_field.name_length, src + field.data._union_def.name_start)
 
-        if field.data._struct_field.type.array_size == -1:
+        if field.data._struct_field.typeInfo.array_size == -1:
             fprintf(out, "[]")
-        else if field.data._struct_field.type.array_size > 0:
-            fprintf(out, "[%d]", ast.data._struct_field.type.array_size)
-        else if field.data._struct_field.type.arr_size_expr != null:
+        else if field.data._struct_field.typeInfo.array_size > 0:
+            fprintf(out, "[%d]", field.data._struct_field.typeInfo.array_size)
+        else if field.data._struct_field.typeInfo.arr_size_expr != null:
             fprintf(out, "[")
-            gen_expr(field.data._struct_field.type.arr_size_expr, out, src)
+            gen_expr(field.data._struct_field.typeInfo.arr_size_expr, out, src)
             fprintf(out, "]")
         end
 
@@ -480,26 +961,22 @@ struct EmittedImport {
 emitted_imports: EmittedImport[256]
 emitted_count: int = 0
 
-// Currently processing (for circular detection)
-active_modules: @ModuleSet
-current_codegen_module: @Module
-
 forward func emit_lowered_func_name(mod: @Module, out: @FILE, src: @char, start: int, length: int): void
 forward func resolve_called_function_module(src: @char, start: int, length: int): @Module
 
 
 func gen_param(param: @AST, out: @FILE, src: @char): void
     // Emit: int v,
-    typeinfo_to_string(&param.data._func_params.type, out, src)
+    typeinfo_to_string(&param.data._func_params.typeInfo, out, src)
     fprintf(out, " %.*s", param.data._func_params.name_length, src + param.data._func_params.name_start)
 
-    if param.data._func_params.type.array_size == -1:
+    if param.data._func_params.typeInfo.array_size == -1:
         fprintf(out, "[]")
-    else if param.data._func_params.type.array_size != 0:
-        fprintf(out, "[%d]", param.data._func_params.type.array_size)
-    else if param.data._func_params.type.arr_size_expr != null:
+    else if param.data._func_params.typeInfo.array_size != 0:
+        fprintf(out, "[%d]", param.data._func_params.typeInfo.array_size)
+    else if param.data._func_params.typeInfo.arr_size_expr != null:
         fprintf(out, "[")
-        gen_expr(param.data._func_params.type.arr_size_expr, out, src)
+        gen_expr(param.data._func_params.typeInfo.arr_size_expr, out, src)
         fprintf(out, "]")
     end
 end
@@ -572,12 +1049,14 @@ func gen_func_call(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "(")
 
     arg: @AST = ast.data._func_call.args
+    arg_index: int = 0
     while arg != null:
-        gen_expr(arg, out, src)
+        gen_union_aware_call_arg(arg, ast.data._func_call.arg_union_types + arg_index, ast.data._func_call.arg_union_members[arg_index], out, src)
         if arg.next != null:
             fprintf(out, ", ")
         end
         arg = arg.next
+        arg_index = arg_index + 1
     end
     fprintf(out, ")")
 end
@@ -587,27 +1066,36 @@ end
 // === VARIABLES ===
 
 func gen_var_decl(ast: @AST, out: @FILE, src: @char): void
-    typeinfo_to_string(&ast.data._var_decl.type, out, src)
+    typeinfo_to_string(&ast.data._var_decl.typeInfo, out, src)
     fprintf(out, " %.*s", ast.data._var_decl.name_length, src + ast.data._var_decl.name_start)
-    if ast.data._var_decl.type.array_size == -1:
+    if ast.data._var_decl.typeInfo.array_size == -1:
         fprintf(out, "[]")
-    else if ast.data._var_decl.type.array_size != 0:
-        fprintf(out, "[%d]", ast.data._var_decl.type.array_size)
-    else if ast.data._var_decl.type.arr_size_expr != null:
+    else if ast.data._var_decl.typeInfo.array_size != 0:
+        fprintf(out, "[%d]", ast.data._var_decl.typeInfo.array_size)
+    else if ast.data._var_decl.typeInfo.arr_size_expr != null:
         fprintf(out, "[")
-        gen_expr(ast.data._var_decl.type.arr_size_expr, out, src)
+        gen_expr(ast.data._var_decl.typeInfo.arr_size_expr, out, src)
         fprintf(out, "]")
     end
     if ast.data._var_decl.value != null:
         fprintf(out, " = ")
-        gen_expr(ast.data._var_decl.value, out, src)
+        if ast.data._var_decl.union_member_index != 0:
+            gen_packed_union_value(&ast.data._var_decl.typeInfo, ast.data._var_decl.union_member_index, ast.data._var_decl.value, out, src)
+        else:
+            gen_expr(ast.data._var_decl.value, out, src)
+        end
     end
     fprintf(out, ";\n")
 end
 
 func gen_var_ass(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "%.*s = ", ast.data._var_ass.name_length, src + ast.data._var_ass.name_start)
-    gen_expr(ast.data._var_ass.value, out, src)
+
+    if ast.data._var_ass.union_member_index != 0:
+        gen_packed_union_value(&ast.data._var_ass.resolved_type, ast.data._var_ass.union_member_index, ast.data._var_ass.value, out, src)
+    else:
+        gen_expr(ast.data._var_ass.value, out, src)
+    end
     fprintf(out, ";\n")
 end
 
@@ -843,6 +1331,19 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
 
     else if ast.kind == AST_NULL:
         fprintf(out, "NULL")
+
+    else if ast.kind == AST_TYPE_TEST:
+        if ast.data._type_test.lower_kind == TYPE_TEST_NONNULL:
+            fprintf(out, "(")
+            gen_expr(ast.data._type_test.value, out, src)
+            fprintf(out, " != NULL)")
+        else if ast.data._type_test.lower_kind == TYPE_TEST_UNION_TAG:
+            fprintf(out, "((")
+            gen_expr(ast.data._type_test.value, out, src)
+            fprintf(out, ").tag == %d)", ast.data._type_test.union_member_index)
+        else:
+            fprintf(out, "1")
+        end
         
     else if ast.kind == AST_BINARY_OP: 
         if ast.data._binary.is_string_compare:
@@ -861,6 +1362,17 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             else:
                 fprintf(out, ")")
             end
+
+        else if ast.data._binary.null_compare_kind == BINARY_NULL_COMPARE_UNION_TAG:
+            value_expr: @AST = ast.data._binary.left
+            if value_expr != null and value_expr.kind == AST_NULL:
+                value_expr = ast.data._binary.right
+            end
+
+            fprintf(out, "((")
+            gen_expr(value_expr, out, src)
+            fprintf(out, ").tag %s %d)", token_to_string(ast.data._binary.op), ast.data._binary.null_union_member_index)
+
         else:
             gen_expr(ast.data._binary.left, out, src)
             fprintf(out, " %s ", token_to_string(ast.data._binary.op))
@@ -913,24 +1425,32 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "}")
         
     else if ast.kind == AST_CAST:
-        if ast.data._cast.type.base == TOKEN_CHAR and ast.data._cast.type.pointer_depth == 1 and ast.data._cast.type.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
+        if ast.data._cast.lower_kind == CAST_LOWER_UNION_EXTRACT:
+            fprintf(out, "((")
+            gen_expr(ast.data._cast.value, out, src)
+            fprintf(out, ").data.m%d)", ast.data._cast.union_member_index - 1)
+
+        else if ast.data._cast.lower_kind == CAST_LOWER_UNION_PACK:
+            gen_packed_union_value(&ast.data._cast.typeInfo, ast.data._cast.union_member_index, ast.data._cast.value, out, src)
+
+        else if ast.data._cast.typeInfo.base == TOKEN_CHAR and ast.data._cast.typeInfo.pointer_depth == 1 and ast.data._cast.typeInfo.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
             fprintf(out, "(")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ").data")
 
-        else if ast.data._cast.type.base == TOKEN_STRING and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0 and ast.data._cast.value_type.base == TOKEN_CHAR and ast.data._cast.value_type.pointer_depth == 1 and ast.data._cast.value_type.array_size == 0:
+        else if ast.data._cast.typeInfo.base == TOKEN_STRING and ast.data._cast.typeInfo.pointer_depth == 0 and ast.data._cast.typeInfo.array_size == 0 and ast.data._cast.value_type.base == TOKEN_CHAR and ast.data._cast.value_type.pointer_depth == 1 and ast.data._cast.value_type.array_size == 0:
             fprintf(out, "flower_string_from_cstr(")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ")")
 
-        else if ast.data._cast.type.base == TOKEN_BOOL and ast.data._cast.type.pointer_depth == 0 and ast.data._cast.type.array_size == 0:
+        else if ast.data._cast.typeInfo.base == TOKEN_BOOL and ast.data._cast.typeInfo.pointer_depth == 0 and ast.data._cast.typeInfo.array_size == 0:
             fprintf(out, "((")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ") != 0")
 
         else:
             fprintf(out, "(")
-            typeinfo_to_string(&ast.data._cast.type, out, src)
+            typeinfo_to_string(&ast.data._cast.typeInfo, out, src)
             fprintf(out, ")(")
             gen_expr(ast.data._cast.value, out, src)
             fprintf(out, ")")
@@ -963,15 +1483,15 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_NEW:
         fprintf(out, "malloc(sizeof(")
-        typeinfo_to_string(&ast.data._new_alloc.type, out, src)
+        typeinfo_to_string(&ast.data._new_alloc.typeInfo, out, src)
         fprintf(out, ")")
             
-        if ast.data._new_alloc.type.arr_size_expr != null:
+        if ast.data._new_alloc.typeInfo.arr_size_expr != null:
             fprintf(out, " * (")
-            gen_expr(ast.data._new_alloc.type.arr_size_expr, out, src)
+            gen_expr(ast.data._new_alloc.typeInfo.arr_size_expr, out, src)
             fprintf(out, ")")
-        else if ast.data._new_alloc.type.array_size > 0:
-            fprintf(out, " * %d", ast.data._new_alloc.type.array_size)
+        else if ast.data._new_alloc.typeInfo.array_size > 0:
+            fprintf(out, " * %d", ast.data._new_alloc.typeInfo.array_size)
         end
         fprintf(out, ")")
 
@@ -987,12 +1507,14 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "(")
 
         arg: @AST = ast.data._alias_call.args
+        arg_index: int = 0
         while arg != null:
-            gen_expr(arg, out, src)
+            gen_union_aware_call_arg(arg, ast.data._alias_call.arg_union_types + arg_index, ast.data._alias_call.arg_union_members[arg_index], out, src)
             if arg.next != null:
                 fprintf(out, ", ")
             end
             arg = arg.next
+            arg_index = arg_index + 1
         end
         fprintf(out, ")")
         
@@ -1017,7 +1539,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_SIZEOF:
         fprintf(out, "sizeof(")
-        typeinfo_to_string(&ast.data._size_of.type, out, src)
+        typeinfo_to_string(&ast.data._size_of.typeInfo, out, src)
         fprintf(out, ")")
         
     else if ast.kind == AST_CHAR_LIT:
@@ -1100,7 +1622,11 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
         
         if ast.data._dot_access.value != null:
             fprintf(out, " = ")
-            gen_expr(ast.data._dot_access.value, out, src)
+            if ast.data._dot_access.union_member_index != 0:
+                gen_packed_union_value(&ast.data._dot_access.resolved_type, ast.data._dot_access.union_member_index, ast.data._dot_access.value, out, src)
+            else:
+                gen_expr(ast.data._dot_access.value, out, src)
+            end
             fprintf(out, ";\n")
         end
 
@@ -1178,6 +1704,9 @@ func codegen(mods: @ModuleSet, out: @FILE): void
     if mods.count == 0:
         return
     end
+
+    collect_semantic_union_types(mods)
+    emit_semantic_union_defs(out)
 
     main_mod: @Module = mods.modules + 0
     emit_module(main_mod, out, "", 0, 0)

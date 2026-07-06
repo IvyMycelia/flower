@@ -39,6 +39,8 @@ end
 forward func parser_error(ps: @Parser, message: @char): void
 forward func parser_sync_until(ps: @Parser, stop_a: int, stop_b: int): void
 
+forward func parse_type_alias(ps: @Parser):             @AST
+
 forward func parse_var_decl(ps: @Parser):               @AST
 forward func parse_var_ass(ps: @Parser):                @AST
 forward func parse_subscript_ass(ps: @Parser):          @AST
@@ -106,35 +108,98 @@ func parser_expect(ps: @Parser, kind: int): int
     return 1
 end    
 
-func parse_type(ps: @Parser): @TypeInfo
-    type: @TypeInfo = new TypeInfo
+func clear_parsed_type(typeInfo: @TypeInfo, src: @char): void
+    typeInfo.base = TOKEN_VOID
+    typeInfo.pointer_depth = 0
+    typeInfo.array_size = 0
+    typeInfo.arr_size_expr = null
+    typeInfo.name_start = 0
+    typeInfo.name_length = 0
+    typeInfo.name_src = src
+    typeInfo.is_nullable = false
+    typeInfo.is_union = false
+    typeInfo.union_count = 0
+end
 
-    type.pointer_depth = 0
-    type.array_size = 0
-    type.arr_size_expr = null
-    type.name_src = ps.src
+func copy_parsed_type(dst: @TypeInfo, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+    dst.is_union = src_type.is_union
+    dst.union_count = src_type.union_count
+
+    i: int = 0
+    while i < src_type.union_count:
+        dst.union_members[i].base = src_type.union_members[i].base
+        dst.union_members[i].pointer_depth = src_type.union_members[i].pointer_depth
+        dst.union_members[i].array_size = src_type.union_members[i].array_size
+        dst.union_members[i].arr_size_expr = src_type.union_members[i].arr_size_expr
+        dst.union_members[i].name_start = src_type.union_members[i].name_start
+        dst.union_members[i].name_length = src_type.union_members[i].name_length
+        dst.union_members[i].name_src = src_type.union_members[i].name_src
+        dst.union_members[i].is_nullable = src_type.union_members[i].is_nullable
+        i = i + 1
+    end
+end
+
+func copy_type_member(dst: @TypeAtom, src_type: @TypeInfo): void
+    dst.base = src_type.base
+    dst.pointer_depth = src_type.pointer_depth
+    dst.array_size = src_type.array_size
+    dst.arr_size_expr = src_type.arr_size_expr
+    dst.name_start = src_type.name_start
+    dst.name_length = src_type.name_length
+    dst.name_src = src_type.name_src
+    dst.is_nullable = src_type.is_nullable
+end
+
+func parse_type_atom(ps: @Parser, typeInfo: @TypeInfo): bool
+    clear_parsed_type(typeInfo, ps.src)
+
+    if parser_peek(ps).kind == TOKEN_QUESTION:
+        typeInfo.is_nullable = true
+        parser_advance(ps)
+
+        if parser_peek(ps).kind == TOKEN_EOF:
+            parser_error(ps, "Unexpected end of file while parsing nullable type")
+            return false
+        end
+    end
 
     while parser_peek(ps).kind == TOKEN_AT:
-        type.pointer_depth = type.pointer_depth + 1
+        typeInfo.pointer_depth = typeInfo.pointer_depth + 1
         parser_advance(ps)
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in type")
-            return type
+            return false
         end
     end
 
     if parser_peek(ps).kind == TOKEN_EOF:
         parser_error(ps, "Unexpected end of file while parsing type")
-        return type
+        return false
     end
 
     base: @Token = parser_advance(ps)
-    type.base = base.kind
+    if base.kind == TOKEN_NULL:
+        typeInfo.base = TOKEN_VOID
+        typeInfo.pointer_depth = typeInfo.pointer_depth + 1
+        typeInfo.name_start = 0
+        typeInfo.name_length = 0
+        typeInfo.name_src = null
+    else:
+        typeInfo.base = base.kind
 
-    if base.kind == TOKEN_IDENTIFIER:
-        type.name_start = base.start
-        type.name_length = base.length
+        if base.kind == TOKEN_IDENTIFIER:
+            typeInfo.name_start = base.start
+            typeInfo.name_length = base.length
+        end
     end
 
     if parser_peek(ps).kind == TOKEN_LBRACK:
@@ -142,26 +207,78 @@ func parse_type(ps: @Parser): @TypeInfo
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in array type")
-            return type
+            return false
         end
 
         if parser_peek(ps).kind == TOKEN_RBRACK:
-            type.array_size = -1
-
+            typeInfo.array_size = -1
         else if parser_peek(ps).kind == TOKEN_NUMBER:
-            type.array_size = atoi(ps.src + parser_peek(ps).start)
+            typeInfo.array_size = atoi(ps.src + parser_peek(ps).start)
             parser_advance(ps)
-
         else:
-            type.arr_size_expr = parse_expr(ps, 0)
+            typeInfo.arr_size_expr = parse_expr(ps, 0)
         end
 
-        if !parser_expect(ps, TOKEN_RBRACK):
-            return type
+        if not parser_expect(ps, TOKEN_RBRACK):
+            return false
         end
     end
 
-    return type
+    return true
+end
+
+
+func parse_type(ps: @Parser): @TypeInfo
+    typeInfo: @TypeInfo = new TypeInfo
+    clear_parsed_type(typeInfo, ps.src)
+
+    first: @TypeInfo = new TypeInfo
+    if not parse_type_atom(ps, first):
+        copy_parsed_type(typeInfo, first)
+        prune first
+        return typeInfo
+    end
+
+    if parser_peek(ps).kind != TOKEN_PIPE:
+        copy_parsed_type(typeInfo, first)
+        prune first
+        return typeInfo
+    end
+
+    clear_parsed_type(typeInfo, ps.src)
+    typeInfo.is_union = true
+    copy_type_member(typeInfo.union_members + 0, first)
+    typeInfo.union_count = 1
+    prune first
+
+    while parser_peek(ps).kind == TOKEN_PIPE:
+        parser_advance(ps)
+
+        if typeInfo.union_count >= 8:
+            parser_error(ps, "Semantic union supports at most 8 members")
+            scratch: @TypeInfo = new TypeInfo
+            parse_type_atom(ps, scratch)
+            prune scratch
+            continue
+        end
+
+        if parser_peek(ps).kind == TOKEN_EOF:
+            parser_error(ps, "Unexpected end of file in semantic union")
+            return typeInfo
+        end
+
+        member: @TypeInfo = new TypeInfo
+        if not parse_type_atom(ps, member):
+            prune member
+            return typeInfo
+        end
+
+        copy_type_member(typeInfo.union_members + typeInfo.union_count, member)
+        typeInfo.union_count = typeInfo.union_count + 1
+        prune member
+    end
+
+    return typeInfo
 end
 
 func get_precedence(kind: int): int
@@ -169,7 +286,7 @@ func get_precedence(kind: int): int
         return 5
     else if kind == TOKEN_PLUS or kind == TOKEN_MINUS:
         return 4
-    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP:
+    else if kind == TOKEN_GT or kind == TOKEN_LT or kind == TOKEN_NEQ or kind == TOKEN_LEQ or kind == TOKEN_GEQ or kind == TOKEN_COMP or kind == TOKEN_IS:
         return 3
     else if kind == TOKEN_AND:
         return 2
@@ -241,6 +358,32 @@ func parse_field_flags(ps: @Parser, field: @AST): void
 end
 
 
+// == TYPES ==
+
+func parse_type_alias(ps: @Parser): @AST
+    if not parser_expect(ps, TOKEN_TYPE):
+        return null
+    end
+
+    node: @AST = make_node(ps, AST_TYPE_ALIAS)
+
+    name: @Token = parser_advance(ps)
+    if name.kind != TOKEN_IDENTIFIER:
+        parser_error(ps, "Expected type alias name")
+        return node
+    end
+
+    node.data._type_alias.name_start = name.start
+    node.data._type_alias.name_length = name.length
+
+    if not parser_expect(ps, TOKEN_ASSIGN):
+        return node
+    end
+
+    node.data._type_alias.target = @parse_type(ps)
+    return node
+end
+
 // === VARIABLES ===
 
 func parse_var_decl(ps: @Parser): @AST
@@ -265,7 +408,7 @@ func parse_var_decl(ps: @Parser): @AST
         return node
     end
 
-    node.data._var_decl.type = @parse_type(ps)
+    node.data._var_decl.typeInfo= @parse_type(ps)
     
     if parser_peek(ps).kind == TOKEN_ASSIGN:
         parser_advance(ps)
@@ -631,7 +774,7 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
         cast: @AST = make_node(ps, AST_CAST)
 
         cast.data._cast.value = left
-        cast.data._cast.type = @parse_type(ps)
+        cast.data._cast.typeInfo= @parse_type(ps)
 
         left = cast
     end
@@ -642,6 +785,20 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
         end
 
         op: @Token = parser_advance(ps)
+
+        if op.kind == TOKEN_IS:
+            if parser_peek(ps).kind == TOKEN_EOF:
+                parser_error(ps, "Unexpected end of file after `is`")
+                return left
+            end
+
+            test: @AST = make_node(ps, AST_TYPE_TEST)
+            test.data._type_test.value = left
+            test.data._type_test.typeInfo = @parse_type(ps)
+
+            left = test
+            continue
+        end
 
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file after binary operator")
@@ -659,6 +816,10 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
         bin.data._binary.left = left
         bin.data._binary.right = right
         bin.data._binary.op = op.kind
+
+        bin.data._binary.is_string_compare = 0
+        bin.data._binary.null_compare_kind = BINARY_NULL_COMPARE_NONE
+        bin.data._binary.null_union_member_index = 0
 
         left = bin
     end
@@ -957,7 +1118,7 @@ func parse_primary(ps: @Parser): @AST
         str.data._string.str_start = parser_peek(ps).start
         str.data._string.str_length = parser_peek(ps).length
 
-        str.data._string.lower_kind = STRING_LOWER_STRING
+        str.data._string.lower_kind = STRING_LOWER_CSTR
 
         parser_advance(ps)
 
@@ -1062,7 +1223,7 @@ func parse_primary(ps: @Parser): @AST
 
         new_node: @AST = make_node(ps, AST_NEW)
 
-        new_node.data._new_alloc.type = @parse_type(ps)
+        new_node.data._new_alloc.typeInfo= @parse_type(ps)
 
         return new_node
 
@@ -1135,7 +1296,7 @@ func parse_primary(ps: @Parser): @AST
 
         node: @AST = make_node(ps, AST_SIZEOF)
 
-        node.data._size_of.type = @parse_type(ps)
+        node.data._size_of.typeInfo= @parse_type(ps)
 
         parser_expect(ps, TOKEN_RPAREN)
 
@@ -1400,7 +1561,7 @@ func parse_param(ps: @Parser): @AST
         return node
     end
 
-    node.data._func_params.type = @parse_type(ps)
+    node.data._func_params.typeInfo= @parse_type(ps)
     
     return node
 end
@@ -1463,7 +1624,7 @@ func parse_struct(ps: @Parser): @AST
             continue
         end
 
-        field.data._struct_field.type = @parse_type(ps)
+        field.data._struct_field.typeInfo= @parse_type(ps)
 
         if field_head == null:
             field_head = field
@@ -1538,7 +1699,7 @@ func parse_union(ps: @Parser): @AST
             continue
         end
 
-        field.data._struct_field.type = @parse_type(ps)
+        field.data._struct_field.typeInfo= @parse_type(ps)
 
         if field_head == null:
             field_head = field
@@ -1719,6 +1880,9 @@ prop func parse(ps: @Parser): @AST
             else if parser_peek(ps).kind == TOKEN_UNION:
                 decl = parse_union(ps)
 
+            else if parser_peek(ps).kind == TOKEN_TYPE:
+                decl = parse_type_alias(ps)
+
             else:
                 parser_error(ps, "Expected declaration after prop")
             end
@@ -1739,6 +1903,9 @@ prop func parse(ps: @Parser): @AST
 
         else if parser_peek(ps).kind == TOKEN_IDENTIFIER and peek(ps.ts, ps.pos + 1).kind == TOKEN_COLON:
             node = parse_var_decl(ps)
+
+        else if parser_peek(ps).kind == TOKEN_TYPE:
+            node = parse_type_alias(ps)
         
         else:
             parser_error(ps, "Unexpected top-level statement or declaration")
