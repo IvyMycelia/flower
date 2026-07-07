@@ -137,7 +137,7 @@ git checkout -b experiment/optimization-x
 # Does it help? Submit a Pull Request! Doesn't? Learn and continue
 ```
 
-Current experiments welcome. See [Docs/CONTRIBUTING.md](Docs/CONTRIBUTING.md) for specific details on how to contribute.
+Current experiments welcome. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for specific details on how to contribute.
 
 ## Project Status
 
@@ -159,7 +159,7 @@ Current experiments welcome. See [Docs/CONTRIBUTING.md](Docs/CONTRIBUTING.md) fo
 - `v1.6.0` Standard Library expansion
 - `v2.0.0` Non-C codegen
 
-See [Docs/ROADMAP.md](Docs/ROADMAP.md) for more
+See [docs/ROADMAP.md](docs/ROADMAP.md) for more
 
 ## Why Flower?
 

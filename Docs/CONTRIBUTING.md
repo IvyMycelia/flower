@@ -169,7 +169,7 @@ Following this step-by-step process helps avoid someone putting in a lot of effo
 
 - Open an issue and discuss
 - Check existing issues / discussions
-- Look at [ROADMAP.md](Docs/ROADMAP.md) for planned work
+- Look at [ROADMAP.md](docs/ROADMAP.md) for planned work
 
 ## Code of Conduct
 
