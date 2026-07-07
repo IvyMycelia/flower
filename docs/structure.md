@@ -219,13 +219,28 @@ Current model:
 - `prune` frees
 - there is no garbage collecter
 
-## Current Boundaries
+## Scope of This Document
 
-The following are intentionally outside the currently documented surface here:
+This page is a high-level reference for how Flower source code is structured currently.
 
-- implicit extraction after union or nullable narrowing
-- narrowing on call results
-- narrowing on subscript expressions
-- non-C backend behavior details
+It covers:
+
+- source files and modules
+- top-level declarations
+- function declarations
+- the current type surface at a glance
+- control-flow block structure
+- field-access
+- basic manual memory operations
+
+It does not try to fully specify:
+
+- every type-system rule and edge case
+- all module / export / visibility semantics
+- ownership conventions beyond basic `new` / `prune`
+- backend-specific lowering details
+- planned or not-yet-implemented features
+
+Those belong in dedicated reference pages, milestone docs, and the roadmap.
 
 See `docs/ROADMAP.md` and the milestone documents for planned future work.

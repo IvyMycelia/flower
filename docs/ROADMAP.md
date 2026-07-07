@@ -77,7 +77,8 @@ Focus: Turn Flower's current behavior into a coherent reference.
 
 - [x] Rewrite `docs/structure.md` into a current language surface document
 - [ ] Write a real type-system reference for `type`, `null`, `?T`, `A | B`, `is`, and `as`
-- [ ] Document module / import / export semantics clearly
+- [ ] Document module / import / export / visibility semantics clearly
+- [ ] Document control flow and block structure clearly
 - [ ] Document memory and ownership basics
 - [ ] Audit README / ROADMAP / Milestone docs for drift
 - [ ] Expand examples into reference-quality spec examples
