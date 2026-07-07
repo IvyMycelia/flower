@@ -2,6 +2,8 @@
 
 > Note: This document describes Flower's current surface syntax and structure. It is meant to reflect the language as it exists now, not older experiments or future plans. If this document and the compiler disagree, the compiler wins.
 
+For how the Flower documentation set itself is organized, see `docs/DOCUMENTATION.md`.
+
 ## Source Files
 
 Flower source files use the `.flo` extension.
