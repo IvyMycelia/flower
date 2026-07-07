@@ -1,10 +1,19 @@
 # Grammar
 
-> Note: This document is still being rewritten. The sections below reflect current Flower syntax where updated, but some older examples and terminology may still lag behind the compiler. When this document and the compiler disagree, the compiler (obviously) has authority.
+> Note: This document describes Flower's current surface syntax and structure. It is meant to reflect the language as it exists now, not older experiments or future plans. If this document and the compiler disagree, the compiler wins.
 
-## File Structures
+## Source Files
 
-### Module Example
+Flower source files use the `.flo` extension.
+
+A flower project is currently organized around modules:
+
+- one file per module
+- imports happen at file scope
+- exported top-level declarations use `prop`
+- non-`prop` top-level declarations are private to the module
+
+## Module Example
 
 ```go
 /* math.flo */
@@ -19,127 +28,219 @@ func helper(x: int): int
 end
 ```
 
-### Import Example
+## Imports and Visibility
 
-```rust
-/* main.flo */
+```go
 import "./math.flo" as math
 
 func main(): int
-    x: int = math.square(4)
-
-    if x == 16:
-        prin("ok\n")
-    end
-
+    value: int = math.square(4)
     return 0
-end
-```
-
-Current module rules:
-
-* `prop` marks exported top-level declarations
-* top-level declarations are private by default
-* imported aliases act as real namespaces
-* module / interface rules are enforced by the compiler, not deferred to generated C
-
-### Example main.flo
-
-```go
-/* Default program entry */
-func main(args: string[]): int
-    if args.length > 0:
-        if args[2] == "--p":
-            print("P Mode enabled\n")
-            return 1
-        else if args[2] == "--b":
-            // Empty block, stack is still pushed but nothing is inside this block. Waits for end to terminate or an else to attach
-        else:
-            print("Unrecognized symbol\n") return -1 // Flower is white-space and newline insensitive by default
-        end // This end tells the compiler that if y == 0 block is done and that anything that follows is for the original if x block
-    else print("Not enough arguments\n") // No end is needed because the else only has one statement. The compiler knows this is the end of the whole block, because there's no : after the else meaning whatever follows HAS to be the last statement. NOT IMPLEMENTED YET
-
-    return 0; // Semicolons optional to end a line — really doesn't do anything for reasons stated above
-end
-```
-
-## Current Type System Snapshot
-
-```go
-type Size = int
-type MaybeName = string | null
-
-func show_name(name: ?string): void
-    if name != null:
-        real: string = name as string
-        print(real)
-    end
-end
-
-func describe(value: int | string): void
-    if value is int:
-        n: int = value as int
-        print(n)
-    end
 end
 ```
 
 Current rules:
 
-* `type Name = ExistingType` is a transparent alias
-* `?T` is sugar for `T | null`
-* `A | B` is a semantic union type
-* `union` remains a raw storage / layout feature
-* `is` narrows
-* `as` extracts explicitly after narrowing
+- `import "path"` loads another Flower module
+- `import "path" as name` gives the import a real namespace alias
+- `import <name>` requests a system / backend import (currently exists for C support)
+- `prop` marks exported top-level declarations
+- top-level declarations are private by default
+- module and interface rules are enforced by the compiler
 
-## How If Conditionals Work
+## Top-Level declarations
 
-`else`/`else if` before seeing `end` —> belongs to the **innermost open** `if`
-`end` closes the innermost open `if`, "surfacing" to the parent block
-`else` with no `:` —> single-statement, no `end` needed, and **implicitly terminates** the entire chain
+Flower currently supports these top-level declaration forms:
 
-The compiler maintains a stack: each `if ... :` pushes, each `end` pops, and an `else`/`else if` hooks onto whatever is on top. An implicit `else`/`else if`/`if` self-enforces: because there's no `:` telling the compiler to push a stack, it automatically registers the following statement is part of the conditional's output and treats anything afterwards as independent of the conditional. There's no way to accidentally leave a dangling block, since the absence of `:` structurally prevents continuation.
+```go
+count: int = 0
 
-```rust
-if condition:       // colon = open block, ALWAYS needs end
-    statements
+type Size = int
+
+struct Node {
+    value: int,
+    next: @Node,
+}
+
+union Bits {
+    i: int,
+    f: float,
+}
+
+forward func square(x: int): int
+
+func inner(): void
+    square(4)
 end
 
-if condition statement          // no colon = single statement, terminated by newline or ;
-else if condition statement     // same
-else statement                  // same
-
-if condition:       // colon form can still have else/else if before end
-    statements
-else if condition:
-    statements
-end
-```
-
-### Legal Example
-
-```rust
-if x:
-    if y:
-        print("both")
-    end
+prop func square(x: int): int
+    return x * x
 end
 ```
 
-### Illegal Example
+## Functions
 
-```rust
-if x:
-    // ...
+Functions use explicit parameter and return types.
+
+```go
+func add(x: int, y: int): int
+    return x + y
 end
-else if y: // This is illegal because it comes after the stack is popped and the compiler does not know what `else` is referring to
 ```
 
-```rust
-if x
-// Empty
-// EoF
+Exported functions are written with prop:
+
+```go
+prop func square(x: int): int
+    return x * x
+end
 ```
 
-The above is illegal because the compiler never appends anything to the block nor terminates it. Instead of panicking it recognizes that there's no trailing statement following the conditional, and should return an error at compilation. If the user has a statement afterwards, no matter the intention, it will be attached to the block since the language is white-space insesnitive.
+Programs normally provide a `main` function:
+
+```go
+func main(): int
+    return 0
+end
+```
+
+## Types at a Glance
+
+Flower currently has:
+
+- primitive types: `int`, `float`, `double`, `char`, `bool`, `string`, `void`
+- built-in singleton value: `null`
+- pointers: `@T`
+- arrays: `T[]`
+- transparent aliases: `type Name = ExistingType`
+- semantic nullable types: `?T`
+- semantic unions: `A | B | C`
+- raw storage unions via `union`
+
+### Alias Example
+
+```go
+type Size = int
+
+size: Size = 4
+```
+
+### Nullable Example
+
+```go
+next: ?@Node = null
+
+if next != null:
+    real_next: @Node = next as @Node
+end
+```
+
+### Semantic Union Example
+
+```go
+value: int | string = 4
+
+if value is int:
+    n: int = value as int
+end
+```
+
+Current rules:
+
+- `type Name = ExistingType` is transparent, not nominal
+- `?T` is sugar for `T | null`
+- `A | B` is a semantic union type
+- `union` is the raw overlapping storage feature
+- `is` narrows
+- `as` extracts explicitly after narrowing
+
+## Control Flow and Blocks
+
+Flower uses `:` to open a block and `end` to close it.
+
+### If / Else
+
+```go
+if value > 0:
+    print("positive\n")
+else:
+    print("non-positive\n")
+end
+```
+
+### While
+
+```go
+i: int = 0
+
+while i < 10:
+    print(i)
+    i = i + 1
+end
+```
+
+### For
+
+```go
+for i in 0..10:
+    print(i)
+end
+```
+
+For current documentation purposes, this file only documents the stable block form that uses `:` and `end`.
+
+## Field Access
+
+Flower source uses `.` for field access.
+
+```go
+node.value = 3
+
+if box.value is string:
+    label: string = box.value as string
+end
+```
+
+The compiler determines the lowered access form during semantic analysis; the surface language does not expose C-style `->`.
+
+## Memory and Ownership
+
+Flower is manually managed.
+
+```go
+node: @Node = new Node
+node.value = 3
+prune node
+```
+
+Current model:
+
+- `new` allocates
+- `prune` frees
+- there is no garbage collecter
+
+## Scope of This Document
+
+This page is a high-level reference for how Flower source code is structured currently.
+
+It covers:
+
+- source files and modules
+- top-level declarations
+- function declarations
+- the current type surface at a glance
+- control-flow block structure
+- field-access
+- basic manual memory operations
+
+It does not try to fully specify:
+
+- every type-system rule and edge case
+- all module / export / visibility semantics
+- ownership conventions beyond basic `new` / `prune`
+- backend-specific lowering details
+- planned or not-yet-implemented features
+
+Those belong in dedicated reference pages, milestone docs, and the roadmap.
+
+See `docs/ROADMAP.md` and the milestone documents for planned future work.
