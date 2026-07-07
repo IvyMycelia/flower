@@ -75,7 +75,7 @@ Current v1.4 scope notes:
 
 Focus: Turn Flower's current behavior into a coherent reference.
 
-- [ ] Rewrite `Docs/structure.md` into a current language surface document
+- [ ] Rewrite `docs/structure.md` into a current language surface document
 - [ ] Write a real type-system reference for `type`, `null`, `?T`, `A | B`, `is`, and `as`
 - [ ] Document module / import / export semantics clearly
 - [ ] Document memory and ownership basics
