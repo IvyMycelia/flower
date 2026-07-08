@@ -388,10 +388,12 @@ Example:
 name: ?string = "Ivy"
 
 if name != null:
-    real_nameL string = name as string
+    real_name: string = name as string
     print(real_name)
 end
 ```
+
+This is the current model, but nullable arrays are not lowered yet.
 
 That style may feel a little stricter than some languages, but it is intentional. Flower would rather you say exactly when you are crossing from "maybe" to "definitely." This is the current model, and it is unlikely to change — though not impossible.
 
@@ -474,7 +476,7 @@ Current Flower support includes narrowing on:
 
 - local union values
 - parameters
-- return values after user
+<!-- - return values after use -->
 - struct fields
 - stable field-expression chains
 
@@ -599,7 +601,7 @@ name: string = "Ivy"
 type Size = int
 type Label = string
 
-width: size = 80
+width: Size = 80
 title: Label = "Flower"
 ```
 
@@ -635,7 +637,7 @@ if value is string:
 end
 ```
 
-Current parser limit: semantic unions support up to 8 member types.
+Current compiler / storage limit: semantic unions support up to 8 member types.
 
 ### Stable Field-Expression Narrowing
 
@@ -704,7 +706,7 @@ Transparent aliases solve naming and readability now. A real nominal newtype fea
 
 ## Related Docs
 
-- [`docs/STRUCTURE.md`](docs/STRUCTURE.md)
-- [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)
-- [`docs/ROADMAP.md`](docs/ROADMAP.md)
-- [`docs/Milestones/v1.4.0-better-types.md`](docs/Milestones/v1.4.0-better0types.md)
+- [`docs/STRUCTURE.md`](../STRUCTURE.md)
+- [`docs/DOCUMENTATION.md`](../DOCUMENTATION.md)
+- [`docs/ROADMAP.md`](../ROADMAP.md)
+- [`docs/Milestones/v1.4.0-better-types.md`](../Milestones/v1.4.0-better-types.md)
