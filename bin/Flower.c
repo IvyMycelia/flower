@@ -4448,7 +4448,9 @@ return;}
 if (condition->data._binary.op == TOKEN_NEQ) {
 if (current->is_union) {
 if (mod_src_typecheck_flo_union_has_null_member(current) != 0) {
+if (ref_expr->kind == AST_VAR_REF) {
 mod_src_typecheck_flo_push_null_binding(env, src, ref_expr->data._var_ref.name_start, ref_expr->data._var_ref.name_length);
+}
 }
 }
 else if (mod_src_typecheck_flo_is_nullable_type(current)) {
@@ -5396,14 +5398,8 @@ VarInfo* loop_var = env->vars + env->var_count;
 loop_var->src = src;
 loop_var->name_start = ast->data._for_loop.var_start;
 loop_var->name_length = ast->data._for_loop.var_length;
-loop_var->typeInfo.base = TOKEN_INT;
-loop_var->typeInfo.pointer_depth = 0;
-loop_var->typeInfo.array_size = 0;
-loop_var->typeInfo.arr_size_expr = NULL;
-loop_var->typeInfo.is_nullable = 0;
-loop_var->typeInfo.name_start = 0;
-loop_var->typeInfo.name_length = 0;
-loop_var->typeInfo.name_src = NULL;
+mod_src_typecheck_flo_set_plain_type(&(loop_var->typeInfo), TOKEN_INT);
+loop_var->binding_kind = VAR_BINDING_BASE;
 env->var_count = env->var_count + 1;
 TypeInfo* from_type = malloc(sizeof(TypeInfo));
 TypeInfo* to_type = malloc(sizeof(TypeInfo));
@@ -5730,6 +5726,7 @@ env->struct_count = 0;
 env->var_count = 0;
 env->func_count = 0;
 env->alias_count = 0;
+env->narrow_count = 0;
 env->error_count = 0;
 }
 

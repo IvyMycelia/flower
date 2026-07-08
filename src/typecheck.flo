@@ -1426,7 +1426,9 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
         if condition.data._binary.op == TOKEN_NEQ:
             if current.is_union:
                 if union_has_null_member(current) != 0:
-                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                    if ref_expr.kind == AST_VAR_REF:
+                        push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                    end
                 end
 
             else if is_nullable_type(current):
@@ -2523,14 +2525,8 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         loop_var.src = src
         loop_var.name_start = ast.data._for_loop.var_start
         loop_var.name_length = ast.data._for_loop.var_length
-        loop_var.typeInfo.base = TOKEN_INT
-        loop_var.typeInfo.pointer_depth = 0
-        loop_var.typeInfo.array_size = 0
-        loop_var.typeInfo.arr_size_expr = null
-        loop_var.typeInfo.is_nullable = false
-        loop_var.typeInfo.name_start = 0
-        loop_var.typeInfo.name_length = 0
-        loop_var.typeInfo.name_src = null
+        set_plain_type(&loop_var.typeInfo, TOKEN_INT)
+        loop_var.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
 
@@ -2910,6 +2906,7 @@ func init_type_env(env: @TypeEnv): void
     env.var_count = 0
     env.func_count = 0
     env.alias_count = 0
+    env.narrow_count = 0
     env.error_count = 0
 end
 
