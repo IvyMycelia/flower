@@ -148,7 +148,7 @@ In Flower, `bool` is not treated as a wrapper for `0` or `1`. In the current C b
 
 Practical consequences:
 
-- conditionals expect `bool`
+- conditionals currently accept condition-compatible values: `bool`, integers, and pointer-like values
 - arithmetic operators do not accept `bool` operands as if they were ordinary integers
 - `true` and `false` are real boolean literals
 
@@ -634,6 +634,8 @@ if value is string:
     print(s)
 end
 ```
+
+Current parser limit: semantic unions support up to 8 member types.
 
 ### Stable Field-Expression Narrowing
 
