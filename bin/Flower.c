@@ -3481,7 +3481,7 @@ if (typeInfo->is_union) {
 if (mod_src_typecheck_flo_union_has_null_member(typeInfo) != 0) {
 return 1;
 }
-if (typeInfo->union_count >= 0) {
+if (typeInfo->union_count >= 8) {
 mod_src_typecheck_flo_type_error(env, ast, "semantic union supports at most 8 members");
 return 0;
 }

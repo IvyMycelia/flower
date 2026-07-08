@@ -326,7 +326,7 @@ func lower_nullable_to_semantic_union(env: @TypeEnv, ast: @AST, typeInfo: @TypeI
             return true
         end
 
-        if typeInfo.union_count >= 0:
+        if typeInfo.union_count >= 8:
             type_error(env, ast, "semantic union supports at most 8 members")
             return false
         end
