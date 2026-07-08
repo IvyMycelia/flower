@@ -3585,6 +3585,11 @@ return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_INT  ||  typeInfo->
 }
 
 
+int mod_src_typecheck_flo_is_printable_type(TypeInfo* typeInfo) {
+return mod_src_typecheck_flo_is_string_type(typeInfo)  ||  mod_src_typecheck_flo_is_cstr_type(typeInfo)  ||  mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_is_integer_type(typeInfo)  ||  mod_src_typecheck_flo_is_decimal_type(typeInfo);
+}
+
+
 int mod_src_typecheck_flo_numeric_rank(TypeInfo* typeInfo) {
 if (typeInfo->base == TOKEN_INT) {
 return 1;
@@ -5450,10 +5455,15 @@ free(tmp);
 else if (ast->kind == AST_PRINT) {
 TypeInfo* tmp = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr(env, ast->data._print.value, tmp, src)) {
+if (!(mod_src_typecheck_flo_is_printable_type(tmp))) {
+mod_src_typecheck_flo_type_error(env, ast, "print does not support this type yet");
+}
+else {
 if (mod_src_typecheck_flo_is_string_type(tmp)) {
 mod_src_typecheck_flo_force_string_literal_lowering(ast->data._print.value);
 }
 mod_src_typecheck_flo_copy_type(&(ast->data._print.value_type), tmp);
+}
 }
 free(tmp);
 }
@@ -7187,6 +7197,16 @@ fprintf(out, ");\n");
 }
 else if (ast->data._print.value_type.base == TOKEN_FLOAT  ||  ast->data._print.value_type.base == TOKEN_DOUBLE) {
 fprintf(out, "printf(\"%%f\", ");
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+fprintf(out, ");\n");
+}
+else if (ast->data._print.value_type.base == TOKEN_BOOL  &&  ast->data._print.value_type.pointer_depth == 0  &&  ast->data._print.value_type.array_size == 0) {
+fprintf(out, "printf(\"%%s\", (");
+mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
+fprintf(out, ") ? \"true\" : \"false\");\n");
+}
+else if (ast->data._print.value_type.base == TOKEN_INT  &&  ast->data._print.value_type.pointer_depth == 0  &&  ast->data._print.value_type.array_size == 0) {
+fprintf(out, "printf(\"%%d\", ");
 mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
 fprintf(out, ");\n");
 }

@@ -436,6 +436,10 @@ func is_numeric_type(typeInfo: @TypeInfo): bool
     return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
+func is_printable_type(typeInfo: @TypeInfo): bool
+    return is_string_type(typeInfo) or is_cstr_type(typeInfo) or is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_decimal_type(typeInfo)
+end
+
 func numeric_rank(typeInfo: @TypeInfo): int
     if typeInfo.base == TOKEN_INT:      
         return 1 
@@ -2589,11 +2593,15 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         //     type_error(env, ast, "semantic union requires explicit cast before print")
         // end
         if resolve_expr(env, ast.data._print.value, tmp, src):
-            if is_string_type(tmp):
-                force_string_literal_lowering(ast.data._print.value)
-            end
+            if not is_printable_type(tmp):
+                type_error(env, ast, "print does not support this type yet")
+            else:
+                if is_string_type(tmp):
+                    force_string_literal_lowering(ast.data._print.value)
+                end
 
-            copy_type(&ast.data._print.value_type, tmp)
+                copy_type(&ast.data._print.value_type, tmp)
+            end
         end
         prune tmp
     
