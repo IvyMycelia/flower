@@ -1650,6 +1650,16 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, "printf(\"%%f\", ")
             gen_expr(ast.data._print.value, out, src)
             fprintf(out, ");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_BOOL and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
+            fprintf(out, "printf(\"%%s\", (")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ") ? \"true\" : \"false\");\n")
+
+        else if ast.data._print.value_type.base == TOKEN_INT and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
+            fprintf(out, "printf(\"%%d\", ")
+            gen_expr(ast.data._print.value, out, src)
+            fprintf(out, ");\n")
             
         else:
             fprintf(out, "printf(")

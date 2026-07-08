@@ -1,4 +1,14 @@
 prop func test(): bool
-    print("Hello, World!")
+    print("\nHello, World!\n")
+    
+    print(7)
+    print("\n")
+
+    print(true)
+    print("\n")
+
+    print('a')
+    print("\n")
+
     return true
 end

@@ -326,7 +326,7 @@ func lower_nullable_to_semantic_union(env: @TypeEnv, ast: @AST, typeInfo: @TypeI
             return true
         end
 
-        if typeInfo.union_count >= 0:
+        if typeInfo.union_count >= 8:
             type_error(env, ast, "semantic union supports at most 8 members")
             return false
         end
@@ -434,6 +434,10 @@ func is_numeric_type(typeInfo: @TypeInfo): bool
     end
 
     return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+end
+
+func is_printable_type(typeInfo: @TypeInfo): bool
+    return is_string_type(typeInfo) or is_cstr_type(typeInfo) or is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_decimal_type(typeInfo)
 end
 
 func numeric_rank(typeInfo: @TypeInfo): int
@@ -1422,7 +1426,9 @@ func apply_condition_false_narrow(env: @TypeEnv, condition: @AST, src: @char): v
         if condition.data._binary.op == TOKEN_NEQ:
             if current.is_union:
                 if union_has_null_member(current) != 0:
-                    push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                    if ref_expr.kind == AST_VAR_REF:
+                        push_null_binding(env, src, ref_expr.data._var_ref.name_start, ref_expr.data._var_ref.name_length)
+                    end
                 end
 
             else if is_nullable_type(current):
@@ -2519,14 +2525,8 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         loop_var.src = src
         loop_var.name_start = ast.data._for_loop.var_start
         loop_var.name_length = ast.data._for_loop.var_length
-        loop_var.typeInfo.base = TOKEN_INT
-        loop_var.typeInfo.pointer_depth = 0
-        loop_var.typeInfo.array_size = 0
-        loop_var.typeInfo.arr_size_expr = null
-        loop_var.typeInfo.is_nullable = false
-        loop_var.typeInfo.name_start = 0
-        loop_var.typeInfo.name_length = 0
-        loop_var.typeInfo.name_src = null
+        set_plain_type(&loop_var.typeInfo, TOKEN_INT)
+        loop_var.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
 
@@ -2589,11 +2589,15 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         //     type_error(env, ast, "semantic union requires explicit cast before print")
         // end
         if resolve_expr(env, ast.data._print.value, tmp, src):
-            if is_string_type(tmp):
-                force_string_literal_lowering(ast.data._print.value)
-            end
+            if not is_printable_type(tmp):
+                type_error(env, ast, "print does not support this type yet")
+            else:
+                if is_string_type(tmp):
+                    force_string_literal_lowering(ast.data._print.value)
+                end
 
-            copy_type(&ast.data._print.value_type, tmp)
+                copy_type(&ast.data._print.value_type, tmp)
+            end
         end
         prune tmp
     
@@ -2902,6 +2906,7 @@ func init_type_env(env: @TypeEnv): void
     env.var_count = 0
     env.func_count = 0
     env.alias_count = 0
+    env.narrow_count = 0
     env.error_count = 0
 end
 

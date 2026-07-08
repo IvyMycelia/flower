@@ -45,5 +45,5 @@ cp "$NEW_BIN" "$FLOWER_BIN"
 echo "Bootstrap successful"
 echo "Previous version backed up to: $BACKUP"
 
-cp "$NEW_C" "$FLOWER_BIN"
+cp "$NEW_C" "$FLOWER_C"
 rm -f "$BOOTSTRAP_BIN" "$NEW_C" "$NEW_BIN" "$TEST_C"
