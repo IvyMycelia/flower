@@ -79,28 +79,28 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
 - [x] Rewrite `docs/STRUCTURE.md` into a current language surface document
 - [x] Define the documentation system, page roles, templates, and update rules in `docs/DOCUMENTATION.md`
 - [ ] Write handbook / reference language pages for:
-  - types
-  - functions
-  - control flow
-  - modules
-  - memory
-  - structs / unions
-  - strings
+  - [x] types
+  - [ ] functions
+  - [ ] control flow
+  - [ ] modules
+  - [ ] memory
+  - [ ] structs / unions
+  - [ ] strings
 - [ ] Write compiler pages for:
-  - overview
-  - pipeline
-  - lexer
-  - parser
-  - module loading
-  - typecheck
-  - codegen
-  - bootstrap
+  - [ ] overview
+  - [ ] pipeline
+  - [ ] lexer
+  - [ ] parser
+  - [ ] module loading
+  - [ ] typecheck
+  - [ ] codegen
+  - [ ] bootstrap
 - [ ] Write design pages for:
-  - philosophy
-  - explicitness
-  - null / unions
-  - compiler vs backend semantics
-  - boundaries / deferred work
+  - [ ] philosophy
+  - [ ] explicitness
+  - [ ] null / unions
+  - [ ] compiler vs backend semantics
+  - [ ] boundaries / deferred work
 - [ ] Audit README / ROADMAP / milestone docs for drift
 - [ ] Expand examples into reference-quality examples
 
