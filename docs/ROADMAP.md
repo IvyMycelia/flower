@@ -80,7 +80,7 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
 - [x] Define the documentation system, page roles, templates, and update rules in `docs/DOCUMENTATION.md`
 - [ ] Write handbook / reference language pages for:
   - [x] types
-  - [ ] functions
+  - [x] functions
   - [ ] control flow
   - [ ] modules
   - [ ] memory
