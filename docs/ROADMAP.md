@@ -81,7 +81,7 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
 - [ ] Write handbook / reference language pages for:
   - [x] types
   - [x] functions
-  - [ ] control flow
+  - [x] control flow
   - [ ] modules
   - [ ] memory
   - [ ] structs / unions
