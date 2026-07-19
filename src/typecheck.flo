@@ -1897,7 +1897,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 
                 prune left_type
                 prune right_type
-                return 0
+                return 1
             end
 
             if not can_convert_either_way(left_type, right_type):
