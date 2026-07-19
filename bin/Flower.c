@@ -4863,7 +4863,7 @@ out->pointer_depth = out->pointer_depth + 1;
 }
 free(left_type);
 free(right_type);
-return 0;
+return 1;
 }
 if (!(mod_src_typecheck_flo_can_convert_either_way(left_type, right_type))) {
 mod_src_typecheck_flo_type_error(env, expr, "arithmetic operands must have matching or compatible types");
