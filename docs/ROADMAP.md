@@ -82,8 +82,8 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
   - [x] types
   - [x] functions
   - [x] control flow
-  - [ ] modules
-  - [ ] memory
+  - [x] modules
+  - [x] memory
   - [ ] structs / unions
   - [ ] strings
 - [ ] Write compiler pages for:
