@@ -101,6 +101,10 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
   - [ ] null / unions
   - [ ] compiler vs backend semantics
   - [ ] boundaries / deferred work
+- [ ] Write proper guidelines and policies:
+  - [ ] CONTIRBUTING.md
+  - [ ] VERSIONING.md
+  - [ ] RELEASING.md
 - [ ] Audit README / ROADMAP / milestone docs for drift
 - [ ] Expand examples into reference-quality examples
 
