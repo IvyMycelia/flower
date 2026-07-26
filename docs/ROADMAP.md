@@ -29,7 +29,7 @@ Focus: Make imports and public APIs mean something semantically.
 - [x] Field flags groundwork: `hidden`, `readonly`, `frozen`
 - [x] Typecheck enforcement for external field access
 
-*`frozen` is not fully implemented yet, but it exists.*
+* `frozen` is not fully implemented yet, but it exists.*
 
 ## v1.3.0 (Strings & Bools)
 
@@ -84,7 +84,7 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
   - [x] control flow
   - [x] modules
   - [x] memory
-  - [ ] structs / unions
+  - [x] structs / unions
   - [ ] strings
 - [ ] Write compiler pages for:
   - [ ] overview
