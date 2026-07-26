@@ -11,3 +11,4 @@ output
 output/
 bin/Flower_backup
 .DS_Store
+extensions/flower-vscode/flower-language-1.0.0.vsix
