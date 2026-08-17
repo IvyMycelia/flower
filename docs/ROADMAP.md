@@ -78,14 +78,14 @@ Focus: Turn Flower's current behavior into a complete handbook, reference, and d
 - [x] Normalize the documentation tree under `docs/`
 - [x] Rewrite `docs/STRUCTURE.md` into a current language surface document
 - [x] Define the documentation system, page roles, templates, and update rules in `docs/DOCUMENTATION.md`
-- [ ] Write handbook / reference language pages for:
+- [x] Write handbook / reference language pages for:
   - [x] types
   - [x] functions
   - [x] control flow
   - [x] modules
   - [x] memory
   - [x] structs / unions
-  - [ ] strings
+  - [x] strings
 - [ ] Write compiler pages for:
   - [ ] overview
   - [ ] pipeline
