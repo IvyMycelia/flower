@@ -29,7 +29,7 @@ Focus: Make imports and public APIs mean something semantically.
 - [x] Field flags groundwork: `hidden`, `readonly`, `frozen`
 - [x] Typecheck enforcement for external field access
 
-*`frozen` is not fully implemented yet, but it exists.*
+* `frozen` is not fully implemented yet, but it exists.*
 
 ## v1.3.0 (Strings & Bools)
 
@@ -73,14 +73,36 @@ Current v1.4 scope notes:
 
 ## v1.5.0 (Documentation)
 
-Focus: Turn Flower's current behavior into a coherent reference.
+Focus: Turn Flower's current behavior into a complete handbook, reference, and design record.
 
-- [ ] Rewrite `Docs/structure.md` into a current language surface document
-- [ ] Write a real type-system reference for `type`, `null`, `?T`, `A | B`, `is`, and `as`
-- [ ] Document module / import / export semantics clearly
-- [ ] Document memory and ownership basics
-- [ ] Audit README / ROADMAP / Milestone docs for drift
-- [ ] Expand examples into reference-quality spec examples
+- [x] Normalize the documentation tree under `docs/`
+- [x] Rewrite `docs/STRUCTURE.md` into a current language surface document
+- [x] Define the documentation system, page roles, templates, and update rules in `docs/DOCUMENTATION.md`
+- [ ] Write handbook / reference language pages for:
+  - [x] types
+  - [x] functions
+  - [x] control flow
+  - [x] modules
+  - [x] memory
+  - [x] structs / unions
+  - [ ] strings
+- [ ] Write compiler pages for:
+  - [ ] overview
+  - [ ] pipeline
+  - [ ] lexer
+  - [ ] parser
+  - [ ] module loading
+  - [ ] typecheck
+  - [ ] codegen
+  - [ ] bootstrap
+- [ ] Write design pages for:
+  - [ ] philosophy
+  - [ ] explicitness
+  - [ ] null / unions
+  - [ ] compiler vs backend semantics
+  - [ ] boundaries / deferred work
+- [ ] Audit README / ROADMAP / milestone docs for drift
+- [ ] Expand examples into reference-quality examples
 
 ## v1.6.0 (Standard Library)
 

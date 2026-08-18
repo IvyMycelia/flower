@@ -45,35 +45,35 @@ NOTE: If you are contributing an 'experiment,' please include a `synopsis.md` th
 
 1. Create a branch from `main`:
 
-```bash
-`git checkout -b <prefix>/<your-idea>`
-```
+    ```bash
+    `git checkout -b <prefix>/<your-idea>`
+    ```
 
 2. Make changes, test frequently:
 
-```bash
-make bootstrap # Safe compile with backups
-make test      # Run test suite to ensure no regression
-```
+    ```bash
+    make bootstrap # Safe compile with backups
+    make test      # Run test suite to ensure no regression
+    ```
 
 3. Write clear commit messages:
 
-```md
-feat: add nullable field-expression narrowing
+    ```md
+    feat: add nullable field-expression narrowing
 
-Typecheck
-- record narrowings for stable dot-access expressions
-- allow `box.value != null` to narrow inside the branch
+    Typecheck
+    - record narrowings for stable dot-access expressions
+    - allow `box.value != null` to narrow inside the branch
 
-Examples
-- add nullable field access coverage under `examples/types/struct.flo`
-```
+    Examples
+    - add nullable field access coverage under `examples/types/struct.flo`
+    ```
 
 4. Push and create a **Pull Request**:
 
-```bash
-git push origin <prefix>/<your-idea>
-```
+    ```bash
+    git push origin <prefix>/<your-idea>
+    ```
 
 5. After review, your contribution will either be **merged** or **closed** with feedback regarding the decision
 
@@ -169,7 +169,7 @@ Following this step-by-step process helps avoid someone putting in a lot of effo
 
 - Open an issue and discuss
 - Check existing issues / discussions
-- Look at [ROADMAP.md](Docs/ROADMAP.md) for planned work
+- Look at [ROADMAP.md](docs/ROADMAP.md) for planned work
 
 ## Code of Conduct
 
