@@ -1,0 +1,13 @@
+## Licensing
+
+Flower is free software, and I'd like to keep it that way.
+
+The compiler and its accompanying development tools are licensed under the **GNU General Public License, version 3 or later (GPL-3.0-or-later)**. You may use, study, modify, and redistribute them, including commercially. If you distribute a modified version of Flower itself, that modified version must also be licensed under the GPL, and the corresponding source must abe made available under those terms.
+
+Programs written in or compiled by Flower are **not automatically covered by the GPL** just because they are built with the Flower compiler. Your own program code remains yours, and you may license it under terms of your own choosing.
+
+Flower's standard library and runtime support code are licensed separately under the **Apache License 2.0**. That includes the parts intended to ship with, link into, or be emitted into generated programs, so using Flower's runtime support does not by itself determine the license of your own program.
+
+Examples are licensed under **0BSD** so they can be copied freely into your own code. Documentation is licensed under **CC BY-SA 4.0**.
+
+In short: **keep Flower itself open; build what you want with it freely.**
