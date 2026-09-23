@@ -2,6 +2,9 @@ type Count = int
 type Total = Count
 type Name = string
 
+type Value = int | string
+type MaybeValue = ?Value
+
 struct Pair {
     left: Count,
     right: Total,
@@ -33,6 +36,33 @@ prop func test(): bool
     end
 
     if name.length != 3:
+        return false
+    end
+
+    maybe: MaybeValue = null
+
+    maybe = 7
+    if maybe is int:
+        real_int: int = maybe as int
+        if real_int != 7:
+            return false
+        end
+    else:
+        return false
+    end
+
+    maybe = "Ivy"
+    if maybe is string:
+        real_name: string = maybe as string
+        if real_name != "Ivy": 
+            return false
+        end
+    else:
+        return false
+    end
+
+    maybe = null
+    if maybe != null:
         return false
     end
 

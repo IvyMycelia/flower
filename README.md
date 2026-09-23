@@ -115,7 +115,7 @@ make bootstrap
 make test
 ```
 
-To compile a Flower program directly:
+Current experiments welcome. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for specific details on how to contribute.
 
 ```bash
 ./bin/Flower ./examples/test.flo
@@ -142,7 +142,7 @@ The layout may continue to change as the compiler is worked on.
 
 ## Roadmap
 
-Current priorities and possible future plans reside in [ROADMAP.md](./ROADMAP.md).
+See [docs/ROADMAP.md](docs/ROADMAP.md) for more
 
 The short version is that I'm much more interested in making the existing compiler solid than accumulating a giant pile of half-finished features, and the roadmap should (ideally) represent this.
 
