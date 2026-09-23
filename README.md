@@ -1,173 +1,185 @@
-# Flower Programming Language
+# Flower 🌸
 
-Minimalistic expressive programming language for systems programming, where control to write simple code that works and does powerful things is the center of decentralization.
+This is a small programming language I am making! I was fairly turned off by the way other languages chose to handle semantics, syntax decisions, and various language features.
 
-## Philosophy
+For example, C has a very small syntax _ which I like _ but actually putting it to use gets complex FAST. It's explicit which I prefer, but covers a lot of behavior behind complicated tooling and features, making it some form of 'necessary evil.'
 
-The anti-thesis of modern-day programming languages.
+On the other hand, Rust's syntax is **large**, and a lot of things need to be explained deliberately through documentation because of how interwoven everything is. A new programmer might eb able to understand the basics of what C's syntax means despite its complex usages, whereas Rust's over-complicated ways to do primitive things in the language makes it difficult.
 
-Corpo-slop, governance, abstraction maximilism; all things that modern systems have drifted towards for its own sake. A machine-based ecosystem in a machine-based world, where people are no longer at the center. Flower exists as a rejection to that trajectory.
+Flower is something in the middle: it has a smaller syntax (though bigger than C), simple semantics that can be intuitively deduced by even beginners, whilst retaining the power of C and _ eventually _ the safety of Rust.
 
-Uniformity and obscurity are broing. Flower embraces clarity over ceremony, control over opacity, and experimentation over enforced staleness.
+Most importantly, though, it's meant to be an experiment. It's difficult to escape the typical language paradigm, but Flower puts emphasis on trying out new things! More information on this can be found in the [Contributing](docs/CONTRIBUTING.md] guide.
 
-- Write less, mean just as much (and more!)
-- Explicity over implicity, what you say goes
-- One way to do it (usually)
-- Born from the ashes of conformity and standardization (C)
+## A Little Flower
 
-## What Flower Is
-
-A compiled, self-hosting language that currently targets to C (ignore the irony in it being "born from the ashes"). You write Flower, FloC generates C (for now..), Clang builds it, you get a native binary. No runtimes, no VMs, and no magic other than the feeling of euphoria it gives off.
-
-**Self-Hosting**: The Flower Compiler (FloC) is written in Flower, though the original FloC is written in C (can be accessed under `vendor/flower_c_reference/`).
-
-**Minimal**: 30 Keywords (Less than it's prede~~opre~~scer!); Pointers with `@`, memory with `new` / `prune`, that's pretty much it.
-
-**Extensible**: Different branches have different experiments / implementations. See what interests and tickles your fancy, what excels, and what absolutely sucks and deserves to remain abandoned.
-
-## Examples
-
-```lua
-import <stdio>
-
+```flo
 func factorial(n: int): int
     if n <= 1:
         return 1
     end
+
     return n * factorial(n - 1)
 end
 
 func main(): int
-    printf("5! = %d\n", factorial(5))
+    print("5! =")
+    print(factorial(5))
     return 0
 end
 ```
 
-Structs with manual memory:
+It currently reads fairly C-esque, however this will most likely change. As stated prior, Flower's purpose is to be full of whatever whimsy people find helpful and lacking in other languages, which ~~naturally~~ means it'll slowly drift away from C's influence.
 
-```lua
-struct Node {
-    value: int,
-    next: @Node
-}
+## Where It's ~~Go~~Growing
 
-func create_list(values: int[], len: int): @Node
-    head: @Node = null
-    current: @Node = null
+The Flower compiler _ herein referred to as "FloC" _ is written in its own source code, meaning the majority of the compiler process is bootstrapped.
 
-    for i in 0..len:
-        node: @Node = new Node
-        node.value = values[i]
-        node.next = null
+This means that in order for it to work effectively as not only a compiler but its own one as well, it must support features such as:
 
-        if head == null:
-            head = node
-        else:
-            current.next = node
-        end
-        current = node
-    end
+* functions with typed parameters and return values
+* modules, alias imports, and private-by-default top-level declarations
+* structs and storage unions
+* built-in `string` and `bool` types
+* transparent type aliases
+* `null` and nullable types with `?T`
+* semantic unions with `A | B`
+* type narrowing with `is`
+* extraction and conversion with `as`
+* manual allocation and cleanup with `new` and `prune`
 
-    return head
-end
-```
+Though all of these features do exist and have been thouroughly tested, there's still some bare patches. For example, not every logic path is covered with the automatic narrowing system.
+The standard library is small, C is currently the only backend, Windows-oriented development is rougher than I'd prefer, and broader tooling and reference documentation are but tiny little seedlings.
 
-## Building
-
-You need a working Flower binary first. The repo keeps a bootstrap C snapshot in `bin/Flower.c`:
-
-Compile [`bin/Flower.c`](https://github.com/IvyMycelia/flower/blob/main/bin/Flower.c) or download the latest [`Flower`](https://github.com/IvyMycelia/flower/releases/tag/Stable) release first to get the executable.
-
-```bash
-make build      # Compiles from .flo source and creates new Flower binary under `bin/` if there's no errors
-make bootstrap  # Build with verification to ensure the new executable is valid before overwriting the stable, working one
-make test       # Run the test suite with `/bin/Flower`
-```
-
-## Platform Support
-
-Flower currently builds and bootstraps in Unix-like environments.
-
-Current status:
-
-- **macOSX**: supported and actively used during development
-- **Linux**: expected to work with a POSIX shell and a C99-capable compiler, though platform coverage is still limited
-- **Windows**: not natively supported yet
-
-The main blocker for native Windows support is not the Flower language itself, but rather the current compiler / tooling process. The compiler currently relies on POSIX / Unix behavior such as:
-
-- shell scripts and `make`
-- `unistd`-style APIs like `getcwd(...)`
-- `realpath(...)`
-- shell commands such as `mkdir -p`
-- running produced binaries via `./output/out`
-
-The generated C backend is intended to stay as portable as possible, but the compiler executable and build flow are still Unix-oriented for now.
-
-## Using Flower
-
-```bash
-./bin/Flower program.flo
-./output/out
-```
-
-Flower generates C code, compiles it with Clang, and produces a binary. It will run the binary if there's any output (this is for development purposes).
-
-## Language Features
-
-- **Variables & Types**: `int`, `float`, `double`, `char`, `string`, `bool`, `null`
-- **Pointers**: `@int` for pointer to int, `&x` for address-of, `@x` for dereference
-- **Control Flow**: `if` / `else`, `while`, `for`, `continue`, `break`, `return`
-- **Functions**: Named parameters, explicit types, no overloading (YET)
-- **Structs & Unions**: `struct` for grouped data, `union` for raw storage / layout, no methods (use functions instead)
-- **Memory**: `new` allocates, `prune` frees
-- **Strings**: Equality / inequality, `.length`, indexing and explicit casts to / from `@char`
-- **Imports**: Module aliases, exports via prop, private-by-default top-level declarations
-- **Advanced Types**: Transparant aliases, semantic nullable types `?T`, semantic unions `A | B`, narrowing with `is`, explicit extraction with `as`
-
-## Experimentation & Contribution
-
-Flower is a platform for compiler research and language design. The whole premise of this project was to see what was possible, and Flower derives its magic from its ability to "branch-off" and be experimented with.
-
-**Try ideas in branches:**
-
-```bash
-git checkout -b experiment/optimization-x
-# Implement ideas, test, benchmark
-# Does it help? Submit a Pull Request! Doesn't? Learn and continue
-```
-
-Current experiments welcome. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for specific details on how to contribute.
-
-## Project Status
-
-- **v1.4.xx**: Better types is in active development and largely implemented
-- Self-hosting compiler with module-aware typechecking
-- Current backend targets C; but Flower semantics are intended to remain compiler-owned rather than C-defined
-- Current type surface includes:
- - transparent aliases via `type Name = ExistingType`
- - semantic nullable types via `?T`, lowered as `T | null`
- - semantic unions via `A | B | C`
- - explicit narrowing with `is`
- - explicit extraction with `as`
- - semantic union support across locals, parameters, return types, struct fields, and stable field expressions
-- Core language is usable; stdlib is still intentionally small
-
-## Next
-
-- `v1.5.0` Documentation
-- `v1.6.0` Standard Library expansion
-- `v2.0.0` Non-C codegen
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for more
+Due to the experimental nature of Flower, things in the roadmap are **not promised**. Some are planned work, others experiments, and many may be pruned before they ever get a chance to 'bloom', so-to-speak (Yes, pun was intended <3).
 
 ## Why Flower?
 
-You want a language that:
+Mostly because I wanted to make it.
 
-- Doesn't hide what's happening,
-- Lets you write fast and easily readable code,
-- Stays out of your way,
-- Doesn't try to appeal explicitly to machines
+It's an experiment in what a low-level language could look like without being absolutely abysmally miserable to write and retaining the same capabilities.
 
-Flower is that, and much much more
+I care about things like:
+
+- Being able to understand a program
+- Writing code that feels and looks nice
+- Not having to worry about vague rules and meanings
+- Having a guide that's the only thing needed to learn
+- Actual features that matter to its goals, not fluff
+- Honesty
+- Being whimsical, of course! I love whimsy :>
+- And code being readily sharable
+
+Of course, there's many more principals that go into this than just what's been listed above, but these are the core ones at the tip of the ol' cranium.
+
+It probably goes without saying, but I'm not trying to disguise Flower as a finished industrial language _ hell, I don't even want it to be! The compiler and language are being developed together, thus, breaking changes are normal (and expected) :)
+
+## Trying Out Flower
+
+There is a bootstrap C snapshot kept in `bin/Flower.c` for those who wish to compile Flower.
+
+To build and verify the compiler:
+
+```bash
+make build
+make bootstrap
+make test
+```
+
+To compile a Flower program directly:
+
+```bash
+./bin/Flower ./examples/test.flo ./optional_output_path
+```
+
+If you do not provide an output path, it will automatically output to `/output/out.c` and `/output/out`.
+
+For more information on using specific Flower arguments, you can use `./bin/Flower -h` to see the help information!
+
+## Building Flower
+
+Flower is still primarily a development project rather than something I'd recommend installing system wide.
+
+The exact compiler-development and bootstrap workflow is documented in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+If you're modifying the compiler, make sure to run the relevant tests and bootstrap checks before trusting the result. A compiler successfully compiling *something* is, unfortunately, not very strong evidence that it actually works!
+
+## Trying Flower
+
+There is a bootstrap C snapshot kept in `bin/Flower.c`.
+
+To build and verify the compiler:
+
+```bash
+make build
+make bootstrap
+make test
+```
+
+To compile a Flower program directly:
+
+```bash
+./bin/Flower ./examples/test.flo
+```
+
+## Project layout
+
+The respository is centered around a few parts:
+
+```text
+Flower
+Flower
+├── src         compiler source written in Flower
+├── include     shared declarations used by the compiler (will be phased out)
+├── examples    language and runtime examples
+├── docs        project documentation and roadmap
+├── bin         bootstrap snapshot and built compiler artifacts
+├── scripts     build helpers
+├── vendor      original C implementation
+└── ...
+```
+
+The layout may continue to change as the compiler is worked on.
+
+## Roadmap
+
+Current priorities and possible future plans reside in [ROADMAP.md](./ROADMAP.md).
+
+The short version is that I'm much more interested in making the existing compiler solid than accumulating a giant pile of half-finished features, and the roadmap should (ideally) represent this.
+
+Thus, near-term work generally revolves around things like compiler correctness, self-hosting, the parser and type system, code generation, diagnostics, the standard library, and the parts that are still awkward to use in real programs.
+
+Farther-out ideas are treated as experiments until I actually attempt to tackle them, which can take any undetermined amount of time :p
+
+## Contributing
+
+Flower is small enough that contributions can have a very visible effect, and I appreciate all the help I can get!
+
+Bug reports, tests, compiler fixes, documentation corrections, and carefully considered language work are all useful.
+
+If you'd like to dig into the compiler, I suggest taking a look at [CONTRIBUTING.md](./CONTRIBUTING.md)!
+
+You do not need to create some grand redesign of the language — pulling one weed is useful too, and I appreciate every effort :>
+
+## Documentation
+
+The documentation is fairly non-existent currently.
+
+For now, the repository itself is the source of truth for what the compiler actually does. Documentation will be added alongside the language ~~whenever I get to it~~.
+
+If the compiler and roadmap idea disagree, the compiler is probably right.
+
+If the compiler and the documentation disagree, that's most likely a bug!
+
+## Stability
+
+There isn't much to say to be honest.
+
+Not to repeat myself, this project is under active development, thus syntax, semantics, compiler behavior, and APIs may change between revisions.
+
+If you're using Flower right now, you're using a language while it's being radically worked on rather than after it has stabilized.
+
+Personally for me, that's part of the fun ;)
+
+## License
+
+See [LICENSE](./LICENSE).

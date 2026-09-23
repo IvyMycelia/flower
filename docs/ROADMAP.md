@@ -75,65 +75,66 @@ Current v1.4 scope notes:
 
 Focus: Turn Flower's current behavior into a complete handbook, reference, and design record.
 
-- [x] Normalize the documentation tree under `docs/`
-- [x] Rewrite `docs/STRUCTURE.md` into a current language surface document
-- [x] Define the documentation system, page roles, templates, and update rules in `docs/DOCUMENTATION.md`
-- [x] Write handbook / reference language pages for:
-  - [x] types
-  - [x] functions
-  - [x] control flow
-  - [x] modules
-  - [x] memory
-  - [x] structs / unions
-  - [x] strings
-- [ ] Write compiler pages for:
-  - [ ] overview
-  - [ ] pipeline
-  - [ ] lexer
-  - [ ] parser
-  - [ ] module loading
-  - [ ] typecheck
-  - [ ] codegen
-  - [ ] bootstrap
-- [ ] Write design pages for:
-  - [ ] philosophy
-  - [ ] explicitness
-  - [ ] null / unions
-  - [ ] compiler vs backend semantics
-  - [ ] boundaries / deferred work
-- [ ] Write proper guidelines and policies:
-  - [ ] CONTIRBUTING.md
-  - [ ] VERSIONING.md
-  - [ ] RELEASING.md
-- [ ] Audit README / ROADMAP / milestone docs for drift
-- [ ] Expand examples into reference-quality examples
+**DEFERRED FOR LATER WORK.**
 
-## v1.6.0 (Standard Library)
+## v1.6.0 (Usefullness)
 
-Build out what is needed — stop relying on C backend.
+Stop relying on C by introducing:
 
-- [ ] File I/O (read, write, open, close)
-- [ ] Array Utilities (length, slice, sort)
-- [ ] Math functions (sqrt, sin, cos, etc)
-- [ ] String utilities (trim, split, replace)
+- Exact-sized integers such as `u8`, `i32`, and `usize`
+- Proper slices and growable buffers
+- File reading and writing
+- Better strings, arrays, and math
+- Errors that can be treated as values
+- A simple way to clean up prior to leaving a scope
 
-## v1.7.0+ (Experiments)
+The end goal is to write a real program using in-house tools rather than relying on the C backend for anything useful.
 
-- **Generics**: `<T> T max(a: T, b: T)`
-- **Pattern Matching**: Better than `if` / `else`
-- **Immutability by Explicity**: `x: int` vs `const x: int`
-- **Operator Overloading**: Explicit overloads for operators on custom types
-- **Defer Statement**: Cleanup code without explicit `prune` at end of scope
-- **Error Types**: Structured return types for success / failureresults (e.g. Result-like enums)
-- **Intrfaces**: Define contracts without inheritance or OOP hierarchies
+## v1.7.0 (Data, Properly)
 
-## v2.0.0 (Non-C Codegen)
+Real control over memory and how data lives in said memory, through the use of:
 
-Rewriting the Flower Codegen to output to either Assembly, Binary, IR, or other machine code instead of C; Direct compilation.
+- Generics for resuable containers and algorithms
+- Allocators and arenas
+- Owned buffers and borrowed views
+- Explicit copying and moving
+- Packed data
+- Experiments with row-based and column-based layouts
+- No invisible allocation or rearranging of data
 
-- **Decide Target**: Assembly, Binary, IR, ByteCode, etc
-- **Rewrite Codegen**: Instead of outputting to a .c file, output to .o or other
-- **Optimization**: Short-circuit evalutation, pruning dead-branches, etc
+Ideally the compiler should know whetehr data is owned, borrowed, packed, copied, or just merely being viewed, and explain all of the aforementioned clearly.
+
+## v1.8.0 (Closer to the Machine)
+
+Add things that will be needed when C is eventually no longer supported:
+
+- Defined sizes, alignment, and layout
+- Endien-aware data access
+- Atomics and volatile memory
+- SIMD and target-specific operations
+- Foreign calling conventions
+- Freestanding programs
+- A small IR
+
+## v1.9.0 (Native Experiments)
+
+- Lower Flower into its own IR
+- Make some simple optimizations
+- Generate AArch64 machine code
+- Write native Mach-O object files
+- Compile the test suite via the native backend
+- Attempt to compile the full FloC via the native backend
+
+C will remain here as a trusted bootstrap, but should (hopefully) be more or less a backup than actually necessary.
+
+## v2.0.0 (Flower, the Sequel)
+
+- Make native compilation the baseline
+- Produce native objects and executables
+- Compile FloC using FloC
+- Validate repeatable native builds
+- Remove the C-generating backend (TBD)
+- *Maybe* keep C as a possible communication layer
 
 ## Non-Goals
 
@@ -142,8 +143,6 @@ Things Flower probably *won't* do:
 - **Garbage Collection**: Manual memory exists; use it.
 - **Object-Oriented**: No classes, inheritance, or virtual methods. Use Structs and Functions.
 - **Implicit Conversion**: Be explicit. `x: int = 5.0 as int`
-- **Macros**: Keep it simple. Generate C if you need metaprogramming.
-- ~~**Module System Beyond Imports**: Current system works, no overengineering.~~
 - **Heavy OOP-Style Type Systems**: No classes or method-dispath model just to support data access or modules
 
 ## How to Help
