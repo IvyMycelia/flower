@@ -380,7 +380,9 @@ func parse_type_alias(ps: @Parser): @AST
         return node
     end
 
-    node.data._type_alias.target = @parse_type(ps)
+    tmp: @TypeInfo = parse_type(ps)
+    node.data._type_alias.target = @tmp
+    prune tmp
     return node
 end
 
@@ -408,7 +410,9 @@ func parse_var_decl(ps: @Parser): @AST
         return node
     end
 
-    node.data._var_decl.typeInfo= @parse_type(ps)
+    tmp: @TypeInfo = parse_type(ps)
+    node.data._var_decl.typeInfo = @tmp
+    prune tmp
     
     if parser_peek(ps).kind == TOKEN_ASSIGN:
         parser_advance(ps)
@@ -774,7 +778,9 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
         cast: @AST = make_node(ps, AST_CAST)
 
         cast.data._cast.value = left
-        cast.data._cast.typeInfo= @parse_type(ps)
+        tmp: @TypeInfo = parse_type(ps)
+        cast.data._cast.typeInfo = @tmp
+        prune tmp
 
         left = cast
     end
@@ -794,7 +800,9 @@ func parse_expr(ps: @Parser, min_prec: int): @AST
 
             test: @AST = make_node(ps, AST_TYPE_TEST)
             test.data._type_test.value = left
-            test.data._type_test.typeInfo = @parse_type(ps)
+            tmp: @TypeInfo = parse_type(ps)
+            test.data._type_test.typeInfo = @tmp
+            prune tmp
 
             left = test
             continue
@@ -1019,6 +1027,7 @@ func parse_primary(ps: @Parser): @AST
             drf: @AST = make_node(ps, AST_DEREF)
             drf.data._unary.operand = operand
 
+            prune node
             return drf
         end
 
@@ -1223,7 +1232,9 @@ func parse_primary(ps: @Parser): @AST
 
         new_node: @AST = make_node(ps, AST_NEW)
 
-        new_node.data._new_alloc.typeInfo= @parse_type(ps)
+        tmp: @TypeInfo = parse_type(ps)
+        new_node.data._new_alloc.typeInfo = @tmp
+        prune tmp
 
         return new_node
 
@@ -1296,7 +1307,9 @@ func parse_primary(ps: @Parser): @AST
 
         node: @AST = make_node(ps, AST_SIZEOF)
 
-        node.data._size_of.typeInfo= @parse_type(ps)
+        tmp: @TypeInfo = parse_type(ps)
+        node.data._size_of.typeInfo = @tmp
+        prune tmp
 
         parser_expect(ps, TOKEN_RPAREN)
 
@@ -1375,7 +1388,9 @@ func parse_func_def(ps: @Parser): @AST
         return node
     end
 
-    node.data._func_def.return_type = @parse_type(ps)
+    tmp: @TypeInfo = parse_type(ps)
+    node.data._func_def.return_type = @tmp
+    prune tmp
 
     // Function body
 
@@ -1561,7 +1576,9 @@ func parse_param(ps: @Parser): @AST
         return node
     end
 
-    node.data._func_params.typeInfo= @parse_type(ps)
+    tmp: @TypeInfo = parse_type(ps)
+    node.data._func_params.typeInfo = @tmp
+    prune tmp
     
     return node
 end
@@ -1624,7 +1641,9 @@ func parse_struct(ps: @Parser): @AST
             continue
         end
 
-        field.data._struct_field.typeInfo= @parse_type(ps)
+        tmp: @TypeInfo = parse_type(ps)
+        field.data._struct_field.typeInfo = @tmp
+        prune tmp
 
         if field_head == null:
             field_head = field
@@ -1699,7 +1718,9 @@ func parse_union(ps: @Parser): @AST
             continue
         end
 
-        field.data._struct_field.typeInfo= @parse_type(ps)
+        tmp: @TypeInfo = parse_type(ps)
+        field.data._struct_field.typeInfo = @tmp
+        prune tmp
 
         if field_head == null:
             field_head = field
@@ -1827,7 +1848,9 @@ func parse_forward(ps: @Parser): @AST
 
         parser_expect(ps, TOKEN_COLON)
 
-        node.data._forward.return_type = @parse_type(ps)
+        tmp: @TypeInfo = parse_type(ps)
+        node.data._forward.return_type = @tmp
+        prune tmp
 
         node.data._forward.is_func = 1
     else:

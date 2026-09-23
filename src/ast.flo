@@ -437,3 +437,73 @@ struct AST {
 
     data: NodeData
 }
+
+
+
+func prune_ast(node: @AST): void
+    if node == NULL: return end
+    prune_ast(node.next)
+
+    kind: int = node.kind
+
+         if kind == AST_FLOW_CONTROL: prune_ast(node.data._flow_ctrl.value)
+    else if kind == AST_CAST:         prune_ast(node.data._cast.value)
+    else if kind == AST_TYPE_TEST:    prune_ast(node.data._type_test.value)
+    else if kind == AST_ARRAY_LIT:    prune_ast(node.data._array.elements)
+    else if kind == AST_SUBSCRIPT:
+        prune_ast(node.data._subscript.array)
+        prune_ast(node.data._subscript.index)
+        prune_ast(node.data._subscript.value)
+    else if kind == AST_STRUCT_LIT:   prune_ast(node.data._struct_lit.elements)
+    else if kind == AST_STRUCT_DEF:   prune_ast(node.data._struct_def.fields)
+    else if kind == AST_UNION_DEF:    prune_ast(node.data._union_def.fields)
+    else if kind == AST_DOT_ACCESS:   
+        prune_ast(node.data._dot_access.object)
+        prune_ast(node.data._dot_access.value)
+    else if kind == AST_BINARY_OP:
+        prune_ast(node.data._binary.left)
+        prune_ast(node.data._binary.right)
+    else if kind == AST_UNARY_NOT:    prune_ast(node.data._unary.operand)
+    else if kind == AST_UNARY_NEG:    prune_ast(node.data._unary.operand)
+    else if kind == AST_PRUNE:        prune_ast(node.data._prune_free.ptr)
+    else if kind == AST_DEREF_ASS:    prune_ast(node.data._deref_ass.value)
+    else if kind == AST_DEREF:        prune_ast(node.data._deref.operand)
+    else if kind == AST_GET_ADDR:     prune_ast(node.data._get_addr.operand)
+    else if kind == AST_PROP:         prune_ast(node.data._prop.decl)
+    else if kind == AST_FORWARD:      prune_ast(node.data._forward.params)
+    else if kind == AST_ALIAS_CALL:   prune_ast(node.data._alias_call.args)
+    else if kind == AST_VAR_DECL:     prune_ast(node.data._var_decl.value)
+    else if kind == AST_VAR_ASS:      prune_ast(node.data._var_ass.value)
+    else if kind == AST_FUNC_DEF:
+        prune_ast(node.data._func_def.params)
+        prune_ast(node.data._func_def.body)
+    else if kind == AST_FUNC_CALL:    prune_ast(node.data._func_call.args)
+    else if kind == AST_WHILE:
+        prune_ast(node.data._while_loop.condition)
+        prune_ast(node.data._while_loop.body)
+    else if kind == AST_FOR:
+        prune_ast(node.data._for_loop.from)
+        prune_ast(node.data._for_loop.to)
+        prune_ast(node.data._for_loop.body)
+    else if kind == AST_IF:
+        prune_ast(node.data._if_condition.condition)
+        prune_ast(node.data._if_condition.body)
+        prune_ast(node.data._if_condition.else_branch)
+    else if kind == AST_PRINT:
+        prune_ast(node.data._print.value)
+    end
+
+         if kind == AST_CAST:           prune_ast(node.data._cast.typeInfo.arr_size_expr)
+    else if kind == AST_TYPE_TEST:      prune_ast(node.data._type_test.typeInfo.arr_size_expr)
+    else if kind == AST_NEW:            prune_ast(node.data._new_alloc.typeInfo.arr_size_expr)
+    else if kind == AST_SIZEOF:         prune_ast(node.data._size_of.typeInfo.arr_size_expr)
+    else if kind == AST_STRUCT_FIELD:   prune_ast(node.data._struct_field.typeInfo.arr_size_expr)
+    else if kind == AST_VAR_DECL:       prune_ast(node.data._var_decl.typeInfo.arr_size_expr)
+    else if kind == AST_PARAM:          prune_ast(node.data._func_params.typeInfo.arr_size_expr)
+    end
+
+
+    prune node
+end
+
+

@@ -871,6 +871,7 @@ func gen_packed_union_value(union_type: @TypeInfo, member_index: int, value: @AS
     fprintf(out, " } })")
 
     prune resolved
+    prune member_type
 end
 
 func gen_union_aware_call_arg(arg: @AST, union_type: @TypeInfo, member_index: int, out: @FILE, src: @char): void

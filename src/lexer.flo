@@ -445,9 +445,8 @@ func peek(ts: @TokenStream, index: int): @Token
     return &ts.data[index]
 end
 
-func free_token_stream(ts: @TokenStream): void
+
+func prune_token_stream(ts: @TokenStream): void
     prune ts.data
-    ts.data = null
-    ts.count = 0
-    ts.capacity = 0
+    prune ts
 end

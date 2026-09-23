@@ -127,7 +127,7 @@ func main(argc: int, argv: @char[]): int
             emit_includes(mods, output)
             codegen(mods, output)
 
-            prune mods
+            prune_module_set(mods)
             fclose(output)
 
             bin_name: char[512]

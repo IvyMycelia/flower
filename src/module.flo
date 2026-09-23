@@ -283,3 +283,20 @@ func load_module(set: @ModuleSet, path: @char): @Module
 
     return m
 end
+
+func prune_module(mod: @Module): void
+    prune mod.path
+    prune mod.src
+    prune mod.symbol_prefix
+    prune_token_stream(mod.tokens)
+    prune_ast(mod.ast)
+end
+
+func prune_module_set(set: @ModuleSet): void
+    for i in 0..set.count:
+        prune_module(set.modules + i)
+    end
+    prune set
+end
+
+
