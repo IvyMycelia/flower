@@ -437,3 +437,45 @@ struct AST {
 
     data: NodeData
 }
+
+func integer_type_width(base: int): int
+    if base == TOKEN_I8 or base == TOKEN_U8:
+        return 8
+    else if base == TOKEN_I16 or base == TOKEN_U16:
+        return 16
+    else if base == TOKEN_I32 or base == TOKEN_U32:
+        return 32
+    else if base == TOKEN_I64 or base == TOKEN_U64:
+        return 64
+    end
+
+    return 0
+end
+
+func integer_type_signed(base: int): bool
+    return base == TOKEN_I8 or base == TOKEN_I16 or base == TOKEN_I32 or base == TOKEN_I64
+end
+
+func integer_type_name(base: int): @char
+    if base == TOKEN_I8:
+        return "i8"
+    else if base == TOKEN_U8:
+        return "u8"
+    else if base == TOKEN_I16:
+        return "i16"
+    else if base == TOKEN_U16:
+        return "u16"
+    else if base == TOKEN_I32:
+        return "i32"
+    else if base == TOKEN_U32:
+        return "u32"
+    else if base == TOKEN_I64:
+        return "i64"
+    else if base == TOKEN_U64:
+        return "u64"
+    else if base == TOKEN_INT:
+        return "int (i32)"
+    end
+
+    return "non-integer"
+end

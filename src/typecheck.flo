@@ -397,7 +397,7 @@ func is_integer_type(typeInfo: @TypeInfo): bool
         return false
     end
 
-    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_I32 or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_decimal_type(typeInfo: @TypeInfo): bool
@@ -433,7 +433,7 @@ func is_numeric_type(typeInfo: @TypeInfo): bool
         return false
     end
 
-    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_I32 or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_printable_type(typeInfo: @TypeInfo): bool
@@ -441,7 +441,7 @@ func is_printable_type(typeInfo: @TypeInfo): bool
 end
 
 func numeric_rank(typeInfo: @TypeInfo): int
-    if typeInfo.base == TOKEN_INT:      
+    if typeInfo.base == TOKEN_I32:      
         return 1 
     end
     if typeInfo.base == TOKEN_FLOAT:    
@@ -501,11 +501,11 @@ func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
         return true 
     end
 
-    if is_bool_type(target) and value.base == TOKEN_INT and value.pointer_depth == 0 and value.array_size == 0: 
+    if is_bool_type(target) and value.base == TOKEN_I32 and value.pointer_depth == 0 and value.array_size == 0: 
         return true
     end
 
-    if is_bool_type(value) and target.base == TOKEN_INT and target.pointer_depth == 0 and target.array_size == 0:
+    if is_bool_type(value) and target.base == TOKEN_I32 and target.pointer_depth == 0 and target.array_size == 0:
         return true
     end
 
@@ -604,7 +604,7 @@ func wider_numeric_base(left: @TypeInfo, right: @TypeInfo): int
         return TOKEN_FLOAT
     end
 
-    return TOKEN_INT
+    return TOKEN_I32
 end
 
 func set_plain_type(out: @TypeInfo, base: int): void
@@ -1178,7 +1178,7 @@ func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @cha
     resolve_expr_list(env, expr.data._func_call.args, src)
 
     if return_kind == 1:
-        set_plain_type(out, TOKEN_INT)
+        set_plain_type(out, TOKEN_I32)
     else:
         set_cstr_type(out)
     end
@@ -2060,11 +2060,11 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_SIZEOF:
-        set_plain_type(out, TOKEN_INT)
+        set_plain_type(out, TOKEN_I32)
         return 1
 
     else if expr.kind == AST_LITERAL:
-        set_plain_type(out, TOKEN_INT)
+        set_plain_type(out, TOKEN_I32)
         return 1
 
     else if expr.kind == AST_FLOAT_LIT:
@@ -2125,7 +2125,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             expr.data._dot_access.is_readonly = 1
             expr.data._dot_access.owner_src = null
 
-            set_plain_type(out, TOKEN_INT)
+            set_plain_type(out, TOKEN_I32)
             copy_type(&expr.data._dot_access.resolved_type, out)
             prune object_type
             return 1
@@ -2230,8 +2230,43 @@ func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): 
     return 1
 end
 
+func is_scalar_integer_atom(atom: @TypeAtom): bool
+    return not atom.is_nullable and atom.pointer_depth == 0 and atom.array_size == 0 and atom.arr_size_expr == null and integer_type_width(atom.base) != 0
+end
+
 func resolve_type_alias(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST): bool
-    return resolve_type_alias_depth(env, typeInfo, ast, 0)
+    if not resolve_type_alias_depth(env, typeInfo, ast, 0):
+        return false
+    end
+
+    if not typeInfo.is_union:
+        return true
+    end
+
+    i: int = 0
+    while i < typeInfo.union_count:
+        member: @TypeAtom = typeInfo.union_members + i
+
+        if is_scalar_integer_atom(member):
+            j: int = 0
+            while j < i:
+                previous: @TypeAtom = typeInfo.union_members + j
+
+                if is_scalar_integer_atom(previous) and union_atom_exact_match(member, previous):
+                    message: char[256]
+                    snprintf(message, sizeof(message), "duplicate canonical integer member: %s", integer_type_name(member.base))
+                    type_error(env, ast, message)
+                    return false
+                end
+
+                j = j + 1
+            end
+        end
+
+        i = i + 1
+    end
+
+    return true
 end
 
 func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
@@ -2525,7 +2560,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         loop_var.src = src
         loop_var.name_start = ast.data._for_loop.var_start
         loop_var.name_length = ast.data._for_loop.var_length
-        set_plain_type(&loop_var.typeInfo, TOKEN_INT)
+        set_plain_type(&loop_var.typeInfo, TOKEN_I32)
         loop_var.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
@@ -2611,6 +2646,23 @@ end
 func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
     curr: @AST = ast
     while curr != null:
+        alias_decl: @AST = null
+
+        if curr.kind == AST_TYPE_ALIAS:
+            alias_decl = curr
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            if curr.data._prop.decl.kind == AST_TYPE_ALIAS:
+                alias_decl = curr.data._prop.decl
+            end
+        end
+
+        if alias_decl != null:
+            alias_target: @TypeInfo = new TypeInfo
+            copy_type(alias_target, &alias_decl.data._type_alias.target)
+            resolve_type_alias(env, alias_target, alias_decl)
+            prune alias_target
+        end
+
         if curr.kind == AST_FUNC_DEF:
             saved_var_count: int = env.var_count
             inside_function = 1

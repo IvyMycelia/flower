@@ -57,6 +57,7 @@ test: build
 	./$(OUT_BIN)
 	./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
 	./$(OUT_BIN)
+	sh ./scripts/tests/types/test_integers.sh
 
 clean:
 	rm -rf output/

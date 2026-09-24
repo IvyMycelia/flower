@@ -195,6 +195,11 @@ func parse_type_atom(ps: @Parser, typeInfo: @TypeInfo): bool
         typeInfo.name_src = null
     else:
         typeInfo.base = base.kind
+        
+        // The 'integer' type is for compatibility spelling, however it is canonically just an i32.
+        if base.kind == TOKEN_INT:
+            typeInfo.base = TOKEN_I32
+        end
 
         if base.kind == TOKEN_IDENTIFIER:
             typeInfo.name_start = base.start

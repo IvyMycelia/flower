@@ -30,6 +30,28 @@ func add_token(ts: @TokenStream, kind: int, start: int, length: int): void
     ts.count = ts.count + 1
 end
 
+func fixed_width_keyword_kind(src: @char, start: int, length: int): int
+    if length == 2 and cstr.eq_n(src + start, "i8", 2):
+        return TOKEN_I8
+    else if length == 2 and cstr.eq_n(src + start, "u8", 2):
+        return TOKEN_U8
+    else if length == 3 and cstr.eq_n(src + start, "i16", 3):
+        return TOKEN_I16
+    else if length == 3 and cstr.eq_n(src + start, "u16", 3):
+        return TOKEN_U16
+    else if length == 3 and cstr.eq_n(src + start, "i32", 3):
+        return TOKEN_I32
+    else if length == 3 and cstr.eq_n(src + start, "u32", 3):
+        return TOKEN_U32
+    else if length == 3 and cstr.eq_n(src + start, "i64", 3):
+        return TOKEN_I64
+    else if length == 3 and cstr.eq_n(src + start, "u64", 3):
+        return TOKEN_U64
+    end
+
+    return 0
+end
+
 prop func lex(ts: @TokenStream, src: @char): void
     i: int = 0
     
@@ -123,6 +145,12 @@ prop func lex(ts: @TokenStream, src: @char): void
             end
             
             length: int = i - start
+
+            integer_kind: int = fixed_width_keyword_kind(src, start, length)
+            if integer_kind != 0:
+                add_token(ts, integer_kind, start, length)
+                continue
+            end
 
             if length == 2 and cstr.eq_n(src + start, "if", 2):
                 add_token(ts, TOKEN_IF, start, length)
@@ -328,7 +356,16 @@ prop func lex(ts: @TokenStream, src: @char): void
 end
 
 func token_kind_name(kind: int): @char
-    if kind == TOKEN_INT:               return "TOKEN_INT"
+    // === Types ===
+    if kind == TOKEN_I8:                return "TOKEN_I8"
+    else if kind == TOKEN_U8:           return "TOKEN_U8"
+    else if kind == TOKEN_I16:          return "TOKEN_I16"
+    else if kind == TOKEN_U16:          return "TOKEN_U16"
+    else if kind == TOKEN_I32:          return "TOKEN_I32"
+    else if kind == TOKEN_U32:          return "TOKEN_U32"
+    else if kind == TOKEN_I64:          return "TOKEN_I64"
+    else if kind == TOKEN_U64:          return "TOKEN_U64"
+    else if kind == TOKEN_INT:          return "TOKEN_INT"
     else if kind == TOKEN_FLOAT:        return "TOKEN_FLOAT"
     else if kind == TOKEN_DOUBLE:       return "TOKEN_DOUBLE"
     else if kind == TOKEN_VOID:         return "TOKEN_VOID"

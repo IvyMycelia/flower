@@ -14,6 +14,14 @@ current_codegen_module: @Module
 // === UTILITIES ===
 
 func emit_string_runtime(out: @FILE): void
+    fprintf(out, "#include <stdint.h>\n")
+    fprintf(out, "#include <limits.h>\n")
+
+    fprintf(out, "#if CHAR_BIT != 8 || INT_MAX != 2147483647 || INT_MIN != (-2147483647 - 1)\n")
+    fprintf(out, "#error Flower C backend requires 8-bit bytes and a signed 32-bit C int type\n")
+    fprintf(out, "#endif\n")
+    fprintf(out, "typedef char flower_int_storage_must_be_4_bytes[(sizeof(int) == 4) ? 1 : -1];\n")
+
     fprintf(out, "#include <stdio.h>\n")
 
     fprintf(out, "typedef struct { char* data; int length; } flower_string;\n")
@@ -110,7 +118,7 @@ end
 
 
 func token_to_string(kind: int): @char
-    if kind == TOKEN_INT:
+    if kind == TOKEN_I32:
         return "int"
 
     else if kind == TOKEN_BOOL:
@@ -474,6 +482,28 @@ end
 
 forward func ensure_semantic_union_shape(typeInfo: @TypeInfo): int
 
+func integer_c_type_name(base: int): @char
+    if base == TOKEN_I8:
+        return "int8_t"
+    else if base == TOKEN_U8:
+        return "uint8_t"
+    else if base == TOKEN_I16:
+        return "int16_t"
+    else if base == TOKEN_U16:
+        return "uint16_t"
+    else if base == TOKEN_I32:
+        return "int32_t"
+    else if base == TOKEN_U32:
+        return "uint32_t"
+    else if base == TOKEN_I64:
+        return "int64_t"
+    else if base == TOKEN_U64:
+        return "uint64_t"
+    else:
+        return "ERROR" // Default to ERROR for unknown types
+    end
+end
+
 func typeinfo_to_string(typeInfo: @TypeInfo, out: @FILE, src: @char): void
     resolved: @TypeInfo = new TypeInfo
     copy_typeInfo(resolved, typeInfo)
@@ -495,6 +525,9 @@ func typeinfo_to_string(typeInfo: @TypeInfo, out: @FILE, src: @char): void
 
     else if resolved.base == TOKEN_STRING:
         fprintf(out, "flower_string")
+
+    else if integer_type_width(resolved.base) != 0:
+        fprintf(out, "%s", integer_c_type_name(resolved.base))
 
     else:
         fprintf(out, "%s", token_to_string(resolved.base))
@@ -1656,7 +1689,7 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             gen_expr(ast.data._print.value, out, src)
             fprintf(out, ") ? \"true\" : \"false\");\n")
 
-        else if ast.data._print.value_type.base == TOKEN_INT and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
+        else if ast.data._print.value_type.base == TOKEN_I32 and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
             fprintf(out, "printf(\"%%d\", ")
             gen_expr(ast.data._print.value, out, src)
             fprintf(out, ");\n")

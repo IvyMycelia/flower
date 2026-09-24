@@ -1,0 +1,4 @@
+func main(): int
+    invalid: int | i32
+    return 0
+end

@@ -1,6 +1,260 @@
 import <stdio>
+import <stdlib>
+
+type IntegerByte = u8
+type IntegerWord = u64
+
+integer_fixture_i8: i8
+integer_fixture_u8: u8
+integer_fixture_i16: i16
+integer_fixture_u16: u16
+integer_fixture_i32: i32
+integer_fixture_u32: u32
+integer_fixture_i64: i64
+integer_fixture_u64: u64
+
+struct IntegerStorage {
+    signed8: i8,
+    unsigned8: u8,
+    signed16: i16,
+    unsigned16: u16,
+    signed32: i32,
+    unsigned32: u32,
+    signed64: i64,
+    unsigned64: u64,
+    integer: int
+}
+
+union IntegerRawStorage {
+    small: u8,
+    large: u64
+}
+
+func integer_identity_i8(value: i8): i8
+    return value
+end
+
+func integer_identity_u8(value: u8): u8
+    return value
+end
+
+func integer_identity_i16(value: i16): i16
+    return value
+end
+
+func integer_identity_u16(value: u16): u16
+    return value
+end
+
+func integer_identity_i32(value: i32): i32
+    return value
+end
+
+func integer_identity_u32(value: u32): u32
+    return value
+end
+
+func integer_identity_i64(value: i64): i64
+    return value
+end
+
+func integer_identity_u64(value: u64): u64
+    return value
+end
+
+func integer_identity_int(value: int): int
+    return value
+end
 
 prop func test(): bool
-    x: int = 42
-    return x == 42
+    if sizeof(i8) != 1 or sizeof(u8) != 1:
+        return false
+    end
+
+    if sizeof(i16) != 2 or sizeof(u16) != 2:
+        return false
+    end
+
+    if sizeof(i32) != 4 or sizeof(u32) != 4:
+        return false
+    end
+
+    if sizeof(i64) != 8 or sizeof(u64) != 8:
+        return false
+    end
+
+    if sizeof(int) != sizeof(i32):
+        return false
+    end
+
+    if sizeof(IntegerByte) != 1 or sizeof(IntegerWord) != 8:
+        return false
+    end
+
+    if sizeof(@u8) != sizeof(@u64):
+        return false
+    end
+
+    original: int = 42
+    explicit: i32 = original
+    original = explicit
+    round_trip: int = integer_identity_i32(explicit)
+
+    if original != 42 or explicit != 42 or round_trip != 42:
+        return false
+    end
+
+    ptr_i32: @i32 = &original
+    ptr_int: @int = ptr_i32
+
+    if @ptr_int != 42:
+        return false
+    end
+
+    if integer_identity_i8(integer_fixture_i8) != integer_fixture_i8:
+        return false
+    end
+
+    if integer_identity_u8(integer_fixture_u8) != integer_fixture_u8:
+        return false
+    end
+
+    if integer_identity_i16(integer_fixture_i16) != integer_fixture_i16:
+        return false
+    end
+
+    if integer_identity_u16(integer_fixture_u16) != integer_fixture_u16:
+        return false
+    end
+
+    if integer_identity_i32(integer_fixture_i32) != integer_fixture_i32:
+        return false
+    end
+
+    if integer_identity_u32(integer_fixture_u32) != integer_fixture_u32:
+        return false
+    end
+
+    if integer_identity_i64(integer_fixture_i64) != integer_fixture_i64:
+        return false
+    end
+
+    if integer_identity_u64(integer_fixture_u64) != integer_fixture_u64:
+        return false
+    end
+
+    if integer_identity_int(integer_fixture_i32) != integer_fixture_i32:
+        return false
+    end
+
+    storage: IntegerStorage
+    storage.signed8 = integer_fixture_i8
+    storage.unsigned8 = integer_fixture_u8
+    storage.signed16 = integer_fixture_i16
+    storage.unsigned16 = integer_fixture_u16
+    storage.signed32 = original
+    storage.unsigned32 = integer_fixture_u32
+    storage.signed64 = integer_fixture_i64
+    storage.unsigned64 = integer_fixture_u64
+
+    if storage.signed8 != integer_fixture_i8 or storage.unsigned8 != integer_fixture_u8:
+        return false
+    end
+
+    if storage.signed16 != integer_fixture_i16 or storage.unsigned16 != integer_fixture_u16:
+        return false
+    end
+
+    if storage.signed32 != original or storage.unsigned32 != integer_fixture_u32:
+        return false
+    end
+
+    raw: IntegerRawStorage
+    raw.small = integer_fixture_u8
+
+    if raw.small != integer_fixture_u8:
+        return false
+    end
+
+    raw.large = integer_fixture_u64
+
+    if raw.large != integer_fixture_u64:
+        return false
+    end
+
+    items: IntegerByte[2]
+    items[0] = integer_fixture_u8
+    items[1] = integer_fixture_u8
+
+    if items[0] != integer_fixture_u8 or items[1] != integer_fixture_u8:
+        return false
+    end
+
+    allocated: @IntegerByte = new IntegerByte[2]
+
+    if allocated == null:
+        return false
+    end
+
+    allocated[0] = integer_fixture_u8
+    allocated[1] = integer_fixture_u8
+
+    allocation_ok: bool = allocated[0] == integer_fixture_u8 and allocated[1] == integer_fixture_u8
+    prune allocated
+
+    if not allocation_ok:
+        return false
+    end
+
+    canonical: i32 | string = original
+
+    if canonical is int:
+        extracted_int: int = canonical as int
+        if extracted_int != 42:
+            return false
+        end
+    else:
+        return false
+    end
+
+    distinct: u8 | u16 = integer_fixture_u8
+
+    if distinct is u8:
+        extracted_byte: u8 = distinct as u8
+        if extracted_byte != integer_fixture_u8:
+            return false
+        end
+    else:
+        return false
+    end
+
+    distinct = integer_fixture_u16
+
+    if distinct is u16:
+        extracted_short: u16 = distinct as u16
+        if extracted_short != integer_fixture_u16:
+            return false
+        end
+    else:
+        return false
+    end
+
+    maybe: ?u64 = null
+
+    if maybe != null:
+        return false
+    end
+
+    maybe = integer_fixture_u64
+
+    if maybe is u64:
+        extracted_word: u64 = maybe as u64
+        if extracted_word != integer_fixture_u64:
+            return false
+        end
+    else:
+        return false
+    end
+
+    return true
 end

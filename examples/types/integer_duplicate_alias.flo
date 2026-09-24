@@ -1,0 +1,7 @@
+type IntegerSpelling = int
+type ExplicitSpelling = i32
+type InvalidIntegerUnion = IntegerSpelling | ExplicitSpelling
+
+func main(): int
+    return 0
+end
