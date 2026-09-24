@@ -609,12 +609,7 @@ func gen_for(ast: @AST, out: @FILE, src: @char): void
     from: @AST = ast.data._for_loop.from
     to: @AST = ast.data._for_loop.to
     if from.kind == AST_LITERAL and to.kind == AST_LITERAL:
-        reverse: int
-        if from.value > to.value:
-            reverse = 1
-        else:
-            reverse = 0
-        end
+        reverse: bool = compare_decimal_magnitudes(from.src + from.data._integer_lit.start, from.data._integer_lit.length, to.src + to.data._integer_lit.start, to.data._integer_lit.length) > 0
 
         op: @char
         math_op: @char
@@ -1351,7 +1346,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "%.*s", ast.data._var_ref.name_length, src + ast.data._var_ref.name_start)
 
     else if ast.kind == AST_LITERAL:
-        fprintf(out, "%d", ast.value)
+        fprintf(out, "%.*s", ast.data._integer_lit.length, src + ast.data._integer_lit.start)
 
     else if ast.kind == AST_FLOAT_LIT:
         fprintf(out, "%.*s", ast.data._float_lit.length, src + ast.data._float_lit.start)

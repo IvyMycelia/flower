@@ -20,7 +20,6 @@ forward func parser_peek(ps: @Parser): @Token
 func make_node(ps: @Parser, kind: int): @AST
     node: @AST = calloc(1, sizeof(AST))
     node.kind = kind
-    node.value = 0
     node.src = ps.src
     node.start = parser_peek(ps).start
     node.filename = ps.filename
@@ -1081,7 +1080,13 @@ func parse_primary(ps: @Parser): @AST
     else if parser_peek(ps).kind == TOKEN_NUMBER:
         lit: @AST = make_node(ps, AST_LITERAL)
 
-        lit.value = atoi(ps.src + parser_peek(ps).start)
+        lit.data._integer_lit.start = parser_peek(ps).start
+        lit.data._integer_lit.length = parser_peek(ps).length
+
+        while lit.data._integer_lit.length > 1 and ps.src[lit.data._integer_lit.start] == '0':
+            lit.data._integer_lit.start = lit.data._integer_lit.start + 1
+            lit.data._integer_lit.length = lit.data._integer_lit.length - 1
+        end
 
         parser_advance(ps)
 

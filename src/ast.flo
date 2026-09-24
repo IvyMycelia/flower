@@ -139,6 +139,11 @@ struct type_test {
     union_member_index: int,
 }
 
+struct integer_lit {
+    start: int,
+    length: int
+}
+
 struct float_lit {
     start: int,
     length: int
@@ -390,6 +395,7 @@ union NodeData {
     _type_test:     type_test,
     _type_alias:    type_alias,
     _cast:          cast,
+    _integer_lit:   integer_lit,
     _float_lit:     float_lit,
     _bool_lit:      bool_lit,
     _char_lit:      char_lit,
@@ -429,7 +435,6 @@ union NodeData {
 struct AST {
     kind: int,
     next: @AST,     // Next statement,
-    value: int,     // For vals
 
     src: @char,
     filename: @char,
@@ -437,6 +442,36 @@ struct AST {
 
     data: NodeData
 }
+
+func compare_decimal_magnitudes(left: @char, left_length: int, right: @char,right_length: int): int
+    while left_length > 1 and left[0] == '0':
+        left = left + 1
+        left_length = left_length - 1
+    end
+
+    while right_length > 1 and right[0] == '0':
+        right = right + 1
+        right_length = right_length - 1
+    end
+
+    if left_length < right_length:
+        return -1
+    else if left_length > right_length:
+        return 1
+    end
+
+    i: int = 0
+    while i < left_length:
+        if left[i] < right[1]:
+            return -1
+        else if left[i] > right[i]:
+            return 1
+        end
+        i = i + 1
+    end
+
+    return 0
+end
 
 func integer_type_width(base: int): int
     if base == TOKEN_I8 or base == TOKEN_U8:

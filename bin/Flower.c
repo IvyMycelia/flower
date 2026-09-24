@@ -1104,6 +1104,12 @@ int32_t union_member_index;
 } type_test;
 
 
+typedef struct integer_lit {
+int32_t start;
+int32_t length;
+} integer_lit;
+
+
 typedef struct float_lit {
 int32_t start;
 int32_t length;
@@ -1361,6 +1367,7 @@ typedef union NodeData {
 type_test _type_test;
 type_alias _type_alias;
 cast _cast;
+integer_lit _integer_lit;
 float_lit _float_lit;
 bool_lit _bool_lit;
 char_lit _char_lit;
@@ -1401,12 +1408,40 @@ if_condition _if_condition;
 typedef struct AST {
 int32_t kind;
 AST* next;
-int32_t value;
 char* src;
 char* filename;
 int32_t start;
 NodeData data;
 } AST;
+
+
+int32_t mod_src_ast_flo_compare_decimal_magnitudes(char* left, int32_t left_length, char* right, int32_t right_length) {
+while (left_length > 1  &&  left[0] == '0') {
+left = left + 1;
+left_length = left_length - 1;
+}
+while (right_length > 1  &&  right[0] == '0') {
+right = right + 1;
+right_length = right_length - 1;
+}
+if (left_length < right_length) {
+return -1;
+}
+else if (left_length > right_length) {
+return 1;
+}
+int32_t i = 0;
+while (i < left_length) {
+if (left[i] < right[1]) {
+return -1;
+}
+else if (left[i] > right[i]) {
+return 1;
+}
+i = i + 1;
+}
+return 0;
+}
 
 
 int32_t mod_src_ast_flo_integer_type_width(int32_t base) {
@@ -1479,7 +1514,6 @@ Token* mod_src_parser_flo_parser_peek(Parser* ps);
 AST* mod_src_parser_flo_make_node(Parser* ps, int32_t kind) {
 AST* node = calloc(1, sizeof(AST));
 node->kind = kind;
-node->value = 0;
 node->src = ps->src;
 node->start = mod_src_parser_flo_parser_peek(ps)->start;
 node->filename = ps->filename;
@@ -2363,7 +2397,12 @@ return node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER) {
 AST* lit = mod_src_parser_flo_make_node(ps, AST_LITERAL);
-lit->value = atoi(ps->src + mod_src_parser_flo_parser_peek(ps)->start);
+lit->data._integer_lit.start = mod_src_parser_flo_parser_peek(ps)->start;
+lit->data._integer_lit.length = mod_src_parser_flo_parser_peek(ps)->length;
+while (lit->data._integer_lit.length > 1  &&  ps->src[lit->data._integer_lit.start] == '0') {
+lit->data._integer_lit.start = lit->data._integer_lit.start + 1;
+lit->data._integer_lit.length = lit->data._integer_lit.length - 1;
+}
 mod_src_parser_flo_parser_advance(ps);
 return lit;
 }
@@ -6487,13 +6526,7 @@ char* sub_op = "--";
 AST* from = ast->data._for_loop.from;
 AST* to = ast->data._for_loop.to;
 if (from->kind == AST_LITERAL  &&  to->kind == AST_LITERAL) {
-int32_t reverse;
-if (from->value > to->value) {
-reverse = 1;
-}
-else {
-reverse = 0;
-}
+int reverse = mod_src_ast_flo_compare_decimal_magnitudes(from->src + from->data._integer_lit.start, from->data._integer_lit.length, to->src + to->data._integer_lit.start, to->data._integer_lit.length) > 0;
 char* op;
 char* math_op;
 if (reverse) {
@@ -7073,7 +7106,7 @@ if (ast->kind == AST_VAR_REF) {
 fprintf(out, "%.*s", ast->data._var_ref.name_length, src + ast->data._var_ref.name_start);
 }
 else if (ast->kind == AST_LITERAL) {
-fprintf(out, "%d", ast->value);
+fprintf(out, "%.*s", ast->data._integer_lit.length, src + ast->data._integer_lit.start);
 }
 else if (ast->kind == AST_FLOAT_LIT) {
 fprintf(out, "%.*s", ast->data._float_lit.length, src + ast->data._float_lit.start);

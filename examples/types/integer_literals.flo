@@ -1,0 +1,49 @@
+prop func test(): bool
+    zero: int = 000000
+    nine: int = 000009
+    ten: int = 000010
+    padded: int = 0000000000000000000000000000000000000042
+    maximum: int = 2147483647
+
+    if zero != 0 or nine != 9 or ten != 10:
+        return false
+    end
+
+    if padded != 42 or maximum != 2147483647:
+        return false
+    end
+
+    ascending: int = 0
+    for i in 000009..000012:
+        ascending = ascending + i
+    end
+
+    if ascending != 30:
+        return false
+    end
+
+    descending: int = 0
+    for i in 000012..000009:
+        descending = descending + i
+    end
+
+    if descending != 33:
+        return false
+    end
+
+    empty: int = 0
+    for i in 000009..9:
+        empty = empty + i
+    end
+
+    if empty != 0:
+        return false
+    end
+
+    boundary_count: int = 0
+    for i in 2147483645..2147483647:
+        boundary_count = boundary_count + 1
+    end
+
+    return boundary_count == 2
+end
