@@ -264,7 +264,7 @@ int capacity;
 } TokenStream;
 
 
-int mod_include_lexer_h_flo_get_line(char* src, int pos) {
+int mod_src_token_flo_get_line(char* src, int pos) {
 int line = 1;
 for (int i = 0; ((0) > (pos)) ? i > (pos) : i < (pos); ((0) > (pos)) ? i-- : i++) {
 if (src[i] == '\n') {
@@ -275,7 +275,7 @@ return line;
 }
 
 
-int mod_include_lexer_h_flo_get_col(char* src, int pos) {
+int mod_src_token_flo_get_col(char* src, int pos) {
 int col = 1;
 while (pos > 0  &&  src[pos - 1] != '\n') {
 col = col + 1;
@@ -662,7 +662,7 @@ i = i + 1;
 continue;
 }
 else {
-printf("%s%s:%d:%d: error:%s Unknown char '%c' (%d)\n", RED, current_file, mod_include_lexer_h_flo_get_line(src, i), mod_include_lexer_h_flo_get_col(src, i), RESET, src[i], src[i]);
+printf("%s%s:%d:%d: error:%s Unknown char '%c' (%d)\n", RED, current_file, mod_src_token_flo_get_line(src, i), mod_src_token_flo_get_col(src, i), RESET, src[i], src[i]);
 exit(1);
 }
 i = i + 1;
@@ -1634,8 +1634,8 @@ return 0;
 
 void mod_src_parser_flo_parser_error(Parser* ps, char* message) {
 Token* token = mod_src_parser_flo_parser_peek(ps);
-int line = mod_include_lexer_h_flo_get_line(ps->src, token->start);
-int col = mod_include_lexer_h_flo_get_col(ps->src, token->start);
+int line = mod_src_token_flo_get_line(ps->src, token->start);
+int col = mod_src_token_flo_get_col(ps->src, token->start);
 printf("%s%s:%d:%d: error:%s %s\n", RED, ps->filename, line, col, RESET, message);
 ps->error_count = ps->error_count + 1;
 }
@@ -4001,8 +4001,8 @@ return 1;
 
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message) {
 if (ast != NULL  &&  ast->src != NULL  &&  ast->filename != NULL) {
-int line = mod_include_lexer_h_flo_get_line(ast->src, ast->start);
-int col = mod_include_lexer_h_flo_get_col(ast->src, ast->start);
+int line = mod_src_token_flo_get_line(ast->src, ast->start);
+int col = mod_src_token_flo_get_col(ast->src, ast->start);
 printf("%s%s:%d:%d: error:%s %s\n", RED, ast->filename, line, col, RESET, message);
 }
 else {
@@ -7127,7 +7127,7 @@ mod_src_codegen_flo_gen_break(ast, out, src);
 }
 else {
 Token* base = ast->data._flow_ctrl.base;
-printf("%s%s:%d:%d: error:%s Unexpected token: %s\n", RED, current_file, mod_include_lexer_h_flo_get_line(src, base->start), mod_include_lexer_h_flo_get_col(src, base->start), RESET, mod_src_lexer_flo_token_kind_name(base->kind));
+printf("%s%s:%d:%d: error:%s Unexpected token: %s\n", RED, current_file, mod_src_token_flo_get_line(src, base->start), mod_src_token_flo_get_col(src, base->start), RESET, mod_src_lexer_flo_token_kind_name(base->kind));
 exit(1);
 }
 }

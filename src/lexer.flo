@@ -1,4 +1,4 @@
-import "include/lexer_h.flo"
+import "src/token.flo"
 import "src/stdlib/cstr.flo" as cstr
 
 prop func init_token_stream(ts: @TokenStream): void
