@@ -1346,7 +1346,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "%.*s", ast.data._var_ref.name_length, src + ast.data._var_ref.name_start)
 
     else if ast.kind == AST_LITERAL:
-        fprintf(out, "%.*s", ast.data._integer_lit.length, src + ast.data._integer_lit.start)
+        fprintf(out, "%.*s", ast.data._integer_lit.length, ast.src + ast.data._integer_lit.start)
 
     else if ast.kind == AST_FLOAT_LIT:
         fprintf(out, "%.*s", ast.data._float_lit.length, src + ast.data._float_lit.start)

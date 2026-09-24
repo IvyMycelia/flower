@@ -40,6 +40,24 @@ prop func test(): bool
         return false
     end
 
+    same_length_ascending: int = 0
+    for i in 18..19:
+        same_length_ascending = same_length_ascending + i
+    end
+
+    if same_length_ascending != 18:
+        return false
+    end
+
+    same_length_descending: int = 0
+    for i in 19..18:
+        same_length_descending = same_length_descending + i
+    end
+
+    if same_length_descending != 19:
+        return false
+    end
+    
     boundary_count: int = 0
     for i in 2147483645..2147483647:
         boundary_count = boundary_count + 1

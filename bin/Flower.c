@@ -1432,7 +1432,7 @@ return 1;
 }
 int32_t i = 0;
 while (i < left_length) {
-if (left[i] < right[1]) {
+if (left[i] < right[i]) {
 return -1;
 }
 else if (left[i] > right[i]) {
@@ -7106,7 +7106,7 @@ if (ast->kind == AST_VAR_REF) {
 fprintf(out, "%.*s", ast->data._var_ref.name_length, src + ast->data._var_ref.name_start);
 }
 else if (ast->kind == AST_LITERAL) {
-fprintf(out, "%.*s", ast->data._integer_lit.length, src + ast->data._integer_lit.start);
+fprintf(out, "%.*s", ast->data._integer_lit.length, ast->src + ast->data._integer_lit.start);
 }
 else if (ast->kind == AST_FLOAT_LIT) {
 fprintf(out, "%.*s", ast->data._float_lit.length, src + ast->data._float_lit.start);
