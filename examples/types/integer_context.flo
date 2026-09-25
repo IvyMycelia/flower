@@ -1,0 +1,86 @@
+type ContextByte = u8
+
+context_global: u64 = 18446744073709551615
+
+struct ContextFields {
+    count: u16
+}
+
+func context_argument(value: u64): u64
+    return value
+end
+
+func context_return(): i64
+    return -9223372036854775808
+end
+
+prop func test(): bool
+    signed8_min: i8 = -128
+    signed8_max: i8 = 127
+    unsigned8: ContextByte = 255
+
+    signed16_min: i16 = -32768
+    signed16_max: i16 = 32767
+    unsigned16: u16 = 65535
+
+    signed32_min: i32 = -2147483648
+    signed32_max: i32 = 2147483647
+    unsigned32: u32 = 4294967295
+
+    signed64_min: i64 = -9223372036854775808
+    signed64_max: i64 = 9223372036854775807
+    unsigned64: u64 = 18446744073709551615
+
+    if signed8_min != -128 or signed8_max != 127 or unsigned8 != 255:
+        return false
+    end
+    
+    if signed16_min != -32768 or signed16_max != 32767 or unsigned16 != 65535:
+        return false
+    end
+    
+    if signed32_min != -2147483648 or signed32_max != 2147483647 or unsigned32 != 4294967295:
+        return false
+    end
+    
+    if signed64_min != -9223372036854775808 or signed64_max != 9223372036854775807:
+        return false
+    end
+
+    if unsigned64 != 18446744073709551615:
+        return false
+    end
+
+    if 18446744073709551615 != unsigned64:
+        return false
+    end
+
+    if context_global != unsigned64:
+        return false
+    end
+
+    if context_return() != signed64_min:
+        return false
+    end
+
+    unsigned8 = 42
+    if unsigned8 != 42:
+        return false
+    end
+
+    fields: ContextFields
+    fields.count = 65535
+    if fields.count != 65535:
+        return false
+    end
+
+    elements: u64[2]
+    elements[0] = 18446744073709551615
+    elements[1] = 0
+
+    if elements[0] != unsigned64 or elements[1] != 0:
+        return false
+    end
+
+    return true
+end

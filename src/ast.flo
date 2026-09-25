@@ -141,7 +141,8 @@ struct type_test {
 
 struct integer_lit {
     start: int,
-    length: int
+    length: int,
+    resolved_base: int
 }
 
 struct float_lit {
@@ -442,6 +443,24 @@ struct AST {
 
     data: NodeData
 }
+
+func integer_literal_node(expr: @AST): @AST
+    if expr == null:
+        return null
+    end
+
+    if expr.kind == AST_LITERAL:
+        return expr
+    end
+
+    if expr.kind == AST_UNARY_NEG and expr.data._unary.operand != null:
+        if expr.data._unary.operand.kind == AST_LITERAL:
+            return expr.data._unary.operand
+        end
+    end
+
+    return null
+end
 
 func compare_decimal_magnitudes(left: @char, left_length: int, right: @char,right_length: int): int
     while left_length > 1 and left[0] == '0':

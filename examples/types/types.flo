@@ -3,6 +3,7 @@ import <stdlib>
 
 import "examples/types/int.flo" as int_test
 import "examples/types/integer_literals.flo" as integer_literals
+import "examples/types/integer_context.flo" as integer_context
 import "examples/types/float.flo" as float_test
 import "examples/types/double.flo" as double_test
 import "examples/types/bool.flo" as bool_test
@@ -33,6 +34,15 @@ prop func test(): bool
     print("  integer literals... ")
     total = total + 1
     if integer_literals.test():
+        pass = pass + 1
+        print("OK\n")
+    else:
+        print("FAIL\n")
+    end
+
+    print("  integer context...")
+    total = total + 1
+    if integer_context.test():
         pass = pass + 1
         print("OK\n")
     else:

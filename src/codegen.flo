@@ -1341,12 +1341,45 @@ end
 
 // === EXECUTIVE ===
 
+func gen_integer_literal(literal: @AST, negative: bool, out: @FILE): void
+    base: int = literal.data._integer_lit.resolved_base
+    digits: @char = literal.src + literal.data._integer_lit.start
+    length: int = literal.data._integer_lit.length
+
+    if base == 0:
+        if negative:
+            fprintf(out, "-")
+        end
+        fprintf(out, "%.*s", length, digits)
+        return
+    end
+
+    fprintf(out, "((%s)(", integer_c_type_name(base))
+
+    if integer_type_signed(base):
+        if negative:
+            if base == TOKEN_I64 and compare_decimal_magnitudes(digits, length, "9223372036854775808", 19) == 0:
+                fprintf(out, "-INT64_C(9223372036854775807) - INT64_C(1)")
+            else:
+                fprintf(out, "-INT64_C(%.*s)", length, digits)
+            end
+        else:
+            fprintf(out, "INT64_C(%.*s)", length, digits)
+        end
+    else:
+        fprintf(out, "UINT64_C(%.*s)", length, digits)
+    end
+
+    fprintf(out, "))")
+end
+
 func gen_expr(ast: @AST, out: @FILE, src: @char): void
     if ast.kind == AST_VAR_REF:
         fprintf(out, "%.*s", ast.data._var_ref.name_length, src + ast.data._var_ref.name_start)
 
     else if ast.kind == AST_LITERAL:
-        fprintf(out, "%.*s", ast.data._integer_lit.length, ast.src + ast.data._integer_lit.start)
+        gen_integer_literal(ast, false, out)
+        // fprintf(out, "%.*s", ast.data._integer_lit.length, ast.src + ast.data._integer_lit.start)
 
     else if ast.kind == AST_FLOAT_LIT:
         fprintf(out, "%.*s", ast.data._float_lit.length, src + ast.data._float_lit.start)
@@ -1552,8 +1585,14 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
                 
     else if ast.kind == AST_UNARY_NEG:
-        fprintf(out, "-")
-        gen_expr(ast.data._unary.operand, out, src)
+        literal: @AST = integer_literal_node(ast)
+
+        if literal != null:
+            gen_integer_literal(literal, true, out)
+        else:
+            fprintf(out, "-")
+            gen_expr(ast.data._unary.operand, out, src)
+        end
         
     else if ast.kind == AST_DEREF:
         fprintf(out, "*(")
