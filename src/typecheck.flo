@@ -392,6 +392,10 @@ func can_accept_null(typeInfo: @TypeInfo): bool
     return is_pointer_like_type(typeInfo)
 end
 
+func is_scalar_fixed_integer(typeInfo: @TypeInfo): bool
+    return not typeInfo.is_union and not typeInfo.is_nullable and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0 and typeInfo.arr_size_expr == null and integer_type_width(typeInfo.base) != 0
+end
+
 func is_integer_type(typeInfo: @TypeInfo): bool
     if typeInfo.is_union:
         return false
@@ -409,7 +413,7 @@ func is_decimal_type(typeInfo: @TypeInfo): bool
 end
 
 func is_condition_type(typeInfo: @TypeInfo): bool
-    return is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_pointer_like_type(typeInfo)
+    return is_bool_type(typeInfo) or is_scalar_fixed_integer(typeInfo) or is_integer_type(typeInfo) or is_pointer_like_type(typeInfo)
 end
 
 func is_string_type(typeInfo: @TypeInfo): bool
@@ -437,7 +441,7 @@ func is_numeric_type(typeInfo: @TypeInfo): bool
 end
 
 func is_printable_type(typeInfo: @TypeInfo): bool
-    return is_string_type(typeInfo) or is_cstr_type(typeInfo) or is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_decimal_type(typeInfo)
+    return is_string_type(typeInfo) or is_cstr_type(typeInfo) or is_bool_type(typeInfo) or is_scalar_fixed_integer(typeInfo) or is_integer_type(typeInfo) or is_decimal_type(typeInfo)
 end
 
 func numeric_rank(typeInfo: @TypeInfo): int
@@ -1575,10 +1579,6 @@ func try_lower_storage_union_null_compare(env: @TypeEnv, expr: @AST, src: @char)
         
     prune storage_type
     return false
-end
-
-func is_scalar_fixed_integer(typeInfo: @TypeInfo): bool
-    return not typeInfo.is_union and not typeInfo.is_nullable and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0 and typeInfo.arr_size_expr == null and integer_type_width(typeInfo.base) != 0
 end
 
 func integer_literal_limit(base: int, negative: bool): @char

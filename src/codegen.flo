@@ -1723,10 +1723,15 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             gen_expr(ast.data._print.value, out, src)
             fprintf(out, ") ? \"true\" : \"false\");\n")
 
-        else if ast.data._print.value_type.base == TOKEN_I32 and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
-            fprintf(out, "printf(\"%%d\", ")
+        else if is_scalar_fixed_integer(&ast.data._print.value_type):
+            if integer_type_signed(ast.data._print.value_type.base):
+                fprintf(out, "printf(\"%%jd\", (intmax_t)(")
+            else:
+                fprintf(out, "printf(\"%%ju\", (uintmax_t)(")
+            end
+            
             gen_expr(ast.data._print.value, out, src)
-            fprintf(out, ");\n")
+            fprintf(out, "));\n")
             
         else:
             fprintf(out, "printf(")

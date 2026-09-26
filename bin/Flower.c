@@ -3725,6 +3725,11 @@ return mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
 }
 
 
+int mod_src_typecheck_flo_is_scalar_fixed_integer(TypeInfo* typeInfo) {
+return !(typeInfo->is_union)  &&  !(typeInfo->is_nullable)  &&  typeInfo->pointer_depth == ((int32_t)(INT64_C(0)))  &&  typeInfo->array_size == ((int32_t)(INT64_C(0)))  &&  typeInfo->arr_size_expr == NULL  &&  mod_src_ast_flo_integer_type_width(typeInfo->base) != ((int32_t)(INT64_C(0)));
+}
+
+
 int mod_src_typecheck_flo_is_integer_type(TypeInfo* typeInfo) {
 if (typeInfo->is_union) {
 return 0;
@@ -3742,7 +3747,7 @@ return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_FLOAT  ||  typeInfo
 
 
 int mod_src_typecheck_flo_is_condition_type(TypeInfo* typeInfo) {
-return mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_is_integer_type(typeInfo)  ||  mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
+return mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_is_scalar_fixed_integer(typeInfo)  ||  mod_src_typecheck_flo_is_integer_type(typeInfo)  ||  mod_src_typecheck_flo_is_pointer_like_type(typeInfo);
 }
 
 
@@ -3771,7 +3776,7 @@ return !(typeInfo->is_nullable)  &&  typeInfo->base == TOKEN_I32  ||  typeInfo->
 
 
 int mod_src_typecheck_flo_is_printable_type(TypeInfo* typeInfo) {
-return mod_src_typecheck_flo_is_string_type(typeInfo)  ||  mod_src_typecheck_flo_is_cstr_type(typeInfo)  ||  mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_is_integer_type(typeInfo)  ||  mod_src_typecheck_flo_is_decimal_type(typeInfo);
+return mod_src_typecheck_flo_is_string_type(typeInfo)  ||  mod_src_typecheck_flo_is_cstr_type(typeInfo)  ||  mod_src_typecheck_flo_is_bool_type(typeInfo)  ||  mod_src_typecheck_flo_is_scalar_fixed_integer(typeInfo)  ||  mod_src_typecheck_flo_is_integer_type(typeInfo)  ||  mod_src_typecheck_flo_is_decimal_type(typeInfo);
 }
 
 
@@ -4767,11 +4772,6 @@ return 1;
 }
 free(storage_type);
 return 0;
-}
-
-
-int mod_src_typecheck_flo_is_scalar_fixed_integer(TypeInfo* typeInfo) {
-return !(typeInfo->is_union)  &&  !(typeInfo->is_nullable)  &&  typeInfo->pointer_depth == ((int32_t)(INT64_C(0)))  &&  typeInfo->array_size == ((int32_t)(INT64_C(0)))  &&  typeInfo->arr_size_expr == NULL  &&  mod_src_ast_flo_integer_type_width(typeInfo->base) != ((int32_t)(INT64_C(0)));
 }
 
 
@@ -7624,10 +7624,15 @@ fprintf(out, "printf(\"%%s\", (");
 mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
 fprintf(out, ") ? \"true\" : \"false\");\n");
 }
-else if (ast->data._print.value_type.base == TOKEN_I32  &&  ast->data._print.value_type.pointer_depth == ((int32_t)(INT64_C(0)))  &&  ast->data._print.value_type.array_size == ((int32_t)(INT64_C(0)))) {
-fprintf(out, "printf(\"%%d\", ");
+else if (mod_src_typecheck_flo_is_scalar_fixed_integer(&(ast->data._print.value_type))) {
+if (mod_src_ast_flo_integer_type_signed(ast->data._print.value_type.base)) {
+fprintf(out, "printf(\"%%jd\", (intmax_t)(");
+}
+else {
+fprintf(out, "printf(\"%%ju\", (uintmax_t)(");
+}
 mod_src_codegen_flo_gen_expr(ast->data._print.value, out, src);
-fprintf(out, ");\n");
+fprintf(out, "));\n");
 }
 else {
 fprintf(out, "printf(");

@@ -1,0 +1,115 @@
+func main(): int
+    signed8: i8 = -128
+    unsigned8: u8 = 0
+    signed16: i16 = -32768
+    unsigned16: u16 = 0
+    signed32: i32 = -2147483648
+    unsigned32: u32 = 0
+    signed64: i64 = -9223372036854775808
+    unsigned64: u64 = 0
+
+    if not signed8 or not signed16 or not signed32 or not signed64:
+        return 1
+    end
+
+    if unsigned8 or unsigned16 or unsigned32 or unsigned64:
+        return 2
+    end
+
+    // 8-bit
+    print(signed8)
+    print(" ")
+    signed8 = 127
+    print(signed8)
+    print(" ")
+
+    print(unsigned8)
+    print(" ")
+    unsigned8 = 255
+    print(unsigned8)
+    
+    print("\n")
+    
+    // 16-bit
+    print(signed16)
+    print(" ")
+    signed16 = 32767
+    print(signed16)
+    print(" ")
+
+    print(unsigned16)
+    print(" ")
+    unsigned16 = 65535
+    print(unsigned16)
+
+    print("\n")
+    
+    // 32-bit
+    print(signed32)
+    print(" ")
+    signed32 = 2147483647
+    print(signed32)
+    print(" ")
+
+    print(unsigned32)
+    print(" ")
+    unsigned32 = 4294967295
+    print(unsigned32)
+
+    print("\n")
+
+    // 64-bit
+    print(signed64)
+    print(" ")
+    signed64 = 9223372036854775807
+    print(signed64)
+    print(" ")
+
+    print(unsigned64)
+    print(" ")
+    unsigned64 = 18446744073709551615
+    print(unsigned64)
+    
+    print("\n")
+    
+    if not unsigned8 or not unsigned16 or not unsigned32 or not unsigned64:
+        return 3
+    end
+
+    original: int = -2147483648
+    print(original)
+    print(" ")
+    original = 2147483647
+    print(original)
+    print("\n")
+
+    print('A')
+    print(" ")
+    print(true)
+    print("\n")
+
+    iterations: int = 0
+    while unsigned64:
+        unsigned64 = 0
+        iterations = iterations + 1
+    end
+
+    if iterations != 1:
+        return 4
+    end
+
+    signed8 = 0
+    unsigned8 = 0
+    signed16 = 0
+    unsigned16 = 0
+    signed32 = 0
+    unsigned32 = 0
+    signed64 = 0
+    unsigned64 = 0
+
+    if signed8 or unsigned8 or signed16 or unsigned16 or signed32 or unsigned32 or signed64 or unsigned64:
+        return 5
+    end
+
+    return 0
+end
