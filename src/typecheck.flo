@@ -501,15 +501,19 @@ func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
         end
     end
 
-    if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)): 
+    if is_scalar_fixed_integer(target) and is_scalar_fixed_integer(value):
         return true 
     end
 
-    if is_bool_type(target) and value.base == TOKEN_I32 and value.pointer_depth == 0 and value.array_size == 0: 
+    if is_bool_type(target) and is_scalar_fixed_integer(value):
         return true
     end
 
-    if is_bool_type(value) and target.base == TOKEN_I32 and target.pointer_depth == 0 and target.array_size == 0:
+    if is_scalar_fixed_integer(target) and is_bool_type(value):
+        return true
+    end
+
+    if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)):
         return true
     end
 
@@ -2110,6 +2114,31 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        copy_type(&expr.data._cast.typeInfo, target_type)
+        expr.data._cast.lower_kind = CAST_LOWER_NONE
+        expr.data._cast.union_member_index = 0
+
+        if is_scalar_fixed_integer(target_type) and integer_literal_node(expr.data._cast.value) != null:
+            source_base: int = TOKEN_U64
+            if expr.data._cast.value.kind == AST_UNARY_NEG:
+                source_base = TOKEN_I64
+            end
+
+            if not resolve_integer_literal(env, expr.data._cast.value, source_base, true, value_type):
+                prune value_type
+                prune target_type
+                return 0
+            end
+
+            copy_type(&expr.data._cast.value_type, value_type)
+            expr.data._cast.lower_kind = CAST_LOWER_INTEGER
+            copy_type(out, target_type)
+
+            prune value_type
+            prune target_type
+            return 1
+        end
+
         if not resolve_expr(env, expr.data._cast.value, value_type, src):
             prune value_type
             prune target_type
@@ -2121,10 +2150,6 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             prune target_type
             return 0
         end
-
-        copy_type(&expr.data._cast.typeInfo, target_type)
-        expr.data._cast.lower_kind = CAST_LOWER_NONE
-        expr.data._cast.union_member_index = 0
 
         if expr.data._cast.value != null and is_narrowable_expr(expr.data._cast.value):
             source_union: @TypeInfo = new TypeInfo
@@ -2175,6 +2200,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             prune value_type
             prune target_type
             return 0
+        end
+
+        if is_scalar_fixed_integer(target_type):
+            if is_scalar_fixed_integer(value_type) or is_bool_type(value_type):
+                expr.data._cast.lower_kind = CAST_LOWER_INTEGER
+            end
         end
 
         if expr.data._cast.value.kind == AST_STRING_LIT:

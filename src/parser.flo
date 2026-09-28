@@ -577,6 +577,13 @@ func parse_while(ps: @Parser): @AST
         end
 
         statement: @AST = parse_statement(ps)
+        if statement == null or ps.error_count > 0:
+            if ps.error_count == 0:
+                parser_error(ps, "Expected statement")
+            end
+            return node
+        end
+
         if body_head == null:
             body_head = statement
         else:
@@ -620,6 +627,13 @@ func parse_if(ps: @Parser, is_elf_if: int): @AST
         end
 
         statement: @AST = parse_statement(ps)
+        if statement == null or ps.error_count > 0:
+            if ps.error_count == 0:
+                parser_error(ps, "Expected statement")
+            end
+            return node
+        end
+
         if body_head == null:
             body_head = statement
         else:
@@ -658,6 +672,13 @@ func parse_if(ps: @Parser, is_elf_if: int): @AST
                 end
 
                 statement: @AST = parse_statement(ps)
+                if statement == null or ps.error_count > 0:
+                    if ps.error_count == 0:
+                        parser_error(ps, "Expected statement")
+                    end
+                    return node
+                end
+
                 if else_body_head == null:
                     else_body_head = statement
                 else:
@@ -727,6 +748,7 @@ func parse_for(ps: @Parser): @AST
     while parser_peek(ps).kind != TOKEN_END:
         if parser_peek(ps).kind == TOKEN_EOF:
             parser_error(ps, "Unexpected end of file in for loop body")
+            return node
         end
 
         parser_skip_newline(ps)
@@ -735,7 +757,15 @@ func parse_for(ps: @Parser): @AST
             break
         end
 
+        
         statement: @AST = parse_statement(ps)
+        if statement == null or ps.error_count > 0:
+            if ps.error_count == 0:
+                parser_error(ps, "Expected statement")
+            end
+            return node
+        end
+        
         if body_head == null:
             body_head = statement
         else:
@@ -1325,6 +1355,7 @@ func parse_primary(ps: @Parser): @AST
     else:
         message: char[128]
         snprintf(message, sizeof(message), "parse_primary: unexpected token kind: %s", token_kind_name(parser_peek(ps).kind))
+        parser_error(ps, message)
         return null
     end
 end
@@ -1405,6 +1436,12 @@ func parse_func_def(ps: @Parser): @AST
         end
 
         statement: @AST = parse_statement(ps)
+        if statement == null or ps.error_count > 0:
+            if ps.error_count == 0:
+                parser_error(ps, "Expected statement")
+            end
+            return node
+        end
 
         if body_head == null:
             body_head = statement
@@ -1897,6 +1934,10 @@ prop func parse(ps: @Parser): @AST
                 parser_error(ps, "Expected declaration after prop")
             end
 
+            if ps.error_count > 0:
+                break
+            end
+            
             if decl != null:
                 prop_node: @AST = make_node(ps, AST_PROP)
                 prop_node.data._prop.decl = decl

@@ -59,6 +59,8 @@ test: build
 	./$(OUT_BIN)
 	sh ./scripts/tests/types/test_integers.sh
 	sh ./scripts/tests/types/test_integer_print.sh
+	sh ./scripts/tests/types/test_integer_casts.sh
+	sh ./scripts/tests/types/test_parser_errors.sh
 
 clean:
 	rm -rf output/

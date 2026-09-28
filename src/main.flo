@@ -80,6 +80,11 @@ func main(argc: int, argv: @char[]): int
                 return -1
             end
 
+            if mods.parse_errors > 0:
+                printf("%sParse failed with %d error(s)%s\n", RED, mods.parse_errors, RESET)
+                return 1
+            end
+
             print("Checking types..\n")
             type_errors: int = check_modules(mods)
             if type_errors > 0:
