@@ -38,6 +38,61 @@ func emit_integer_conversion_family(out: @FILE, signed_base: int, unsigned_base:
     fprintf(out, "}\n")
 end
 
+func emit_wrapping_binary(out: @FILE, base: int, operation: @char, symbol: @char): void
+    name: @char = integer_type_name(base)
+    c_type: @char = integer_c_type_name(base)
+
+    fprintf(out, "#define FLOWER_%s_%s(a, b) FLOWER_INTEGER_%s((uint64_t)(a) %s (uint64_t)(b))\n", operation, name, name, symbol)
+    fprintf(out, "static %s flower_%s_%s(%s a, %s b) {\n", c_type, operation, name, c_type, c_type)
+    fprintf(out, "  return FLOWER_%s_%s(a, b);\n", operation, name)
+    fprintf(out, "}\n")
+end
+
+func emit_integer_arithmetic_family(out: @FILE, base: int): void
+    name: @char = integer_type_name(base)
+    c_type: @char = integer_c_type_name(base)
+    width: int = integer_type_width(base)
+
+    emit_wrapping_binary(out, base, "add", "+")
+    emit_wrapping_binary(out, base, "sub", "-")
+    emit_wrapping_binary(out, base, "mul", "*")
+
+    fprintf(out, "#define FLOWER_neg_%s(a) FLOWER_INTEGER_%s(UINT64_C(0) - (uint64_t)(a))\n", name, name)
+    fprintf(out, "static %s flower_neg_%s(%s a) {\n", c_type, name, c_type)
+    fprintf(out, "  return FLOWER_neg_%s(a);\n", name)
+    fprintf(out, "}\n")
+
+    fprintf(out, "#define FLOWER_div_%s(a, b) ((b) == 0 ? (flower_integer_trap(\"integer division by zero\"), (%s)0) : ", name, c_type)
+
+    if integer_type_signed(base):
+        fprintf(out, "((a) == INT%d_MIN && (b) == -1 ? (flower_integer_trap(\"signed integer division overflow\"), (%s)0) : (%s)((a) / (b))))\n", width, c_type, c_type)
+    else:
+        fprintf(out, "(%s)((a) / (b)))\n", c_type)
+    end
+
+    fprintf(out, "static %s flower_div_%s(%s a, %s b) {\n", c_type, name, c_type, c_type)
+    fprintf(out, "  return FLOWER_div_%s(a, b);\n", name)
+    fprintf(out, "}\n")
+end
+
+func emit_integer_arithmetic_runtime(out: @FILE): void
+    fprintf(out, "#include <stdlib.h>\n")
+    fprintf(out, "static void flower_integer_trap(const char* message) {\n")
+    fprintf(out, "  fputs(message, stderr);\n")
+    fprintf(out, "  fputc('\\n', stderr);\n")
+    fprintf(out, "  exit(1);\n")
+    fprintf(out, "}\n")
+
+    emit_integer_arithmetic_family(out, TOKEN_I8)
+    emit_integer_arithmetic_family(out, TOKEN_U8)
+    emit_integer_arithmetic_family(out, TOKEN_I16)
+    emit_integer_arithmetic_family(out, TOKEN_U16)
+    emit_integer_arithmetic_family(out, TOKEN_I32)
+    emit_integer_arithmetic_family(out, TOKEN_U32)
+    emit_integer_arithmetic_family(out, TOKEN_I64)
+    emit_integer_arithmetic_family(out, TOKEN_U64)
+end
+
 func emit_string_runtime(out: @FILE): void
     fprintf(out, "#include <stdint.h>\n")
     fprintf(out, "#include <limits.h>\n")
@@ -87,6 +142,8 @@ func emit_string_runtime(out: @FILE): void
     fprintf(out, "      i++;\n")
     fprintf(out, "  }\n")
     fprintf(out, "}\n")
+
+    emit_integer_arithmetic_runtime(out)
 end
 
 func emit_includes(mods: @ModuleSet, out: @FILE): void
@@ -1386,7 +1443,64 @@ func is_constant_integer_cast_operand(expr: @AST): bool
         end
     end
 
+    if expr.kind == AST_BINARY_OP:
+        if expr.data._binary.integer_base != 0 or is_comparison_op(expr.data._binary.op) or is_logical_op(expr.data._binary.op):
+            return is_constant_integer_cast_operand(expr.data._binary.left) and is_constant_integer_cast_operand(expr.data._binary.right)
+        end
+    end
+
+    if expr.kind == AST_UNARY_NEG and expr.data._unary.integer_base != 0:
+        return is_constant_integer_cast_operand(expr.data._unary.operand)
+    end
+
+    if expr.kind == AST_UNARY_NOT:
+        return is_constant_integer_cast_operand(expr.data._unary.operand)
+    end
+
     return false
+end
+
+func integer_operation_name(kind: int): @char
+    if kind == TOKEN_PLUS:
+        return "add"
+    else if kind == TOKEN_MINUS:
+        return "sub"
+    else if kind == TOKEN_STAR:
+        return "mul"
+    else if kind == TOKEN_SLASH:
+        return "div"
+    end
+
+    return "invalid"
+end
+
+func gen_integer_binary(ast: @AST, out: @FILE, src: @char): void
+    operation: @char = integer_operation_name(ast.data._binary.op)
+    name: @char = integer_type_name(ast.data._binary.integer_base)
+
+    if is_constant_integer_cast_operand(ast):
+        fprintf(out, "FLOWER_%s_%s(", operation, name)
+    else:
+        fprintf(out, "flower_%s_%s(", operation, name)
+    end
+
+    gen_expr(ast.data._binary.left, out, src)
+    fprintf(out, ", ")
+    gen_expr(ast.data._binary.right, out, src)
+    fprintf(out, ")")
+end
+
+func gen_integer_negation(ast: @AST, out: @FILE, src: @char): void
+    name: @char = integer_type_name(ast.data._unary.integer_base)
+
+    if is_constant_integer_cast_operand(ast):
+        fprintf(out, "FLOWER_neg_%s(", name)
+    else:
+        fprintf(out, "flower_neg_%s(", name)
+    end
+
+    gen_expr(ast.data._unary.operand, out, src)
+    fprintf(out, ")")
 end
 
 func gen_integer_cast(ast: @AST, out: @FILE, src: @char): void
@@ -1468,7 +1582,10 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         end
         
     else if ast.kind == AST_BINARY_OP: 
-        if ast.data._binary.is_string_compare:
+        if ast.data._binary.integer_base != 0:
+            gen_integer_binary(ast, out, src)
+
+        else if ast.data._binary.is_string_compare:
             if ast.data._binary.op == TOKEN_NEQ:
                 fprintf(out, "(!flower_string_eq(")
             else:
@@ -1496,9 +1613,11 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, ").tag %s %d)", token_to_string(ast.data._binary.op), ast.data._binary.null_union_member_index)
 
         else:
+            fprintf(out, "(")
             gen_expr(ast.data._binary.left, out, src)
             fprintf(out, " %s ", token_to_string(ast.data._binary.op))
             gen_expr(ast.data._binary.right, out, src)
+            fprintf(out, ")")
         end
         
     else if ast.kind == AST_FUNC_CALL: 
@@ -1653,9 +1772,12 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
 
         if literal != null:
             gen_integer_literal(literal, true, out)
+        else if ast.data._unary.integer_base != 0:
+            gen_integer_negation(ast, out, src)
         else:
-            fprintf(out, "-")
+            fprintf(out, "-(")
             gen_expr(ast.data._unary.operand, out, src)
+            fprintf(out, ")")
         end
         
     else if ast.kind == AST_DEREF:

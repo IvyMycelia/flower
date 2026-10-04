@@ -183,6 +183,7 @@ struct subscript {
     // === Unary Operations ===
 struct unary {
     operand: @AST,
+    integer_base: int
 }
 
     // === Memory Management ===
@@ -311,6 +312,7 @@ struct binary {
     left: @AST,   // left binary-op
     right: @AST,  // right bin-op
     op: int,
+    integer_base: int,
     is_string_compare: int,
     null_compare_kind: int,
     null_union_member_index: int,
@@ -534,4 +536,28 @@ func integer_type_name(base: int): @char
     end
 
     return "non-integer"
+end
+
+func is_integer_arithmetic_op(kind: int): bool
+    return kind == TOKEN_PLUS or kind == TOKEN_MINUS or kind == TOKEN_STAR or kind == TOKEN_SLASH
+end
+
+func is_untyped_integer_expr(expr: @AST): bool
+    if expr == null:
+        return false
+    end
+
+    if expr.kind == AST_LITERAL:
+        return true
+    end
+
+    if expr.kind == AST_UNARY_NEG:
+        return is_untyped_integer_expr(expr.data._unary.operand)
+    end
+
+    if expr.kind == AST_BINARY_OP and is_integer_arithmetic_op(expr.data._binary.op):
+        return is_untyped_integer_expr(expr.data._binary.left) and is_untyped_integer_expr(expr.data._binary.right)
+    end
+
+    return false
 end

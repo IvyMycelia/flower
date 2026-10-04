@@ -931,8 +931,10 @@ forward func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: i
 forward func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
 forward func lookup_alias(env: @TypeEnv, src: @char, start: int, length: int): @AliasInfo
 
-forward func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
 forward func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+forward func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
+forward func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char, expected: @TypeInfo): int
+forward func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
 forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
@@ -1654,37 +1656,15 @@ func resolve_integer_literal(env: @TypeEnv, expr: @AST, base: int, contextual: b
     return 1
 end
 
-func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
-    if integer_literal_node(expr) != null:
-        target: @TypeInfo = new TypeInfo
-        copy_type(target, expected)
-
-        if not resolve_type_alias(env, target, expr):
-            prune target
-            return 0
-        end
-
-        if is_scalar_fixed_integer(target):
-            base: int = target.base
-            prune target
-            return resolve_integer_literal(env, expr, base, true, out)
-        end
-
-        prune target
-    end
-
-    return resolve_expr(env, expr, out, src)
-end
-
-func resolve_binary_operand_types(env: @TypeEnv, expr: @AST, left_type: @TypeInfo, right_type: @TypeInfo, src: @char): int
+func resolve_binary_operand_types(env: @TypeEnv, expr: @AST, expected: @TypeInfo, left_type: @TypeInfo, right_type: @TypeInfo, src: @char): int
     left: @AST = expr.data._binary.left
     right: @AST = expr.data._binary.right
 
-    left_literal: bool = integer_literal_node(left) != null
-    right_literal: bool = integer_literal_node(right) != null
+    left_untyped: bool = is_untyped_integer_expr(left)
+    right_untyped: bool = is_untyped_integer_expr(right)
 
     if not is_logical_op(expr.data._binary.op):
-        if left_literal and not right_literal:
+        if left_untyped and not right_untyped:
             if not resolve_expr(env, right, right_type, src):
                 return 0
             end
@@ -1694,7 +1674,8 @@ func resolve_binary_operand_types(env: @TypeEnv, expr: @AST, left_type: @TypeInf
             end
 
             return resolve_expr_expected(env, left, right_type, left_type, src)
-        else if right_literal and not left_literal:
+
+        else if right_untyped and not left_untyped:
             if not resolve_expr(env, left, left_type, src):
                 return 0
             end
@@ -1704,6 +1685,15 @@ func resolve_binary_operand_types(env: @TypeEnv, expr: @AST, left_type: @TypeInf
             end
 
             return resolve_expr_expected(env, right, left_type, right_type, src)
+        
+        else if left_untyped and right_untyped and is_integer_arithmetic_op(expr.data._binary.op):
+            if expected != null and is_scalar_fixed_integer(expected):
+                if not resolve_expr_expected(env, left, expected, left_type, src):
+                    return 0
+                end
+
+                return resolve_expr_expected(env, right, expected, right_type, src)
+            end
         end
     end
 
@@ -1715,11 +1705,33 @@ func resolve_binary_operand_types(env: @TypeEnv, expr: @AST, left_type: @TypeInf
 end
 
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+    return resolve_expr_with_expected(env, expr, out, src, null)
+end
+
+func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
+    target: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, expr):
+        prune target
+        return 0
+    end
+
+    result: int = resolve_expr_with_expected(env, expr, out, src, target)
+    prune target
+    return result
+end
+
+func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char, expected: @TypeInfo): int
     if expr == null:
         return 0
     end
 
     if integer_literal_node(expr) != null:
+        if expected != null and is_scalar_fixed_integer(expected):
+            return resolve_integer_literal(env, expr, expected.base, true, out)
+        end
+
         return resolve_integer_literal(env, expr, TOKEN_I32, false, out)
     end
 
@@ -1914,10 +1926,11 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 0
 
     else if expr.kind == AST_BINARY_OP:
+        expr.data._binary.integer_base = 0
         left_type: @TypeInfo = new TypeInfo
         right_type: @TypeInfo = new TypeInfo
 
-        if not resolve_binary_operand_types(env, expr, left_type, right_type, src):
+        if not resolve_binary_operand_types(env, expr, expected, left_type, right_type, src):
             prune left_type
             prune right_type
             return 0
@@ -1953,6 +1966,44 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             prune left_type
             prune right_type
             return 0
+        end
+
+        if not is_logical_op(expr.data._binary.op) and is_scalar_fixed_integer(left_type) and is_scalar_fixed_integer(right_type):
+            if left_type.base != right_type.base:
+                operation: @char = "arithmetic"
+                if is_comparison_op(expr.data._binary.op):
+                    operation = "comparison"
+                end
+
+                mismatch: @char = "mixed-width"
+                if integer_type_signed(left_type.base) != integer_type_signed(right_type.base):
+                    mismatch = "mixed-signedness"
+                end
+
+                message: char[256]
+                snprintf(message, sizeof(message), "%s %s: %s and %s; use an explicit cast", mismatch, operation, integer_type_name(left_type.base), integer_type_name(right_type.base))
+                type_error(env, expr, message)
+
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            if is_comparison_op(expr.data._binary.op):
+                set_plain_type(out, TOKEN_BOOL)
+            else if is_integer_arithmetic_op(expr.data._binary.op):
+                expr.data._binary.integer_base = left_type.base
+                copy_type(out, left_type)
+            else:
+                type_error(env, expr, "unsupported integer operator")
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            prune left_type
+            prune right_type
+            return 1
         end
 
         if is_logical_op(expr.data._binary.op):
@@ -2007,7 +2058,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 return 0
             end
 
-            if (expr.data._binary.op == TOKEN_PLUS or expr.data._binary.op == TOKEN_MINUS) and is_pointer_like_type(left_type) and is_integer_type(right_type):
+            if (expr.data._binary.op == TOKEN_PLUS or expr.data._binary.op == TOKEN_MINUS) and is_pointer_like_type(left_type) and (is_integer_type(right_type) or is_scalar_fixed_integer(right_type)):
                 copy_type(out, left_type)
 
                 if out.array_size != 0:
@@ -2021,7 +2072,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 return 1
             end
 
-            if expr.data._binary.op == TOKEN_PLUS and is_integer_type(left_type) and is_pointer_like_type(right_type):
+            if expr.data._binary.op == TOKEN_PLUS and (is_integer_type(left_type) or is_scalar_fixed_integer(left_type)) and is_pointer_like_type(right_type):
                 copy_type(out, right_type)
 
                 if out.array_size != 0:
@@ -2056,7 +2107,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     else if expr.kind == AST_UNARY_NOT:
         operand_type: @TypeInfo = new TypeInfo
 
-        if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+        if not resolve_expr(env, expr.data._unary.operand, operand_type, src):
             prune operand_type
             return 0
         end
@@ -2067,33 +2118,41 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
-        if !is_condition_type(operand_type):
+        if not is_condition_type(operand_type):
             type_error(env, expr, "not requires a condition-compatible operand")
             prune operand_type
             return 0
         end
 
         prune operand_type
-
         set_plain_type(out, TOKEN_BOOL)
         return 1
 
     else if expr.kind == AST_UNARY_NEG:
+        expr.data._unary.integer_base = 0
         operand_type: @TypeInfo = new TypeInfo
+        resolved: int = 0
 
-        if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+        if expected != null and is_scalar_fixed_integer(expected):
+            resolved = resolve_expr_expected(env, expr.data._unary.operand, expected, operand_type, src)
+        else:
+            resolved = resolve_expr(env, expr.data._unary.operand, operand_type, src)
+        end
+
+        if not resolved:
             prune operand_type
             return 0
         end
 
-        if operand_type.is_union:
-            type_error(env, expr, "semantic union requires explicit type before unary use")
+        if not resolve_type_alias(env, operand_type, expr.data._unary.operand):
             prune operand_type
             return 0
         end
 
-        if is_bool_type(operand_type):
-            type_error(env, expr, "unary minus does not accept bool")
+        if is_scalar_fixed_integer(operand_type):
+            expr.data._unary.integer_base = operand_type.base
+        else if not is_integer_type(operand_type) and not is_decimal_type(operand_type):
+            type_error(env, expr, "unary minus requires an integer, char, or floating-point operand")
             prune operand_type
             return 0
         end

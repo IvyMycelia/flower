@@ -1934,10 +1934,6 @@ prop func parse(ps: @Parser): @AST
                 parser_error(ps, "Expected declaration after prop")
             end
 
-            if ps.error_count > 0:
-                break
-            end
-            
             if decl != null:
                 prop_node: @AST = make_node(ps, AST_PROP)
                 prop_node.data._prop.decl = decl
@@ -1961,6 +1957,10 @@ prop func parse(ps: @Parser): @AST
         else:
             parser_error(ps, "Unexpected top-level statement or declaration")
             parser_sync_until(ps, TOKEN_NEWLINE, TOKEN_EOF)
+        end
+
+        if ps.error_count > 0:
+            break
         end
 
         if node != null:

@@ -61,6 +61,7 @@ test: build
 	sh ./scripts/tests/types/test_integer_print.sh
 	sh ./scripts/tests/types/test_integer_casts.sh
 	sh ./scripts/tests/types/test_parser_errors.sh
+	sh ./scripts/tests/types/test_integer_arithmetic.sh
 
 clean:
 	rm -rf output/
