@@ -62,10 +62,14 @@ test: build
 	sh ./scripts/tests/types/test_integer_casts.sh
 	sh ./scripts/tests/types/test_parser_errors.sh
 	sh ./scripts/tests/types/test_integer_arithmetic.sh
+	sh ./scripts/tests/types/test_integer_unions.sh
 
 clean:
 	rm -rf output/
 	rm -f $(FLOWER_BIN) $(BACKUP_BIN) $(BOOTSTRAP_BIN) $(NEW_C) $(NEW_BIN) $(TEST_C)
 	@echo "Removed artifacts"
+
+clean tests:
+	rm -rf output/
 
 all: build test

@@ -5168,6 +5168,34 @@ if (!(mod_src_typecheck_flo_resolve_type_alias(env, target, expr))) {
 free(target);
 return ((int32_t)(INT64_C(0)));
 }
+if ((target->is_union  &&  mod_src_ast_flo_is_untyped_integer_expr(expr))) {
+int32_t integer_count = ((int32_t)(INT64_C(0)));
+int32_t integer_index = ((int32_t)(-INT64_C(1)));
+TypeInfo* member = malloc(sizeof(TypeInfo));
+int32_t i = ((int32_t)(INT64_C(0)));
+while ((i < target->union_count)) {
+mod_src_typecheck_flo_copy_atom_to_type(member, (target->union_members + i));
+if (mod_src_typecheck_flo_is_scalar_fixed_integer(member)) {
+integer_count = flower_add_i32(integer_count, ((int32_t)(INT64_C(1))));
+integer_index = i;
+}
+i = flower_add_i32(i, ((int32_t)(INT64_C(1))));
+}
+if ((integer_count > ((int32_t)(INT64_C(1))))) {
+mod_src_typecheck_flo_type_error(env, expr, "ambiguous integer-union initializer; use an explicit cast");
+free(member);
+free(target);
+return ((int32_t)(INT64_C(0)));
+}
+if ((integer_count == ((int32_t)(INT64_C(1))))) {
+mod_src_typecheck_flo_copy_atom_to_type(member, (target->union_members + integer_index));
+int32_t result = mod_src_typecheck_flo_resolve_expr_with_expected(env, expr, out, src, member);
+free(member);
+free(target);
+return result;
+}
+free(member);
+}
 int32_t result = mod_src_typecheck_flo_resolve_expr_with_expected(env, expr, out, src, target);
 free(target);
 return result;
@@ -5931,13 +5959,15 @@ if (!(mod_src_typecheck_flo_resolve_type_alias(env, expected_type, ast))) {
 free(expected_type);
 free(value_type);
 return;}
-if (mod_src_typecheck_flo_resolve_expr_expected(env, ast->data._var_decl.value, expected_type, value_type, src)) {
+if (!(mod_src_typecheck_flo_resolve_expr_expected(env, ast->data._var_decl.value, expected_type, value_type, src))) {
+free(expected_type);
+free(value_type);
+return;}
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_decl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, value_type)))) {
 mod_src_typecheck_flo_type_error(env, ast, "variable initializer does not match declared type");
 free(expected_type);
 free(value_type);
 return;}
-}
 ast->data._var_decl.union_member_index = ((int32_t)(INT64_C(0)));
 if ((expected_type->is_union  &&  !(value_type->is_union))) {
 ast->data._var_decl.union_member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, value_type);
@@ -6201,7 +6231,10 @@ if (!(mod_src_typecheck_flo_resolve_type_alias(env, expected_type, curr))) {
 free(expected_type);
 free(value_type);
 return;}
-if (mod_src_typecheck_flo_resolve_expr_expected(env, curr->data._var_decl.value, expected_type, value_type, src)) {
+if (!(mod_src_typecheck_flo_resolve_expr_expected(env, curr->data._var_decl.value, expected_type, value_type, src))) {
+free(expected_type);
+free(value_type);
+return;}
 if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, curr->data._var_decl.value))) {
 free(expected_type);
 free(value_type);
@@ -6211,6 +6244,9 @@ mod_src_typecheck_flo_type_error(env, curr, "variable initializer does not match
 free(expected_type);
 free(value_type);
 return;}
+curr->data._var_decl.union_member_index = ((int32_t)(INT64_C(0)));
+if ((expected_type->is_union  &&  !(value_type->is_union))) {
+curr->data._var_decl.union_member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, value_type);
 }
 free(expected_type);
 free(value_type);

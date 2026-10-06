@@ -1717,6 +1717,41 @@ func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: 
         return 0
     end
 
+    if target.is_union and is_untyped_integer_expr(expr):
+        integer_count: int = 0
+        integer_index: int = -1
+        member: @TypeInfo = new TypeInfo
+
+        i: int = 0
+        while i < target.union_count:
+            copy_atom_to_type(member, target.union_members + i)
+
+            if is_scalar_fixed_integer(member):
+                integer_count = integer_count + 1
+                integer_index = i
+            end
+
+            i = i + 1
+        end
+
+        if integer_count > 1:
+            type_error(env, expr, "ambiguous integer-union initializer; use an explicit cast")
+            prune member
+            prune target
+            return 0
+        end
+
+        if integer_count == 1:
+            copy_atom_to_type(member, target.union_members + integer_index)
+            result: int = resolve_expr_with_expected(env, expr, out, src, member)
+            prune member
+            prune target
+            return result
+        end
+
+        prune member
+    end
+
     result: int = resolve_expr_with_expected(env, expr, out, src, target)
     prune target
     return result
@@ -2600,13 +2635,17 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 return
             end
 
-            if resolve_expr_expected(env, ast.data._var_decl.value, expected_type, value_type, src):
-                if not allow_string_literal_for_target(ast.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
-                    type_error(env, ast, "variable initializer does not match declared type")
-                    prune expected_type
-                    prune value_type
-                    return
-                end
+            if not resolve_expr_expected(env, ast.data._var_decl.value, expected_type, value_type, src):
+                prune expected_type
+                prune value_type
+                return
+            end
+
+            if not allow_string_literal_for_target(ast.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
+                type_error(env, ast, "variable initializer does not match declared type")
+                prune expected_type
+                prune value_type
+                return
             end
 
             ast.data._var_decl.union_member_index = 0
@@ -2918,20 +2957,29 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
                     prune value_type
                     return
                 end
+
+                if not resolve_expr_expected(env, curr.data._var_decl.value, expected_type, value_type, src):
+                    prune expected_type
+                    prune value_type
+                    return
+                end
+
+                if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
+                    prune expected_type
+                    prune value_type
+                    return
+                end
                 
-                if resolve_expr_expected(env, curr.data._var_decl.value, expected_type, value_type, src):
-                    if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
-                        prune expected_type
-                        prune value_type
-                        return
-                    end
-                    
-                    if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
-                        type_error(env, curr, "variable initializer does not match declared type")
-                        prune expected_type
-                        prune value_type
-                        return
-                    end
+                if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
+                    type_error(env, curr, "variable initializer does not match declared type")
+                    prune expected_type
+                    prune value_type
+                    return
+                end
+
+                curr.data._var_decl.union_member_index = 0
+                if expected_type.is_union and not value_type.is_union:
+                    curr.data._var_decl.union_member_index = find_union_member_index(expected_type, value_type)
                 end
 
                 prune expected_type
