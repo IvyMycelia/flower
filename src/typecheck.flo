@@ -20,7 +20,8 @@ struct StructInfo {
     name_start: int,
     name_length: int,
     fields: FieldInfo[128],
-    field_count: int
+    field_count: int,
+    is_raw_union: bool
 }
 
 VAR_BINDING_BASE:   int = 0
@@ -995,6 +996,7 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
     info.name_start = ast.data._struct_def.name_start
     info.name_length = ast.data._struct_def.name_length
     info.field_count = 0
+    info.is_raw_union = false
 
     field: @AST = ast.data._struct_def.fields
     while field != null:
@@ -1026,6 +1028,7 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
     info.name_start = ast.data._union_def.name_start
     info.name_length = ast.data._union_def.name_length
     info.field_count = 0
+    info.is_raw_union = true
 
     field: @AST = ast.data._union_def.fields
     while field != null:
@@ -1079,8 +1082,14 @@ func register_var(env: @TypeEnv, ast: @AST, src: @char): void
     info.src = src
     info.name_start = ast.data._var_decl.name_start
     info.name_length = ast.data._var_decl.name_length
+
     copy_type(&info.typeInfo, &ast.data._var_decl.typeInfo)
-    resolve_type_alias(env, &info.typeInfo, ast)
+
+    if not resolve_type_alias(env, &info.typeInfo, ast):
+        return
+    end
+
+    copy_type(&ast.data._var_decl.typeInfo, &info.typeInfo)
     info.binding_kind = VAR_BINDING_BASE
 
     env.var_count = env.var_count + 1
@@ -1708,6 +1717,134 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     return resolve_expr_with_expected(env, expr, out, src, null)
 end
 
+func check_aggregate_literal_arity(env: @TypeEnv, expr: @AST, expected: @TypeInfo): bool
+    if expr == null:
+        return true
+    end
+
+    if expr.kind != AST_ARRAY_LIT and expr.kind != AST_STRUCT_LIT:
+        return true
+    end
+
+    target: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, expr):
+        prune target
+        return false
+    end
+
+    elements: @AST = null
+    if expr.kind == AST_ARRAY_LIT:
+        elements = expr.data._array.elements
+    else:
+        elements = expr.data._struct_lit.elements
+    end
+
+    found: int = 0
+    element: @AST = elements
+    while element != null:
+        found = found + 1
+        element = element.next
+    end
+
+    if expr.kind == AST_ARRAY_LIT:
+        if target.is_union or target.is_nullable:
+            type_error(env, expr, "array literal requires an array destination")
+            prune target
+            return false
+        end
+
+        if target.arr_size_expr != null:
+            type_error(env, expr, "array literal requires a statically known array length")
+            prune target
+            return false
+        end
+
+        if target.array_size == 0:
+            type_error(env, expr, "array literal requires an array destination")
+            prune target
+            return false
+        end
+
+        if target.array_size == -1:
+            if found == 0:
+                type_error(env, expr, "cannot infer array length from an empty literal")
+                prune target
+                return false
+            end
+        else if found != target.array_size:
+            message: char[256]
+            snprintf(message, sizeof(message), "array literal: expected %d elements, found %d", target.array_size, found)
+            type_error(env, expr, message)
+            prune target
+            return false
+        end
+
+        element_type: @TypeInfo = new TypeInfo
+        copy_type(element_type, target)
+        element_type.array_size = 0
+        element_type.arr_size_expr = null
+
+        element = elements
+        while element != null:
+            if not check_aggregate_literal_arity(env, element, element_type):
+                prune element_type
+                prune target
+                return false
+            end
+
+            element = element.next
+        end
+
+        prune element_type
+        prune target
+        return true
+    end
+
+    if target.is_union or target.is_nullable or target.pointer_depth != 0 or target.array_size != 0 or target.arr_size_expr != null or target.base != TOKEN_IDENTIFIER:
+        type_error(env, expr, "struct literal requires a struct destination")
+        prune target
+        return false
+    end
+
+    info: @StructInfo = lookup_struct(env, target.name_src, target.name_start, target.name_length)
+    if info == null:
+        type_error(env, expr, "could not resolve struct literal destination")
+        prune target
+        return false
+    end
+
+    if info.is_raw_union:
+        prune target
+        return true
+    end
+
+    if found != info.field_count:
+        message: char[256]
+        snprintf(message, sizeof(message), "struct literal: expected %d fields, found %d", info.field_count, found)
+        type_error(env, expr, message)
+        prune target
+        return false
+    end
+
+    index: int = 0
+    element = elements
+    while element != null:
+        field: @FieldInfo = info.fields + index
+        if not check_aggregate_literal_arity(env, element, &field.typeInfo):
+            prune target
+            return false
+        end
+
+        index = index + 1
+        element = element.next
+    end
+
+    prune target
+    return true
+end
+
 func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
     target: @TypeInfo = new TypeInfo
     copy_type(target, expected)
@@ -1760,6 +1897,20 @@ end
 func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char, expected: @TypeInfo): int
     if expr == null:
         return 0
+    end
+
+    if expr.kind == AST_ARRAY_LIT or expr.kind == AST_STRUCT_LIT:
+        if expected == null:
+            type_error(env, expr, "aggregate literal requires a destination")
+            return 0
+        end
+
+        if not check_aggregate_literal_arity(env, expr, expected):
+            return 0
+        end
+
+        copy_type(out, expected)
+        return 1
     end
 
     if integer_literal_node(expr) != null:

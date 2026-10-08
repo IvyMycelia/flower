@@ -63,6 +63,7 @@ test: build
 	sh ./scripts/tests/types/test_parser_errors.sh
 	sh ./scripts/tests/types/test_integer_arithmetic.sh
 	sh ./scripts/tests/types/test_integer_unions.sh
+	sh ./scripts/tests/types/test_aggregate_arity.sh
 
 clean:
 	rm -rf output/

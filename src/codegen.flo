@@ -1660,8 +1660,8 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             gen_expr(struct_elem, out, src)
             if struct_elem.next != null:
                 fprintf(out, ", ")
-                struct_elem = struct_elem.next
             end
+            struct_elem = struct_elem.next
         end
         fprintf(out, "}")
         

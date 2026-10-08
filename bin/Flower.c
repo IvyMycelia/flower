@@ -3650,6 +3650,7 @@ int32_t name_start;
 int32_t name_length;
 FieldInfo fields[128];
 int32_t field_count;
+int is_raw_union;
 } StructInfo;
 int32_t VAR_BINDING_BASE = ((int32_t)(INT64_C(0)));
 int32_t VAR_BINDING_NARROW = ((int32_t)(INT64_C(1)));
@@ -4536,6 +4537,7 @@ info->src = src;
 info->name_start = ast->data._struct_def.name_start;
 info->name_length = ast->data._struct_def.name_length;
 info->field_count = ((int32_t)(INT64_C(0)));
+info->is_raw_union = 0;
 AST* field = ast->data._struct_def.fields;
 while ((field != NULL)) {
 FieldInfo* finfo = (info->fields + info->field_count);
@@ -4563,6 +4565,7 @@ info->src = src;
 info->name_start = ast->data._union_def.name_start;
 info->name_length = ast->data._union_def.name_length;
 info->field_count = ((int32_t)(INT64_C(0)));
+info->is_raw_union = 1;
 AST* field = ast->data._union_def.fields;
 while ((field != NULL)) {
 FieldInfo* finfo = (info->fields + info->field_count);
@@ -4610,7 +4613,9 @@ info->src = src;
 info->name_start = ast->data._var_decl.name_start;
 info->name_length = ast->data._var_decl.name_length;
 mod_src_typecheck_flo_copy_type(&(info->typeInfo), &(ast->data._var_decl.typeInfo));
-mod_src_typecheck_flo_resolve_type_alias(env, &(info->typeInfo), ast);
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, &(info->typeInfo), ast))) {
+return;}
+mod_src_typecheck_flo_copy_type(&(ast->data._var_decl.typeInfo), &(info->typeInfo));
 info->binding_kind = VAR_BINDING_BASE;
 env->var_count = flower_add_i32(env->var_count, ((int32_t)(INT64_C(1))));
 }
@@ -5161,6 +5166,117 @@ return mod_src_typecheck_flo_resolve_expr_with_expected(env, expr, out, src, NUL
 }
 
 
+int mod_src_typecheck_flo_check_aggregate_literal_arity(TypeEnv* env, AST* expr, TypeInfo* expected) {
+if ((expr == NULL)) {
+return 1;
+}
+if (((expr->kind != AST_ARRAY_LIT)  &&  (expr->kind != AST_STRUCT_LIT))) {
+return 1;
+}
+TypeInfo* target = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(target, expected);
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target, expr))) {
+free(target);
+return 0;
+}
+AST* elements = NULL;
+if ((expr->kind == AST_ARRAY_LIT)) {
+elements = expr->data._array.elements;
+}
+else {
+elements = expr->data._struct_lit.elements;
+}
+int32_t found = ((int32_t)(INT64_C(0)));
+AST* element = elements;
+while ((element != NULL)) {
+found = flower_add_i32(found, ((int32_t)(INT64_C(1))));
+element = element->next;
+}
+if ((expr->kind == AST_ARRAY_LIT)) {
+if ((target->is_union  ||  target->is_nullable)) {
+mod_src_typecheck_flo_type_error(env, expr, "array literal requires an array destination");
+free(target);
+return 0;
+}
+if ((target->arr_size_expr != NULL)) {
+mod_src_typecheck_flo_type_error(env, expr, "array literal requires a statically known array length");
+free(target);
+return 0;
+}
+if ((target->array_size == ((int32_t)(INT64_C(0))))) {
+mod_src_typecheck_flo_type_error(env, expr, "array literal requires an array destination");
+free(target);
+return 0;
+}
+if ((target->array_size == ((int32_t)(-INT64_C(1))))) {
+if ((found == ((int32_t)(INT64_C(0))))) {
+mod_src_typecheck_flo_type_error(env, expr, "cannot infer array length from an empty literal");
+free(target);
+return 0;
+}
+}
+else if ((found != target->array_size)) {
+char message[256];
+snprintf(message, sizeof(message), "array literal: expected %d elements, found %d", target->array_size, found);
+mod_src_typecheck_flo_type_error(env, expr, message);
+free(target);
+return 0;
+}
+TypeInfo* element_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(element_type, target);
+element_type->array_size = ((int32_t)(INT64_C(0)));
+element_type->arr_size_expr = NULL;
+element = elements;
+while ((element != NULL)) {
+if (!(mod_src_typecheck_flo_check_aggregate_literal_arity(env, element, element_type))) {
+free(element_type);
+free(target);
+return 0;
+}
+element = element->next;
+}
+free(element_type);
+free(target);
+return 1;
+}
+if ((((((target->is_union  ||  target->is_nullable)  ||  (target->pointer_depth != ((int32_t)(INT64_C(0)))))  ||  (target->array_size != ((int32_t)(INT64_C(0)))))  ||  (target->arr_size_expr != NULL))  ||  (target->base != TOKEN_IDENTIFIER))) {
+mod_src_typecheck_flo_type_error(env, expr, "struct literal requires a struct destination");
+free(target);
+return 0;
+}
+StructInfo* info = mod_src_typecheck_flo_lookup_struct(env, target->name_src, target->name_start, target->name_length);
+if ((info == NULL)) {
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve struct literal destination");
+free(target);
+return 0;
+}
+if (info->is_raw_union) {
+free(target);
+return 1;
+}
+if ((found != info->field_count)) {
+char message[256];
+snprintf(message, sizeof(message), "struct literal: expected %d fields, found %d", info->field_count, found);
+mod_src_typecheck_flo_type_error(env, expr, message);
+free(target);
+return 0;
+}
+int32_t index = ((int32_t)(INT64_C(0)));
+element = elements;
+while ((element != NULL)) {
+FieldInfo* field = (info->fields + index);
+if (!(mod_src_typecheck_flo_check_aggregate_literal_arity(env, element, &(field->typeInfo)))) {
+free(target);
+return 0;
+}
+index = flower_add_i32(index, ((int32_t)(INT64_C(1))));
+element = element->next;
+}
+free(target);
+return 1;
+}
+
+
 int32_t mod_src_typecheck_flo_resolve_expr_expected(TypeEnv* env, AST* expr, TypeInfo* expected, TypeInfo* out, char* src) {
 TypeInfo* target = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_copy_type(target, expected);
@@ -5205,6 +5321,17 @@ return result;
 int32_t mod_src_typecheck_flo_resolve_expr_with_expected(TypeEnv* env, AST* expr, TypeInfo* out, char* src, TypeInfo* expected) {
 if ((expr == NULL)) {
 return ((int32_t)(INT64_C(0)));
+}
+if (((expr->kind == AST_ARRAY_LIT)  ||  (expr->kind == AST_STRUCT_LIT))) {
+if ((expected == NULL)) {
+mod_src_typecheck_flo_type_error(env, expr, "aggregate literal requires a destination");
+return ((int32_t)(INT64_C(0)));
+}
+if (!(mod_src_typecheck_flo_check_aggregate_literal_arity(env, expr, expected))) {
+return ((int32_t)(INT64_C(0)));
+}
+mod_src_typecheck_flo_copy_type(out, expected);
+return ((int32_t)(INT64_C(1)));
 }
 if ((mod_src_ast_flo_integer_literal_node(expr) != NULL)) {
 if (((expected != NULL)  &&  mod_src_typecheck_flo_is_scalar_fixed_integer(expected))) {
@@ -7923,8 +8050,8 @@ while ((struct_elem != NULL)) {
 mod_src_codegen_flo_gen_expr(struct_elem, out, src);
 if ((struct_elem->next != NULL)) {
 fprintf(out, ", ");
-struct_elem = struct_elem->next;
 }
+struct_elem = struct_elem->next;
 }
 fprintf(out, "}");
 }
