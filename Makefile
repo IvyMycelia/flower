@@ -67,6 +67,7 @@ test: build
 	sh ./scripts/tests/types/test_aggregate_types.sh
 	sh ./scripts/tests/types/test_integer_pointer_writes.sh
 	sh ./scripts/tests/types/test_integer_indices.sh
+	sh ./scripts/tests/types/test_integer_array_aliases.sh
 
 clean:
 	rm -rf output/

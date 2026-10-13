@@ -4491,6 +4491,7 @@ int32_t mod_src_typecheck_flo_resolve_expr_expected(TypeEnv* env, AST* expr, Typ
 int32_t mod_src_typecheck_flo_resolve_dot(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
 int32_t mod_src_typecheck_flo_resolve_alias_call(TypeEnv* env, AST* expr, TypeInfo* out, char* src);
 int mod_src_typecheck_flo_resolve_type_alias_depth(TypeEnv* env, TypeInfo* typeInfo, AST* ast, int32_t depth);
+int mod_src_typecheck_flo_resolve_parameter_types(TypeEnv* env, AST* params);
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
 
 
@@ -4505,6 +4506,12 @@ mod_src_typecheck_flo_register_union(env, curr, src);
 }
 else if ((curr->kind == AST_FUNC_DEF)) {
 mod_src_typecheck_flo_register_func(env, curr, src);
+}
+else if ((curr->kind == AST_FORWARD)) {
+if (curr->data._forward.is_func) {
+if (!(mod_src_typecheck_flo_resolve_parameter_types(env, curr->data._forward.params))) {
+return;}
+}
 }
 else if ((curr->kind == AST_TYPE_ALIAS)) {
 mod_src_typecheck_flo_register_type_alias(env, curr, src);
@@ -4549,6 +4556,9 @@ finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
 mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field))) {
+return;}
+mod_src_typecheck_flo_copy_type(&(field->data._struct_field.typeInfo), &(finfo->typeInfo));
 mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
 finfo->is_hidden = field->data._struct_field.is_hidden;
 finfo->is_frozen = field->data._struct_field.is_frozen;
@@ -4577,6 +4587,9 @@ finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
 finfo->name_length = field->data._struct_field.name_length;
 mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field))) {
+return;}
+mod_src_typecheck_flo_copy_type(&(field->data._struct_field.typeInfo), &(finfo->typeInfo));
 mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
 if (finfo->typeInfo.is_union) {
 mod_src_typecheck_flo_type_error(env, field, "semantic union fields are not lowered yet");
@@ -4591,9 +4604,28 @@ env->struct_count = flower_add_i32(env->struct_count, ((int32_t)(INT64_C(1))));
 }
 
 
+int mod_src_typecheck_flo_resolve_parameter_types(TypeEnv* env, AST* params) {
+AST* param = params;
+while ((param != NULL)) {
+TypeInfo* resolved = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(resolved, &(param->data._func_params.typeInfo));
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, resolved, param))) {
+free(resolved);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(&(param->data._func_params.typeInfo), resolved);
+free(resolved);
+param = param->next;
+}
+return 1;
+}
+
+
 void mod_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src) {
 if ((env->func_count >= ((int32_t)(INT64_C(1024))))) {
 mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+return;}
+if (!(mod_src_typecheck_flo_resolve_parameter_types(env, ast->data._func_def.params))) {
 return;}
 FuncInfo* info = (env->funcs + env->func_count);
 info->src = src;

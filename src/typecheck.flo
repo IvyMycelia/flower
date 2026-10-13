@@ -939,6 +939,7 @@ forward func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInf
 forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
+forward func resolve_parameter_types(env: @TypeEnv, params: @AST): bool
 
 forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
@@ -955,6 +956,13 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
 
         else if curr.kind == AST_FUNC_DEF:
             register_func(env, curr, src)
+
+        else if curr.kind == AST_FORWARD:
+            if curr.data._forward.is_func:
+                if not resolve_parameter_types(env, curr.data._forward.params):
+                    return
+                end
+            end
 
         else if curr.kind == AST_TYPE_ALIAS:
             register_type_alias(env, curr, src)
@@ -1004,7 +1012,15 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
+
         copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
+
+        if not resolve_type_alias(env, &finfo.typeInfo, field):
+            return
+        end
+
+        copy_type(&field.data._struct_field.typeInfo, &finfo.typeInfo)
+
         resolve_type_alias(env, &finfo.typeInfo, field)
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
@@ -1036,7 +1052,15 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
+
         copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
+
+        if not resolve_type_alias(env, &finfo.typeInfo, field):
+            return
+        end
+
+        copy_type(&field.data._struct_field.typeInfo, &finfo.typeInfo)
+
         resolve_type_alias(env, &finfo.typeInfo, field)
         if finfo.typeInfo.is_union:
             type_error(env, field, "semantic union fields are not lowered yet")
@@ -1052,11 +1076,36 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
     env.struct_count = env.struct_count + 1
 end
 
+func resolve_parameter_types(env: @TypeEnv, params: @AST): bool
+    param: @AST = params
+
+    while param != null:
+        resolved: @TypeInfo = new TypeInfo
+        copy_type(resolved, &param.data._func_params.typeInfo)
+
+        if not resolve_type_alias(env, resolved, param):
+            prune resolved
+            return false
+        end
+
+        copy_type(&param.data._func_params.typeInfo, resolved)
+        prune resolved
+        param = param.next
+    end
+
+    return true
+end
+
 func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     if env.func_count >= 1024:
         type_error(env, ast, "type environment struct table overflow")
         return
     end
+
+    if not resolve_parameter_types(env, ast.data._func_def.params):
+        return
+    end
+
     info: @FuncInfo = env.funcs + env.func_count
 
     info.src = src
