@@ -45,7 +45,7 @@ bootstrap:
 	NEW_C="./$(NEW_C)" \
 	NEW_BIN="./$(NEW_BIN)" \
 	TEST_C="./$(TEST_C)" \
-	./scripts/build.sh > /dev/null
+	./scripts/build.sh
 	@echo "Verified bootstrap build complete"
 
 rebuild: clean build
