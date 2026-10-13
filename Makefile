@@ -1,9 +1,10 @@
-.PHONY: help build bootstrap rebuild test clean all
+.PHONY: help build bootstrap rebuild test clean clean-tests all
 
-SHELL ?= sh
+SHELL := sh
 
 CC ?= cc
-CFLAGS ?= -std=c99 -w
+CFLAGS ?= -std=c99
+override CFLAGS += -w
 BOOTSTRAP_CFLAGS ?= $(CFLAGS)
 ASAN_CFLAGS ?= -fsanitize=address -fno-omit-frame-pointer
 
@@ -17,23 +18,24 @@ TEST_C := bin/Flower_test.c
 OUT_BIN := output/out
 
 help:
-	@echo "Flower Compiler\t\t:   Build Commands"
-	@echo "\tmake build\t:   Rebuild Flower from source using a C Compiler"
-	@echo "\tmake bootstrap\t:   Self-hosting verification pass"
-	@echo "\tmake rebuild\t:   Clean rebuild Flower"
-	@echo "\tmake test\t:   Run test suite"
-	@echo "\tmake clean\t:   Remove generated build artifacts"
-	@echo "\tmake clean\t:   Remove generated build artifacts"
+	@printf "Flower Compiler\t: Build Commands\n"
+	@printf "\tmake build\t: Rebuild Flower from source\n"
+	@printf "\tmake bootstrap\t: Self-hosting verification pass\n"
+	@printf "\tmake rebuild\t: Clean rebuild Flower\n"
+	@printf "\tmake test\t: Run test suite\n"
+	@printf "\tmake clean\t: Remove generated build artifacts\n"
+	@printf "\tmake clean-tests: Remove test output\n"
 
 build:
-	$(CC) $(CFLAGS) $(FLOWER_C) -o $(FLOWER_BIN)
-	./$(FLOWER_BIN) ./src/main.flo ./bin/Flower_new
-	cp $(NEW_C) $(FLOWER_C)
-	$(CC) $(CFLAGS) $(NEW_C) -o $(FLOWER_BIN)
-	rm -f $(NEW_C) $(NEW_BIN)
+	@$(CC) $(CFLAGS) $(FLOWER_C) -o $(FLOWER_BIN)
+	@./$(FLOWER_BIN) ./src/main.flo ./bin/Flower_new
+	@cp $(NEW_C) $(FLOWER_C)
+	@$(CC) $(CFLAGS) $(FLOWER_C) -o $(FLOWER_BIN)
+	@rm -f $(NEW_C) $(NEW_BIN)
+	@echo "Flower build complete"
 
 bootstrap:
-	CC="$(CC)" \
+	@CC="$(CC)" \
 	CFLAGS="$(CFLAGS)" \
 	BOOTSTRAP_CFLAGS="$(BOOTSTRAP_CFLAGS) $(ASAN_CFLAGS)" \
 	FLOWER_C="./$(FLOWER_C)" \
@@ -43,38 +45,38 @@ bootstrap:
 	NEW_C="./$(NEW_C)" \
 	NEW_BIN="./$(NEW_BIN)" \
 	TEST_C="./$(TEST_C)" \
-	./scripts/build.sh
+	./scripts/build.sh > /dev/null
 	@echo "Verified bootstrap build complete"
 
-rebuild: clean build
 rebuild: clean build
 	@echo "Clean rebuild complete"
 
 test: build
-test: build
-	mkdir -p output
-	./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
-	./$(OUT_BIN)
-	./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
-	./$(OUT_BIN)
-	sh ./scripts/tests/types/test_integers.sh
-	sh ./scripts/tests/types/test_integer_print.sh
-	sh ./scripts/tests/types/test_integer_casts.sh
-	sh ./scripts/tests/types/test_parser_errors.sh
-	sh ./scripts/tests/types/test_integer_arithmetic.sh
-	sh ./scripts/tests/types/test_integer_unions.sh
-	sh ./scripts/tests/types/test_aggregate_arity.sh
-	sh ./scripts/tests/types/test_aggregate_types.sh
-	sh ./scripts/tests/types/test_integer_pointer_writes.sh
-	sh ./scripts/tests/types/test_integer_indices.sh
-	sh ./scripts/tests/types/test_integer_array_aliases.sh
+	@mkdir -p output
+	@./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN) > /dev/null
+	@./$(OUT_BIN)
+	@./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN) > /dev/null
+	@./$(OUT_BIN)
+	@sh ./scripts/tests/types/test_integers.sh
+	@sh ./scripts/tests/types/test_integer_print.sh
+	@sh ./scripts/tests/types/test_integer_casts.sh
+	@sh ./scripts/tests/types/test_parser_errors.sh
+	@sh ./scripts/tests/types/test_integer_arithmetic.sh
+	@sh ./scripts/tests/types/test_integer_unions.sh
+	@sh ./scripts/tests/types/test_aggregate_arity.sh
+	@sh ./scripts/tests/types/test_aggregate_types.sh
+	@sh ./scripts/tests/types/test_integer_pointer_writes.sh
+	@sh ./scripts/tests/types/test_integer_indices.sh
+	@sh ./scripts/tests/types/test_integer_array_aliases.sh
+	@sh ./scripts/tests/types/test_array_lengths.sh
 
 clean:
-	rm -rf output/
-	rm -f $(FLOWER_BIN) $(BACKUP_BIN) $(BOOTSTRAP_BIN) $(NEW_C) $(NEW_BIN) $(TEST_C)
+	@rm -rf output/
+	@rm -f $(FLOWER_BIN) $(BACKUP_BIN) $(BOOTSTRAP_BIN) $(NEW_C) $(NEW_BIN) $(TEST_C)
 	@echo "Removed artifacts"
 
-clean tests:
-	rm -rf output/
+clean-tests:
+	@rm -rf output/
+	@echo "Removed test artifacts"
 
-all: build test
+all: test
