@@ -2195,7 +2195,17 @@ func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: 
         return 1
 
     else if expr.kind == AST_SUBSCRIPT:
-        if !resolve_expr(env, expr.data._subscript.array, out, src):
+        expr.data._subscript.is_string = 0
+
+        previous_errors: int = env.error_count
+        if not resolve_expr(env, expr.data._subscript.array, out, src):
+            if env.error_count == previous_errors:
+                type_error(env, expr, "could not resolve indexed object")
+            end
+            return 0
+        end
+
+        if not resolve_type_alias(env, out, expr.data._subscript.array):
             return 0
         end
 
@@ -2204,13 +2214,28 @@ func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: 
             return 0
         end
 
-        expr.data._subscript.is_string = 0
-
         idx_type: @TypeInfo = new TypeInfo
-        if !resolve_expr(env, expr.data._subscript.index, idx_type, src):
+        previous_errors = env.error_count
+
+        if not resolve_expr(env, expr.data._subscript.index, idx_type, src):
+            if env.error_count == previous_errors:
+                type_error(env, expr.data._subscript.index, "could not resolve subscript index")
+            end
             prune idx_type
             return 0
         end
+
+        if not resolve_type_alias(env, idx_type, expr.data._subscript.index):
+            prune idx_type
+            return 0
+        end
+
+        if not is_scalar_fixed_integer(idx_type):
+            type_error(env, expr.data._subscript.index, "subscript requires an integer type")
+            prune idx_type
+            return 0
+        end
+
         prune idx_type
 
         if is_string_type(out):
@@ -2220,7 +2245,7 @@ func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: 
             return 1
         end
 
-        if out.array_size != 0:
+        if out.array_size != 0 or out.arr_size_expr != null:
             out.array_size = 0
             out.arr_size_expr = null
             out.is_nullable = false

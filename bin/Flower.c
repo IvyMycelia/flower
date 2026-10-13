@@ -5576,16 +5576,36 @@ free(target_type);
 return ((int32_t)(INT64_C(1)));
 }
 else if ((expr->kind == AST_SUBSCRIPT)) {
+expr->data._subscript.is_string = ((int32_t)(INT64_C(0)));
+int32_t previous_errors = env->error_count;
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.array, out, src))) {
+if ((env->error_count == previous_errors)) {
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve indexed object");
+}
+return ((int32_t)(INT64_C(0)));
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, out, expr->data._subscript.array))) {
 return ((int32_t)(INT64_C(0)));
 }
 if (out->is_union) {
 mod_src_typecheck_flo_type_error(env, expr, "semantic union requires explicit cast before indexing");
 return ((int32_t)(INT64_C(0)));
 }
-expr->data._subscript.is_string = ((int32_t)(INT64_C(0)));
 TypeInfo* idx_type = malloc(sizeof(TypeInfo));
+previous_errors = env->error_count;
 if (!(mod_src_typecheck_flo_resolve_expr(env, expr->data._subscript.index, idx_type, src))) {
+if ((env->error_count == previous_errors)) {
+mod_src_typecheck_flo_type_error(env, expr->data._subscript.index, "could not resolve subscript index");
+}
+free(idx_type);
+return ((int32_t)(INT64_C(0)));
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, idx_type, expr->data._subscript.index))) {
+free(idx_type);
+return ((int32_t)(INT64_C(0)));
+}
+if (!(mod_src_typecheck_flo_is_scalar_fixed_integer(idx_type))) {
+mod_src_typecheck_flo_type_error(env, expr->data._subscript.index, "subscript requires an integer type");
 free(idx_type);
 return ((int32_t)(INT64_C(0)));
 }
@@ -5596,7 +5616,7 @@ expr->data._subscript.is_string = ((int32_t)(INT64_C(1)));
 mod_src_typecheck_flo_set_plain_type(out, TOKEN_CHAR);
 return ((int32_t)(INT64_C(1)));
 }
-if ((out->array_size != ((int32_t)(INT64_C(0))))) {
+if (((out->array_size != ((int32_t)(INT64_C(0))))  ||  (out->arr_size_expr != NULL))) {
 out->array_size = ((int32_t)(INT64_C(0)));
 out->arr_size_expr = NULL;
 out->is_nullable = 0;
