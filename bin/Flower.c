@@ -1937,7 +1937,24 @@ if ((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_RBRACK)) {
 typeInfo->array_size = ((int32_t)(-INT64_C(1)));
 }
 else if ((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NUMBER)) {
-typeInfo->array_size = atoi((ps->src + mod_src_parser_flo_parser_peek(ps)->start));
+Token* length_token = mod_src_parser_flo_parser_peek(ps);
+char* digits = (ps->src + length_token->start);
+if ((mod_src_ast_flo_compare_decimal_magnitudes(digits, length_token->length, "0", ((int32_t)(INT64_C(1)))) == ((int32_t)(INT64_C(0))))) {
+mod_src_parser_flo_parser_error(ps, "array length must be greater than zero");
+return 0;
+}
+if ((mod_src_ast_flo_compare_decimal_magnitudes(digits, length_token->length, "2147483647", ((int32_t)(INT64_C(10)))) > ((int32_t)(INT64_C(0))))) {
+mod_src_parser_flo_parser_error(ps, "array length exceeds compiler limit of 2147483647 elements");
+return 0;
+}
+int32_t length_value = ((int32_t)(INT64_C(0)));
+int32_t digit_index = ((int32_t)(INT64_C(0)));
+while ((digit_index < length_token->length)) {
+int32_t digit_value = flower_sub_i32((int32_t)(digits[digit_index]), (int32_t)('0'));
+length_value = flower_add_i32(flower_mul_i32(length_value, ((int32_t)(INT64_C(10)))), digit_value);
+digit_index = flower_add_i32(digit_index, ((int32_t)(INT64_C(1))));
+}
+typeInfo->array_size = length_value;
 mod_src_parser_flo_parser_advance(ps);
 }
 else {
@@ -8712,10 +8729,10 @@ compiler = "cc";
 }
 char build_cmd[1024];
 if (((compiler_flags != NULL)  &&  (compiler_flags[((int32_t)(INT64_C(0)))] != '\0'))) {
-snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -o %s", compiler, compiler_flags, out_c, bin_name);
+snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -w -o %s", compiler, compiler_flags, out_c, bin_name);
 }
 else {
-snprintf(build_cmd, sizeof(build_cmd), "%s %s -o %s", compiler, out_c, bin_name);
+snprintf(build_cmd, sizeof(build_cmd), "%s %s -w -o %s", compiler, out_c, bin_name);
 }
 int32_t build_status = system(build_cmd);
 if ((build_status != ((int32_t)(INT64_C(0))))) {

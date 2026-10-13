@@ -217,8 +217,30 @@ func parse_type_atom(ps: @Parser, typeInfo: @TypeInfo): bool
         if parser_peek(ps).kind == TOKEN_RBRACK:
             typeInfo.array_size = -1
         else if parser_peek(ps).kind == TOKEN_NUMBER:
-            typeInfo.array_size = atoi(ps.src + parser_peek(ps).start)
+            length_token: @Token = parser_peek(ps)
+            digits: @char = ps.src + length_token.start
+
+            if compare_decimal_magnitudes(digits, length_token.length, "0", 1) == 0:
+                parser_error(ps, "array length must be greater than zero")
+                return false
+            end
+
+            if compare_decimal_magnitudes(digits, length_token.length, "2147483647", 10) > 0:
+                parser_error(ps, "array length exceeds compiler limit of 2147483647 elements")
+                return false
+            end
+
+            length_value: int = 0
+            digit_index: int = 0
+            while digit_index < length_token.length:
+                digit_value: int = (digits[digit_index] as int) - ('0' as int)
+                length_value = length_value * 10 + digit_value
+                digit_index = digit_index + 1
+            end
+
+            typeInfo.array_size = length_value
             parser_advance(ps)
+
         else:
             typeInfo.arr_size_expr = parse_expr(ps, 0)
         end

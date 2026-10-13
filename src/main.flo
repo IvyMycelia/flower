@@ -147,9 +147,9 @@ func main(argc: int, argv: @char[]): int
 
             build_cmd: char[1024]
             if compiler_flags != null and compiler_flags[0] != '\0':
-                snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -o %s", compiler, compiler_flags, out_c, bin_name)
+                snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -w -o %s", compiler, compiler_flags, out_c, bin_name)
             else:
-                snprintf(build_cmd, sizeof(build_cmd), "%s %s -o %s", compiler, out_c, bin_name)
+                snprintf(build_cmd, sizeof(build_cmd), "%s %s -w -o %s", compiler, out_c, bin_name)
             end
 
             build_status: int = system(build_cmd)
