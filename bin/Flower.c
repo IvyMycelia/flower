@@ -6239,6 +6239,42 @@ mod_src_typecheck_flo_push_visible_binding(env, src, ast->data._var_ass.name_sta
 free(target_type);
 free(value_type);
 }
+else if ((ast->kind == AST_DEREF_ASS)) {
+TypeInfo* target_type = malloc(sizeof(TypeInfo));
+TypeInfo* value_type = malloc(sizeof(TypeInfo));
+if (!(mod_src_typecheck_flo_lookup_storage_var_type(env, src, ast->data._deref_ass.name_start, ast->data._deref_ass.name_length, target_type))) {
+mod_src_typecheck_flo_type_error(env, ast, "unknown variable in dereference assignment");
+free(value_type);
+free(target_type);
+return;}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target_type, ast))) {
+free(value_type);
+free(target_type);
+return;}
+if (((((target_type->is_union  ||  target_type->is_nullable)  ||  (target_type->pointer_depth <= ((int32_t)(INT64_C(0)))))  ||  (target_type->array_size != ((int32_t)(INT64_C(0)))))  ||  (target_type->arr_size_expr != NULL))) {
+mod_src_typecheck_flo_type_error(env, ast, "dereference assignment requires a concrete pointer type");
+free(value_type);
+free(target_type);
+return;}
+target_type->pointer_depth = flower_sub_i32(target_type->pointer_depth, ((int32_t)(INT64_C(1))));
+int32_t previous_errors = env->error_count;
+if (!(mod_src_typecheck_flo_resolve_expr_expected(env, ast->data._deref_ass.value, target_type, value_type, src))) {
+if ((env->error_count == previous_errors)) {
+mod_src_typecheck_flo_type_error(env, ast, "could not resolve value in dereference assignment");
+}
+free(value_type);
+free(target_type);
+return;}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, value_type, ast->data._deref_ass.value))) {
+free(value_type);
+free(target_type);
+return;}
+if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._deref_ass.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type)))) {
+mod_src_typecheck_flo_type_error(env, ast, "dereference assignment value does not match pointee type");
+}
+free(value_type);
+free(target_type);
+}
 else if ((ast->kind == AST_SUBSCRIPT)) {
 TypeInfo* target_type = malloc(sizeof(TypeInfo));
 if (!(mod_src_typecheck_flo_resolve_expr(env, ast, target_type, src))) {

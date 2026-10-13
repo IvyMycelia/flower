@@ -2968,6 +2968,56 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         prune target_type
         prune value_type
 
+    else if ast.kind == AST_DEREF_ASS:
+        target_type: @TypeInfo = new TypeInfo
+        value_type: @TypeInfo = new TypeInfo
+
+        if not lookup_storage_var_type(env, src, ast.data._deref_ass.name_start, ast.data._deref_ass.name_length, target_type):
+            type_error(env, ast, "unknown variable in dereference assignment")
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if not resolve_type_alias(env, target_type, ast):
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if target_type.is_union or target_type.is_nullable or target_type.pointer_depth <= 0 or target_type.array_size != 0 or target_type.arr_size_expr != null:
+            type_error(env, ast, "dereference assignment requires a concrete pointer type")
+            prune value_type
+            prune target_type
+            return
+        end
+
+        target_type.pointer_depth = target_type.pointer_depth - 1
+
+        previous_errors: int = env.error_count
+        if not resolve_expr_expected(env, ast.data._deref_ass.value, target_type, value_type, src):
+            if env.error_count == previous_errors:
+                type_error(env, ast, "could not resolve value in dereference assignment")
+            end
+
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if not resolve_type_alias(env, value_type, ast.data._deref_ass.value):
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if not allow_string_literal_for_target(ast.data._deref_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
+            type_error(env, ast, "dereference assignment value does not match pointee type")
+        end
+
+        prune value_type
+        prune target_type
+
     else if ast.kind == AST_SUBSCRIPT:
         target_type: @TypeInfo = new TypeInfo
         if !resolve_expr(env, ast, target_type, src):

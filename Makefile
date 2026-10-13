@@ -65,6 +65,7 @@ test: build
 	sh ./scripts/tests/types/test_integer_unions.sh
 	sh ./scripts/tests/types/test_aggregate_arity.sh
 	sh ./scripts/tests/types/test_aggregate_types.sh
+	sh ./scripts/tests/types/test_integer_pointer_writes.sh
 
 clean:
 	rm -rf output/
