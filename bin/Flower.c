@@ -1453,6 +1453,8 @@ int32_t is_readonly;
 
 typedef struct struct_lit {
 AST* elements;
+TypeInfo resolved_type;
+int is_typed;
 } struct_lit;
 int32_t ACCESS_UNKNOWN = ((int32_t)(INT64_C(0)));
 int32_t ACCESS_DOT = ((int32_t)(INT64_C(1)));
@@ -1613,6 +1615,8 @@ AST* next;
 char* src;
 char* filename;
 int32_t start;
+TypeInfo aggregate_union_type;
+int32_t aggregate_union_member_index;
 NodeData data;
 } AST;
 
@@ -5277,6 +5281,114 @@ return 1;
 }
 
 
+int mod_src_typecheck_flo_resolve_aggregate_element(TypeEnv* env, AST* element, TypeInfo* expected, char* src) {
+element->aggregate_union_member_index = ((int32_t)(INT64_C(0)));
+TypeInfo* target = malloc(sizeof(TypeInfo));
+TypeInfo* actual = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(target, expected);
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target, element))) {
+free(actual);
+free(target);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_expr_expected(env, element, target, actual, src))) {
+free(actual);
+free(target);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, actual, element))) {
+free(actual);
+free(target);
+return 0;
+}
+if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(element, target))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target, actual)))) {
+mod_src_typecheck_flo_type_error(env, element, "aggregate element does not match destination type");
+free(actual);
+free(target);
+return 0;
+}
+if ((target->is_union  &&  !(actual->is_union))) {
+int32_t member_index = mod_src_typecheck_flo_find_union_member_index(target, actual);
+if ((member_index == ((int32_t)(INT64_C(0))))) {
+mod_src_typecheck_flo_type_error(env, element, "aggregate element does not select a union member");
+free(actual);
+free(target);
+return 0;
+}
+mod_src_typecheck_flo_copy_type(&(element->aggregate_union_type), target);
+element->aggregate_union_member_index = member_index;
+}
+free(actual);
+free(target);
+return 1;
+}
+
+
+int32_t mod_src_typecheck_flo_resolve_aggregate_literal(TypeEnv* env, AST* expr, TypeInfo* expected, TypeInfo* out, char* src) {
+if (!(mod_src_typecheck_flo_check_aggregate_literal_arity(env, expr, expected))) {
+return ((int32_t)(INT64_C(0)));
+}
+TypeInfo* target = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(target, expected);
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, target, expr))) {
+free(target);
+return ((int32_t)(INT64_C(0)));
+}
+if ((expr->kind == AST_ARRAY_LIT)) {
+TypeInfo* element_type = malloc(sizeof(TypeInfo));
+mod_src_typecheck_flo_copy_type(element_type, target);
+element_type->array_size = ((int32_t)(INT64_C(0)));
+element_type->arr_size_expr = NULL;
+AST* element = expr->data._array.elements;
+while ((element != NULL)) {
+if (!(mod_src_typecheck_flo_resolve_aggregate_element(env, element, element_type, src))) {
+free(element_type);
+free(target);
+return ((int32_t)(INT64_C(0)));
+}
+element = element->next;
+}
+mod_src_typecheck_flo_copy_type(out, target);
+free(element_type);
+free(target);
+return ((int32_t)(INT64_C(1)));
+}
+expr->data._struct_lit.is_typed = 0;
+StructInfo* info = mod_src_typecheck_flo_lookup_struct(env, target->name_src, target->name_start, target->name_length);
+if ((info == NULL)) {
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve struct literal destination");
+free(target);
+return ((int32_t)(INT64_C(0)));
+}
+if (info->is_raw_union) {
+mod_src_typecheck_flo_copy_type(out, target);
+free(target);
+return ((int32_t)(INT64_C(1)));
+}
+int32_t index = ((int32_t)(INT64_C(0)));
+AST* element = expr->data._struct_lit.elements;
+while ((element != NULL)) {
+FieldInfo* field = (info->fields + index);
+if ((((current_type_module != NULL)  &&  (field->src != current_type_module->src))  &&  field->is_hidden)) {
+mod_src_typecheck_flo_type_error(env, element, "cannot initialize a hidden field from this module");
+free(target);
+return ((int32_t)(INT64_C(0)));
+}
+if (!(mod_src_typecheck_flo_resolve_aggregate_element(env, element, &(field->typeInfo), src))) {
+free(target);
+return ((int32_t)(INT64_C(0)));
+}
+index = flower_add_i32(index, ((int32_t)(INT64_C(1))));
+element = element->next;
+}
+mod_src_typecheck_flo_copy_type(&(expr->data._struct_lit.resolved_type), target);
+expr->data._struct_lit.is_typed = 1;
+mod_src_typecheck_flo_copy_type(out, target);
+free(target);
+return ((int32_t)(INT64_C(1)));
+}
+
+
 int32_t mod_src_typecheck_flo_resolve_expr_expected(TypeEnv* env, AST* expr, TypeInfo* expected, TypeInfo* out, char* src) {
 TypeInfo* target = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_copy_type(target, expected);
@@ -5327,11 +5439,7 @@ if ((expected == NULL)) {
 mod_src_typecheck_flo_type_error(env, expr, "aggregate literal requires a destination");
 return ((int32_t)(INT64_C(0)));
 }
-if (!(mod_src_typecheck_flo_check_aggregate_literal_arity(env, expr, expected))) {
-return ((int32_t)(INT64_C(0)));
-}
-mod_src_typecheck_flo_copy_type(out, expected);
-return ((int32_t)(INT64_C(1)));
+return mod_src_typecheck_flo_resolve_aggregate_literal(env, expr, expected, out, src);
 }
 if ((mod_src_ast_flo_integer_literal_node(expr) != NULL)) {
 if (((expected != NULL)  &&  mod_src_typecheck_flo_is_scalar_fixed_integer(expected))) {
@@ -7440,6 +7548,13 @@ while ((curr != NULL)) {
 if ((curr->kind == AST_VAR_DECL)) {
 mod_src_codegen_flo_collect_semantic_union_type(&(curr->data._var_decl.typeInfo));
 }
+else if ((curr->kind == AST_STRUCT_DEF)) {
+AST* field = curr->data._struct_def.fields;
+while ((field != NULL)) {
+mod_src_codegen_flo_collect_semantic_union_type(&(field->data._struct_field.typeInfo));
+field = field->next;
+}
+}
 else if ((curr->kind == AST_FUNC_DEF)) {
 AST* param = curr->data._func_def.params;
 while ((param != NULL)) {
@@ -7473,6 +7588,13 @@ else if (((curr->kind == AST_PROP)  &&  (curr->data._prop.decl != NULL))) {
 AST* decl = curr->data._prop.decl;
 if ((decl->kind == AST_VAR_DECL)) {
 mod_src_codegen_flo_collect_semantic_union_type(&(decl->data._var_decl.typeInfo));
+}
+else if ((curr->kind == AST_STRUCT_DEF)) {
+AST* field = decl->data._struct_def.fields;
+while ((field != NULL)) {
+mod_src_codegen_flo_collect_semantic_union_type(&(field->data._struct_field.typeInfo));
+field = field->next;
+}
 }
 else if ((decl->kind == AST_FUNC_DEF)) {
 AST* param = decl->data._func_def.params;
@@ -7944,6 +8066,16 @@ fprintf(out, "))");
 }
 
 
+void mod_src_codegen_flo_gen_aggregate_element(AST* element, FILE* out, char* src) {
+if ((element->aggregate_union_member_index != ((int32_t)(INT64_C(0))))) {
+mod_src_codegen_flo_gen_packed_union_value(&(element->aggregate_union_type), element->aggregate_union_member_index, element, out, src);
+}
+else {
+mod_src_codegen_flo_gen_expr(element, out, src);
+}
+}
+
+
 void mod_src_codegen_flo_gen_expr(AST* ast, FILE* out, char* src) {
 if ((ast->kind == AST_VAR_REF)) {
 fprintf(out, "%.*s", ast->data._var_ref.name_length, (src + ast->data._var_ref.name_start));
@@ -8035,7 +8167,7 @@ else if ((ast->kind == AST_ARRAY_LIT)) {
 fprintf(out, "{");
 AST* elem = ast->data._array.elements;
 while ((elem != NULL)) {
-mod_src_codegen_flo_gen_expr(elem, out, src);
+mod_src_codegen_flo_gen_aggregate_element(elem, out, src);
 if ((elem->next != NULL)) {
 fprintf(out, ", ");
 }
@@ -8044,16 +8176,24 @@ elem = elem->next;
 fprintf(out, "}");
 }
 else if ((ast->kind == AST_STRUCT_LIT)) {
+if (ast->data._struct_lit.is_typed) {
+fprintf(out, "((");
+mod_src_codegen_flo_typeinfo_to_string(&(ast->data._struct_lit.resolved_type), out, src);
+fprintf(out, ")");
+}
 fprintf(out, "{");
 AST* struct_elem = ast->data._struct_lit.elements;
 while ((struct_elem != NULL)) {
-mod_src_codegen_flo_gen_expr(struct_elem, out, src);
+mod_src_codegen_flo_gen_aggregate_element(struct_elem, out, src);
 if ((struct_elem->next != NULL)) {
 fprintf(out, ", ");
 }
 struct_elem = struct_elem->next;
 }
 fprintf(out, "}");
+if (ast->data._struct_lit.is_typed) {
+fprintf(out, ")");
+}
 }
 else if ((ast->kind == AST_CAST)) {
 if ((ast->data._cast.lower_kind == CAST_LOWER_UNION_EXTRACT)) {

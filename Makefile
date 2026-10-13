@@ -3,7 +3,7 @@
 SHELL ?= sh
 
 CC ?= cc
-CFLAGS ?= -std=c99
+CFLAGS ?= -std=c99 -w
 BOOTSTRAP_CFLAGS ?= $(CFLAGS)
 ASAN_CFLAGS ?= -fsanitize=address -fno-omit-frame-pointer
 
@@ -64,6 +64,7 @@ test: build
 	sh ./scripts/tests/types/test_integer_arithmetic.sh
 	sh ./scripts/tests/types/test_integer_unions.sh
 	sh ./scripts/tests/types/test_aggregate_arity.sh
+	sh ./scripts/tests/types/test_aggregate_types.sh
 
 clean:
 	rm -rf output/

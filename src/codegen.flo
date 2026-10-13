@@ -903,6 +903,13 @@ func collect_semantic_union_types_in_list(list: @AST): void
         if curr.kind == AST_VAR_DECL:
             collect_semantic_union_type(&curr.data._var_decl.typeInfo)
 
+        else if curr.kind == AST_STRUCT_DEF:
+            field: @AST = curr.data._struct_def.fields
+            while field != null:
+                collect_semantic_union_type(&field.data._struct_field.typeInfo)
+                field = field.next
+            end
+
         else if curr.kind == AST_FUNC_DEF:
             param: @AST = curr.data._func_def.params
             while param != null:
@@ -939,6 +946,14 @@ func collect_semantic_union_types_in_list(list: @AST): void
 
             if decl.kind == AST_VAR_DECL:
                 collect_semantic_union_type(&decl.data._var_decl.typeInfo)
+
+            else if curr.kind == AST_STRUCT_DEF:
+                field: @AST = decl.data._struct_def.fields
+                while field != null:
+                    collect_semantic_union_type(&field.data._struct_field.typeInfo)
+                    field = field.next
+                end
+
             else if decl.kind == AST_FUNC_DEF:
                 param: @AST = decl.data._func_def.params
                 while param != null:
@@ -1548,6 +1563,14 @@ func gen_integer_literal(literal: @AST, negative: bool, out: @FILE): void
     fprintf(out, "))")
 end
 
+func gen_aggregate_element(element: @AST, out: @FILE, src: @char): void
+    if element.aggregate_union_member_index != 0:
+        gen_packed_union_value(&element.aggregate_union_type, element.aggregate_union_member_index, element, out, src)
+    else:
+        gen_expr(element, out, src)
+    end
+end
+
 func gen_expr(ast: @AST, out: @FILE, src: @char): void
     if ast.kind == AST_VAR_REF:
         fprintf(out, "%.*s", ast.data._var_ref.name_length, src + ast.data._var_ref.name_start)
@@ -1645,7 +1668,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "{")
         elem: @AST = ast.data._array.elements
         while elem != null:
-            gen_expr(elem, out, src)
+            gen_aggregate_element(elem, out, src)
             if elem.next != null:
                 fprintf(out, ", ")
             end
@@ -1654,16 +1677,26 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "}")
         
     else if ast.kind == AST_STRUCT_LIT:
+        if ast.data._struct_lit.is_typed:
+            fprintf(out, "((")
+            typeinfo_to_string(&ast.data._struct_lit.resolved_type, out, src)
+            fprintf(out, ")")
+        end
+
         fprintf(out, "{")
         struct_elem: @AST = ast.data._struct_lit.elements
         while struct_elem != null:
-            gen_expr(struct_elem, out, src)
+            gen_aggregate_element(struct_elem, out, src)
             if struct_elem.next != null:
                 fprintf(out, ", ")
             end
             struct_elem = struct_elem.next
         end
         fprintf(out, "}")
+
+        if ast.data._struct_lit.is_typed:
+            fprintf(out, ")")
+        end
         
     else if ast.kind == AST_CAST:
         if ast.data._cast.lower_kind == CAST_LOWER_UNION_EXTRACT:

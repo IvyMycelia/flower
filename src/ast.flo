@@ -279,6 +279,8 @@ struct struct_field {
 
 struct struct_lit {
     elements: @AST,
+    resolved_type: TypeInfo,
+    is_typed: bool
 }
 
 
@@ -444,6 +446,9 @@ struct AST {
     filename: @char,
     start: int,
 
+    aggregate_union_type: TypeInfo,
+    aggregate_union_member_index: int,
+    
     data: NodeData
 }
 

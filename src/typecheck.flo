@@ -1845,6 +1845,136 @@ func check_aggregate_literal_arity(env: @TypeEnv, expr: @AST, expected: @TypeInf
     return true
 end
 
+func resolve_aggregate_element(env: @TypeEnv, element: @AST, expected: @TypeInfo, src: @char): bool
+    element.aggregate_union_member_index = 0
+
+    target: @TypeInfo = new TypeInfo
+    actual: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, element):
+        prune actual
+        prune target
+        return false
+    end
+
+    if not resolve_expr_expected(env, element, target, actual, src):
+        prune actual
+        prune target
+        return false
+    end
+
+    if not resolve_type_alias(env, actual, element):
+        prune actual
+        prune target
+        return false
+    end
+
+    if not allow_string_literal_for_target(element, target) and not can_implicitly_convert(target, actual):
+        type_error(env, element, "aggregate element does not match destination type")
+        prune actual
+        prune target
+        return false
+    end
+
+    if target.is_union and not actual.is_union:
+        member_index: int = find_union_member_index(target, actual)
+
+        if member_index == 0:
+            type_error(env, element, "aggregate element does not select a union member")
+            prune actual
+            prune target
+            return false
+        end
+
+        copy_type(&element.aggregate_union_type, target)
+        element.aggregate_union_member_index = member_index
+    end
+
+    prune actual
+    prune target
+    return true
+end
+
+func resolve_aggregate_literal(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
+    if not check_aggregate_literal_arity(env, expr, expected):
+        return 0
+    end
+
+    target: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, expr):
+        prune target
+        return 0
+    end
+
+    if expr.kind == AST_ARRAY_LIT:
+        element_type: @TypeInfo = new TypeInfo
+        copy_type(element_type, target)
+        element_type.array_size = 0
+        element_type.arr_size_expr = null
+
+        element: @AST = expr.data._array.elements
+        while element != null:
+            if not resolve_aggregate_element(env, element, element_type, src):
+                prune element_type
+                prune target
+                return 0
+            end
+
+            element = element.next
+        end
+
+        copy_type(out, target)
+        prune element_type
+        prune target
+        return 1
+    end
+
+    expr.data._struct_lit.is_typed = false
+
+    info: @StructInfo = lookup_struct(env, target.name_src, target.name_start, target.name_length)
+    if info == null:
+        type_error(env, expr, "could not resolve struct literal destination")
+        prune target
+        return 0
+    end
+
+    if info.is_raw_union:
+        copy_type(out, target)
+        prune target
+        return 1
+    end
+
+    index: int = 0
+    element: @AST = expr.data._struct_lit.elements
+    while element != null:
+        field: @FieldInfo = info.fields + index
+
+        if current_type_module != null and field.src != current_type_module.src and field.is_hidden:
+            type_error(env, element, "cannot initialize a hidden field from this module")
+            prune target
+            return 0
+        end
+
+        if not resolve_aggregate_element(env, element, &field.typeInfo, src):
+            prune target
+            return 0
+        end
+
+        index = index + 1
+        element = element.next
+    end
+
+    copy_type(&expr.data._struct_lit.resolved_type, target)
+    expr.data._struct_lit.is_typed = true
+    copy_type(out, target)
+
+    prune target
+    return 1
+end
+
 func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
     target: @TypeInfo = new TypeInfo
     copy_type(target, expected)
@@ -1905,12 +2035,7 @@ func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: 
             return 0
         end
 
-        if not check_aggregate_literal_arity(env, expr, expected):
-            return 0
-        end
-
-        copy_type(out, expected)
-        return 1
+        return resolve_aggregate_literal(env, expr, expected, out, src)
     end
 
     if integer_literal_node(expr) != null:
