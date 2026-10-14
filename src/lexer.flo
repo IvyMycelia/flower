@@ -15,7 +15,7 @@ func add_token(ts: @TokenStream, kind: int, start: int, length: int): void
             ts.capacity = ts.capacity * 2
         end
 
-        ts.data = realloc(ts.data, ts.capacity * sizeof(Token))
+        ts.data = realloc(ts.data, (ts.capacity as u64) * (sizeof(Token) as u64))
         
         if (ts.data == null):
             print("Memory allocation failed\n")

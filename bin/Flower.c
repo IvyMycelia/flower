@@ -1,5 +1,8 @@
 #include <stdint.h>
 #include <limits.h>
+#if SIZE_MAX > UINT64_MAX
+#error Flower sizeof requires size_t to fit in u64
+#endif
 #if CHAR_BIT != 8 || INT_MAX != 2147483647 || INT_MIN != (-2147483647 - 1)
 #error Flower C backend requires 8-bit bytes and a signed 32-bit C int type
 #endif
@@ -357,8 +360,8 @@ return NULL;
 char resolved[1024];
 if ((((import_path[((int32_t)(INT64_C(0)))] == '.')  &&  (import_path[((int32_t)(INT64_C(1)))] == '/'))  ||  (((import_path[((int32_t)(INT64_C(0)))] == '.')  &&  (import_path[((int32_t)(INT64_C(1)))] == '.'))  &&  (import_path[((int32_t)(INT64_C(2)))] == '/')))) {
 char dir[1024];
-mod_src_stdlib_cstr_flo_copy_n(dir, importing_file, flower_sub_i32(sizeof(dir), ((int32_t)(INT64_C(1)))));
-dir[flower_sub_i32(sizeof(dir), ((int32_t)(INT64_C(1))))] = '\0';
+mod_src_stdlib_cstr_flo_copy_n(dir, importing_file, flower_sub_i32(flower_integer_i32((uint64_t)(((uint64_t)sizeof(dir)))), ((int32_t)(INT64_C(1)))));
+dir[flower_sub_u64(((uint64_t)sizeof(dir)), ((uint64_t)(UINT64_C(1))))] = '\0';
 char* last_slash = mod_src_stdlib_cstr_flo_find_last(dir, '/');
 if (last_slash) {
 last_slash = (last_slash + ((int32_t)(INT64_C(1))));
@@ -367,14 +370,14 @@ last_slash = (last_slash + ((int32_t)(INT64_C(1))));
 else {
 mod_src_stdlib_cstr_flo_copy(dir, "./");
 }
-if ((flower_add_i32(flower_add_i32(mod_src_stdlib_cstr_flo_len(dir), mod_src_stdlib_cstr_flo_len(import_path)), ((int32_t)(INT64_C(1)))) > sizeof(resolved))) {
+if ((flower_add_i32(flower_add_i32(mod_src_stdlib_cstr_flo_len(dir), mod_src_stdlib_cstr_flo_len(import_path)), ((int32_t)(INT64_C(1)))) > flower_integer_i32((uint64_t)(((uint64_t)sizeof(resolved)))))) {
 printf("%sPath too long: %s%s%s\n", RED, dir, import_path, RESET);
 return NULL;
 }
-snprintf(resolved, sizeof(resolved), "%s%s", dir, (import_path + ((int32_t)(INT64_C(2)))));
+snprintf(resolved, ((uint64_t)sizeof(resolved)), "%s%s", dir, (import_path + ((int32_t)(INT64_C(2)))));
 }
 else {
-snprintf(resolved, sizeof(resolved), "%s/%s", project_root, import_path);
+snprintf(resolved, ((uint64_t)sizeof(resolved)), "%s/%s", project_root, import_path);
 }
 return mod_src_stdlib_cstr_flo_dup(resolved);
 }
@@ -512,7 +515,7 @@ ts->capacity = ((int32_t)(INT64_C(64)));
 else {
 ts->capacity = flower_mul_i32(ts->capacity, ((int32_t)(INT64_C(2))));
 }
-ts->data = realloc(ts->data, flower_mul_i32(ts->capacity, sizeof(Token)));
+ts->data = realloc(ts->data, flower_mul_u64(flower_integer_u64((uint64_t)(ts->capacity)), flower_integer_u64((uint64_t)(((uint64_t)sizeof(Token))))));
 if ((ts->data == NULL)) {
 flower_print_string(((flower_string){ "Memory allocation failed\n", (int)(sizeof("Memory allocation failed\n") - 1) }));
 return;}
@@ -1756,7 +1759,7 @@ Token* mod_src_parser_flo_parser_peek(Parser* ps);
 
 
 AST* mod_src_parser_flo_make_node(Parser* ps, int32_t kind) {
-AST* node = calloc(((int32_t)(INT64_C(1))), sizeof(AST));
+AST* node = calloc(((int32_t)(INT64_C(1))), ((uint64_t)sizeof(AST)));
 node->kind = kind;
 node->src = ps->src;
 node->start = mod_src_parser_flo_parser_peek(ps)->start;
@@ -1825,7 +1828,7 @@ int32_t mod_src_parser_flo_parser_expect(Parser* ps, int32_t kind) {
 Token* curr_tok = mod_src_parser_flo_parser_peek(ps);
 if ((curr_tok->kind != kind)) {
 char message[128];
-snprintf(message, sizeof(message), "Expected token: %s but got %s", mod_src_lexer_flo_token_kind_name(kind), mod_src_lexer_flo_token_kind_name(curr_tok->kind));
+snprintf(message, ((uint64_t)sizeof(message)), "Expected token: %s but got %s", mod_src_lexer_flo_token_kind_name(kind), mod_src_lexer_flo_token_kind_name(curr_tok->kind));
 mod_src_parser_flo_parser_error(ps, message);
 mod_src_parser_flo_parser_advance(ps);
 return ((int32_t)(INT64_C(0)));
@@ -2373,7 +2376,7 @@ return node;
 Token* var = mod_src_parser_flo_parser_advance(ps);
 if ((var->kind != TOKEN_IDENTIFIER)) {
 char message[128];
-snprintf(message, sizeof(message), "Expected loop variable after for, got %s\n", mod_src_lexer_flo_token_kind_name(var->kind));
+snprintf(message, ((uint64_t)sizeof(message)), "Expected loop variable after for, got %s\n", mod_src_lexer_flo_token_kind_name(var->kind));
 mod_src_parser_flo_parser_error(ps, message);
 return node;
 }
@@ -2387,7 +2390,7 @@ node->data._for_loop.from = from;
 Token* op_range = mod_src_parser_flo_parser_advance(ps);
 if (((op_range->kind != TOKEN_DOTDOT)  &&  (op_range->kind != TOKEN_DOTDOTEQ))) {
 char message[128];
-snprintf(message, sizeof(message), "Expected range operator `..` OR `..=`, got %s\n", mod_src_lexer_flo_token_kind_name(op_range->kind));
+snprintf(message, ((uint64_t)sizeof(message)), "Expected range operator `..` OR `..=`, got %s\n", mod_src_lexer_flo_token_kind_name(op_range->kind));
 mod_src_parser_flo_parser_error(ps, message);
 return node;
 }
@@ -2515,7 +2518,7 @@ return mod_src_parser_flo_parse_dot_ass(ps);
 }
 else {
 char message[128];
-snprintf(message, sizeof(message), "Unexpected token while parsing statement after identifier: %s", mod_src_lexer_flo_token_kind_name(mod_src_lexer_flo_peek(ps->ts, flower_add_i32(ps->pos, ((int32_t)(INT64_C(1)))))->kind));
+snprintf(message, ((uint64_t)sizeof(message)), "Unexpected token while parsing statement after identifier: %s", mod_src_lexer_flo_token_kind_name(mod_src_lexer_flo_peek(ps->ts, flower_add_i32(ps->pos, ((int32_t)(INT64_C(1)))))->kind));
 mod_src_parser_flo_parser_error(ps, message);
 return NULL;
 }
@@ -2588,7 +2591,7 @@ return node;
 }
 else {
 char message[128];
-snprintf(message, sizeof(message), "Unexpected token while parsing statement: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
+snprintf(message, ((uint64_t)sizeof(message)), "Unexpected token while parsing statement: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
 mod_src_parser_flo_parser_error(ps, message);
 mod_src_parser_flo_parser_advance(ps);
 return NULL;
@@ -2864,7 +2867,7 @@ return node;
 }
 else {
 char message[128];
-snprintf(message, sizeof(message), "parse_primary: unexpected token kind: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
+snprintf(message, ((uint64_t)sizeof(message)), "parse_primary: unexpected token kind: %s", mod_src_lexer_flo_token_kind_name(mod_src_parser_flo_parser_peek(ps)->kind));
 mod_src_parser_flo_parser_error(ps, message);
 return NULL;
 }
@@ -3490,7 +3493,7 @@ char out[512];
 mod_src_stdlib_cstr_flo_copy(out, "mod_");
 int32_t i = ((int32_t)(INT64_C(0)));
 int32_t j = ((int32_t)(INT64_C(4)));
-while (((rel[i] != '\0')  &&  (j < flower_sub_i32(sizeof(out), ((int32_t)(INT64_C(1))))))) {
+while (((rel[i] != '\0')  &&  (j < flower_sub_i32(flower_integer_i32((uint64_t)(((uint64_t)sizeof(out)))), ((int32_t)(INT64_C(1))))))) {
 char c = rel[i];
 if (isalnum(c)) {
 out[j] = c;
@@ -3602,7 +3605,7 @@ if (import_ast->data._import.is_system) {
 return NULL;
 }
 char raw_path[256];
-snprintf(raw_path, sizeof(raw_path), "%.*s", flower_sub_i32(import_ast->data._import.path_length, ((int32_t)(INT64_C(2)))), ((src + import_ast->data._import.path_start) + ((int32_t)(INT64_C(1)))));
+snprintf(raw_path, ((uint64_t)sizeof(raw_path)), "%.*s", flower_sub_i32(import_ast->data._import.path_length, ((int32_t)(INT64_C(2)))), ((src + import_ast->data._import.path_start) + ((int32_t)(INT64_C(1)))));
 return mod_src_globals_flo_resolve_path(current_path, raw_path);
 }
 
@@ -5151,7 +5154,7 @@ return ((int32_t)(INT64_C(0)));
 int negative = (expr->kind == AST_UNARY_NEG);
 char message[256];
 if ((negative  &&  !(mod_src_ast_flo_integer_type_signed(base)))) {
-snprintf(message, sizeof(message), "negative integer literal cannot initialize %s", mod_src_ast_flo_integer_type_name(base));
+snprintf(message, ((uint64_t)sizeof(message)), "negative integer literal cannot initialize %s", mod_src_ast_flo_integer_type_name(base));
 mod_src_typecheck_flo_type_error(env, expr, message);
 return ((int32_t)(INT64_C(0)));
 }
@@ -5160,10 +5163,10 @@ char* digits = (literal->src + literal->data._integer_lit.start);
 int32_t length = literal->data._integer_lit.length;
 if ((mod_src_ast_flo_compare_decimal_magnitudes(digits, length, limit, mod_src_stdlib_cstr_flo_len(limit)) > ((int32_t)(INT64_C(0))))) {
 if (contextual) {
-snprintf(message, sizeof(message), "integer literal outside range of %s", mod_src_ast_flo_integer_type_name(base));
+snprintf(message, ((uint64_t)sizeof(message)), "integer literal outside range of %s", mod_src_ast_flo_integer_type_name(base));
 }
 else {
-snprintf(message, sizeof(message), "integer literal outside default i32 range; provide an explicit integer type");
+snprintf(message, ((uint64_t)sizeof(message)), "integer literal outside default i32 range; provide an explicit integer type");
 }
 mod_src_typecheck_flo_type_error(env, expr, message);
 return ((int32_t)(INT64_C(0)));
@@ -5270,7 +5273,7 @@ return 0;
 }
 else if ((found != target->array_size)) {
 char message[256];
-snprintf(message, sizeof(message), "array literal: expected %d elements, found %d", target->array_size, found);
+snprintf(message, ((uint64_t)sizeof(message)), "array literal: expected %d elements, found %d", target->array_size, found);
 mod_src_typecheck_flo_type_error(env, expr, message);
 free(target);
 return 0;
@@ -5309,7 +5312,7 @@ return 1;
 }
 if ((found != info->field_count)) {
 char message[256];
-snprintf(message, sizeof(message), "struct literal: expected %d fields, found %d", info->field_count, found);
+snprintf(message, ((uint64_t)sizeof(message)), "struct literal: expected %d fields, found %d", info->field_count, found);
 mod_src_typecheck_flo_type_error(env, expr, message);
 free(target);
 return 0;
@@ -5726,7 +5729,7 @@ if ((mod_src_ast_flo_integer_type_signed(left_type->base) != mod_src_ast_flo_int
 mismatch = "mixed-signedness";
 }
 char message[256];
-snprintf(message, sizeof(message), "%s %s: %s and %s; use an explicit cast", mismatch, operation, mod_src_ast_flo_integer_type_name(left_type->base), mod_src_ast_flo_integer_type_name(right_type->base));
+snprintf(message, ((uint64_t)sizeof(message)), "%s %s: %s and %s; use an explicit cast", mismatch, operation, mod_src_ast_flo_integer_type_name(left_type->base), mod_src_ast_flo_integer_type_name(right_type->base));
 mod_src_typecheck_flo_type_error(env, expr, message);
 free(left_type);
 free(right_type);
@@ -5988,7 +5991,7 @@ free(target_type);
 return ((int32_t)(INT64_C(1)));
 }
 else if ((expr->kind == AST_SIZEOF)) {
-mod_src_typecheck_flo_set_plain_type(out, TOKEN_I32);
+mod_src_typecheck_flo_set_plain_type(out, TOKEN_U64);
 return ((int32_t)(INT64_C(1)));
 }
 else if ((expr->kind == AST_FLOAT_LIT)) {
@@ -6160,7 +6163,7 @@ while ((j < i)) {
 TypeAtom* previous = (typeInfo->union_members + j);
 if ((mod_src_typecheck_flo_is_scalar_integer_atom(previous)  &&  mod_src_typecheck_flo_union_atom_exact_match(member, previous))) {
 char message[256];
-snprintf(message, sizeof(message), "duplicate canonical integer member: %s", mod_src_ast_flo_integer_type_name(member->base));
+snprintf(message, ((uint64_t)sizeof(message)), "duplicate canonical integer member: %s", mod_src_ast_flo_integer_type_name(member->base));
 mod_src_typecheck_flo_type_error(env, ast, message);
 return 0;
 }
@@ -6905,6 +6908,9 @@ mod_src_codegen_flo_emit_integer_arithmetic_family(out, TOKEN_U64);
 void mod_src_codegen_flo_emit_string_runtime(FILE* out) {
 fprintf(out, "#include <stdint.h>\n");
 fprintf(out, "#include <limits.h>\n");
+fprintf(out, "#if SIZE_MAX > UINT64_MAX\n");
+fprintf(out, "#error Flower sizeof requires size_t to fit in u64\n");
+fprintf(out, "#endif\n");
 fprintf(out, "#if CHAR_BIT != 8 || INT_MAX != 2147483647 || INT_MIN != (-2147483647 - 1)\n");
 fprintf(out, "#error Flower C backend requires 8-bit bytes and a signed 32-bit C int type\n");
 fprintf(out, "#endif\n");
@@ -6965,7 +6971,7 @@ AST* curr = m->ast;
 while ((curr != NULL)) {
 if (((curr->kind == AST_IMPORT)  &&  curr->data._import.is_system)) {
 char name[64];
-snprintf(name, sizeof(name), "%.*s", curr->data._import.path_length, (m->src + curr->data._import.path_start));
+snprintf(name, ((uint64_t)sizeof(name)), "%.*s", curr->data._import.path_length, (m->src + curr->data._import.path_start));
 if (mod_src_stdlib_cstr_flo_eq(name, "stdio")) {
 need_stdio = ((int32_t)(INT64_C(1)));
 }
@@ -8029,12 +8035,12 @@ void mod_src_codegen_flo_gen_import(AST* ast, FILE* out, char* src) {
 if (ast->data._import.is_system) {
 return;}
 char raw_path[256];
-snprintf(raw_path, sizeof(raw_path), "%.*s", flower_sub_i32(ast->data._import.path_length, ((int32_t)(INT64_C(2)))), ((src + ast->data._import.path_start) + ((int32_t)(INT64_C(1)))));
+snprintf(raw_path, ((uint64_t)sizeof(raw_path)), "%.*s", flower_sub_i32(ast->data._import.path_length, ((int32_t)(INT64_C(2)))), ((src + ast->data._import.path_start) + ((int32_t)(INT64_C(1)))));
 char* path = mod_src_globals_flo_resolve_path(current_file, raw_path);
 char alias[64];
 alias[((int32_t)(INT64_C(0)))] = '\0';
 if (ast->data._import.has_alias) {
-snprintf(alias, sizeof(alias), "%.*s", ast->data._import.alias_length, (src + ast->data._import.alias_start));
+snprintf(alias, ((uint64_t)sizeof(alias)), "%.*s", ast->data._import.alias_length, (src + ast->data._import.alias_start));
 }
 for (int i = ((int32_t)(INT64_C(0))); ((((int32_t)(INT64_C(0)))) > (emitted_count)) ? i > (emitted_count) : i < (emitted_count); ((((int32_t)(INT64_C(0)))) > (emitted_count)) ? i-- : i++) {
 if (mod_src_stdlib_cstr_flo_eq(emitted_imports[i].path, path)) {
@@ -8428,9 +8434,9 @@ mod_src_codegen_flo_gen_expr(ast->data._get_addr.operand, out, src);
 fprintf(out, ")");
 }
 else if ((ast->kind == AST_SIZEOF)) {
-fprintf(out, "sizeof(");
+fprintf(out, "((uint64_t)sizeof(");
 mod_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.typeInfo), out, src);
-fprintf(out, ")");
+fprintf(out, "))");
 }
 else if ((ast->kind == AST_CHAR_LIT)) {
 fprintf(out, "%.*s", ast->data._char_lit.length, (src + ast->data._char_lit.start));
@@ -8619,7 +8625,7 @@ mod_src_codegen_flo_emit_module(main_mod, out, "", ((int32_t)(INT64_C(0))), ((in
 
 
 int32_t main(int32_t argc, char* argv[]) {
-getcwd(project_root, sizeof(project_root));
+getcwd(project_root, ((uint64_t)sizeof(project_root)));
 if ((argc < ((int32_t)(INT64_C(2))))) {
 printf("%sMissing arguments! Use -help for usage instructions.%s\n", RED, RESET);
 return ((int32_t)(-INT64_C(1)));
@@ -8688,14 +8694,14 @@ char out_c[512];
 int explicit_output = 0;
 if (((flower_add_i32(i, ((int32_t)(INT64_C(1)))) < argc)  &&  (argv[flower_add_i32(i, ((int32_t)(INT64_C(1))))][((int32_t)(INT64_C(0)))] != '-'))) {
 explicit_output = 1;
-snprintf(out_c, sizeof(out_c), "%s.c", argv[flower_add_i32(i, ((int32_t)(INT64_C(1))))]);
+snprintf(out_c, ((uint64_t)sizeof(out_c)), "%s.c", argv[flower_add_i32(i, ((int32_t)(INT64_C(1))))]);
 }
 else {
 if ((system("mkdir -p output") != ((int32_t)(INT64_C(0))))) {
 printf("%sFailed to create output directory\n%s", RED, RESET);
 return ((int32_t)(-INT64_C(1)));
 }
-snprintf(out_c, sizeof(out_c), "output/out.c");
+snprintf(out_c, ((uint64_t)sizeof(out_c)), "output/out.c");
 }
 FILE* output = fopen(out_c, "w");
 if (!(output)) {
@@ -8721,7 +8727,7 @@ mod_src_codegen_flo_codegen(mods, output);
 free(mods);
 fclose(output);
 char bin_name[512];
-snprintf(bin_name, sizeof(bin_name), "%.*s", flower_integer_i32((uint64_t)(flower_sub_i32(mod_src_stdlib_cstr_flo_len(out_c), ((int32_t)(INT64_C(2)))))), out_c);
+snprintf(bin_name, ((uint64_t)sizeof(bin_name)), "%.*s", flower_integer_i32((uint64_t)(flower_sub_i32(mod_src_stdlib_cstr_flo_len(out_c), ((int32_t)(INT64_C(2)))))), out_c);
 char* compiler = getenv((((flower_string){ "CC", (int)(sizeof("CC") - 1) })).data);
 char* compiler_flags = getenv((((flower_string){ "CFLAGS", (int)(sizeof("CFLAGS") - 1) })).data);
 if (((compiler == NULL)  ||  (compiler[((int32_t)(INT64_C(0)))] == '\0'))) {
@@ -8729,10 +8735,10 @@ compiler = "cc";
 }
 char build_cmd[1024];
 if (((compiler_flags != NULL)  &&  (compiler_flags[((int32_t)(INT64_C(0)))] != '\0'))) {
-snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -w -o %s", compiler, compiler_flags, out_c, bin_name);
+snprintf(build_cmd, ((uint64_t)sizeof(build_cmd)), "%s %s %s -w -o %s", compiler, compiler_flags, out_c, bin_name);
 }
 else {
-snprintf(build_cmd, sizeof(build_cmd), "%s %s -w -o %s", compiler, out_c, bin_name);
+snprintf(build_cmd, ((uint64_t)sizeof(build_cmd)), "%s %s -w -o %s", compiler, out_c, bin_name);
 }
 int32_t build_status = system(build_cmd);
 if ((build_status != ((int32_t)(INT64_C(0))))) {
@@ -8744,7 +8750,7 @@ printf("%s\nOUTPUT:\n", YELLOW);
 fflush(stdout);
 printf("%s", RESET);
 fflush(stdout);
-snprintf(build_cmd, sizeof(build_cmd), "./%s", bin_name);
+snprintf(build_cmd, ((uint64_t)sizeof(build_cmd)), "./%s", bin_name);
 int32_t run_status = system(build_cmd);
 if ((run_status != ((int32_t)(INT64_C(0))))) {
 printf("%sFailed to run generated binary%s\n", RED, RESET);

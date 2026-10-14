@@ -2,6 +2,6 @@ import <stdio>
 import <stdlib>
 
 prop func test(): bool
-    s: int = sizeof(int)
+    s: int = sizeof(int) as int
     return s == 4
 end

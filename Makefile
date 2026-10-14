@@ -53,9 +53,9 @@ rebuild: clean build
 
 test: build
 	@mkdir -p output
-	@./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN) > /dev/null
+	@./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
 	@./$(OUT_BIN)
-	@./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN) > /dev/null
+	@./$(FLOWER_BIN) ./examples/test.flo ./$(OUT_BIN)
 	@./$(OUT_BIN)
 	@sh ./scripts/tests/types/test_integers.sh
 	@sh ./scripts/tests/types/test_integer_print.sh
@@ -69,6 +69,7 @@ test: build
 	@sh ./scripts/tests/types/test_integer_indices.sh
 	@sh ./scripts/tests/types/test_integer_array_aliases.sh
 	@sh ./scripts/tests/types/test_array_lengths.sh
+	@sh ./scripts/tests/types/test_sizeof_result.sh
 
 clean:
 	@rm -rf output/

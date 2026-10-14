@@ -2666,7 +2666,7 @@ func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: 
         return 1
 
     else if expr.kind == AST_SIZEOF:
-        set_plain_type(out, TOKEN_I32)
+        set_plain_type(out, TOKEN_U64)
         return 1
 
     // COMMENTED OUT: Unreachable due to new integer handler

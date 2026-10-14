@@ -97,6 +97,10 @@ func emit_string_runtime(out: @FILE): void
     fprintf(out, "#include <stdint.h>\n")
     fprintf(out, "#include <limits.h>\n")
 
+    fprintf(out, "#if SIZE_MAX > UINT64_MAX\n")
+    fprintf(out, "#error Flower sizeof requires size_t to fit in u64\n")
+    fprintf(out, "#endif\n")
+
     fprintf(out, "#if CHAR_BIT != 8 || INT_MAX != 2147483647 || INT_MIN != (-2147483647 - 1)\n")
     fprintf(out, "#error Flower C backend requires 8-bit bytes and a signed 32-bit C int type\n")
     fprintf(out, "#endif\n")
@@ -1824,9 +1828,9 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
         
     else if ast.kind == AST_SIZEOF:
-        fprintf(out, "sizeof(")
+        fprintf(out, "((uint64_t)sizeof(")
         typeinfo_to_string(&ast.data._size_of.typeInfo, out, src)
-        fprintf(out, ")")
+        fprintf(out, "))")
         
     else if ast.kind == AST_CHAR_LIT:
         fprintf(out, "%.*s", ast.data._char_lit.length, src + ast.data._char_lit.start)

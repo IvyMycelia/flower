@@ -23,7 +23,7 @@ func resolve_path(importing_file: @char, import_path: @char): @char
     
     if (import_path[0] == '.' and import_path[1] == '/') or (import_path[0] == '.' and import_path[1] == '.' and import_path[2] == '/'):
         dir: char[1024]
-        cstr.copy_n(dir, importing_file, sizeof(dir) - 1)
+        cstr.copy_n(dir, importing_file, (sizeof(dir) as i32) - 1)
         dir[sizeof(dir) - 1] = '\0'
 
         last_slash: @char = cstr.find_last(dir, '/')
@@ -33,7 +33,7 @@ func resolve_path(importing_file: @char, import_path: @char): @char
         else: cstr.copy(dir, "./")
         end
 
-        if cstr.len(dir) + cstr.len(import_path) + 1 > sizeof(resolved):
+        if cstr.len(dir) + cstr.len(import_path) + 1 > (sizeof(resolved) as i32):
             printf("%sPath too long: %s%s%s\n", RED, dir, import_path, RESET)
             return null
         end

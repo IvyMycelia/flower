@@ -107,7 +107,7 @@ func build_symbol_prefix(path: @char): @char
 
     i: int = 0
     j: int = 4
-    while rel[i] != '\0' and j < sizeof(out) - 1:
+    while rel[i] != '\0' and j < (sizeof(out) as i32) - 1:
         c: char = rel[i]
 
         if isalnum(c):
