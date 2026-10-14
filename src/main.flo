@@ -58,9 +58,15 @@ func main(argc: int, argv: @char[]): int
         
                 printf("%sHappy Compiling with Flower! 🌼\n%s", GREEN, RESET)
                 continue
+
             else if flag == "version" or flag == "v":
                 print("Version: 1.3.0\n")
                 continue
+
+            else if flag == "lola":
+                LOLA_VAR = true
+                continue
+
             else:
                 printf("%sUnrecognized flag argument! Use -help for more information.\n%s", RED, RESET)
             end
@@ -71,7 +77,9 @@ func main(argc: int, argv: @char[]): int
             realpath(argv[i], abs_path)
             set_current_file(abs_path)
 
-            print("Initializing modules..\n")
+            if LOLA_VAR: print("Lola is initializing the modules..\n")
+            else: print("Initializing modules..\n") end
+
             mods: @ModuleSet = new ModuleSet
             init_modules(mods)
 
@@ -85,7 +93,9 @@ func main(argc: int, argv: @char[]): int
                 return 1
             end
 
-            print("Checking types..\n")
+            if LOLA_VAR: print("Type checking performed by Lola..\n")
+            else: print("Checking Types..\n") end
+
             type_errors: int = check_modules(mods)
             if type_errors > 0:
                 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET)
@@ -127,7 +137,9 @@ func main(argc: int, argv: @char[]): int
                 should_run = true
             end
 
-            print("Codegen...\n"); fflush(stdout)
+            if LOLA_VAR: print("She's writing your code! Patience..\n")
+            else: print("Generating Code..\n") end
+            fflush(stdout)
             emit_string_runtime(output)
             emit_includes(mods, output)
             codegen(mods, output)

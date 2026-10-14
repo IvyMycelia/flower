@@ -351,6 +351,7 @@ char* GREEN = "\033[0;32m";
 char* RESET = "\033[0m";
 char* BLUE = "\033[0;34m";
 char* BOLD = "\033[1m";
+int LOLA_VAR = 0;
 
 
 char* mod_src_globals_flo_resolve_path(char* importing_file, char* import_path) {
@@ -8664,6 +8665,10 @@ else if ((flower_string_eq(flag, ((flower_string){ "version", (int)(sizeof("vers
 flower_print_string(((flower_string){ "Version: 1.3.0\n", (int)(sizeof("Version: 1.3.0\n") - 1) }));
 continue;
 }
+else if (flower_string_eq(flag, ((flower_string){ "lola", (int)(sizeof("lola") - 1) }))) {
+LOLA_VAR = 1;
+continue;
+}
 else {
 printf("%sUnrecognized flag argument! Use -help for more information.\n%s", RED, RESET);
 }
@@ -8673,7 +8678,12 @@ printf("%sCompiling file: %s%s\n", BLUE, argv[i], RESET);
 char abs_path[512];
 realpath(argv[i], abs_path);
 mod_src_globals_flo_set_current_file(abs_path);
+if (LOLA_VAR) {
+flower_print_string(((flower_string){ "Lola is initializing the modules..\n", (int)(sizeof("Lola is initializing the modules..\n") - 1) }));
+}
+else {
 flower_print_string(((flower_string){ "Initializing modules..\n", (int)(sizeof("Initializing modules..\n") - 1) }));
+}
 ModuleSet* mods = malloc(sizeof(ModuleSet));
 mod_src_module_flo_init_modules(mods);
 Module* main_mod = mod_src_module_flo_load_module(mods, abs_path);
@@ -8684,7 +8694,12 @@ if ((mods->parse_errors > ((int32_t)(INT64_C(0))))) {
 printf("%sParse failed with %d error(s)%s\n", RED, mods->parse_errors, RESET);
 return ((int32_t)(INT64_C(1)));
 }
-flower_print_string(((flower_string){ "Checking types..\n", (int)(sizeof("Checking types..\n") - 1) }));
+if (LOLA_VAR) {
+flower_print_string(((flower_string){ "Type checking performed by Lola..\n", (int)(sizeof("Type checking performed by Lola..\n") - 1) }));
+}
+else {
+flower_print_string(((flower_string){ "Checking Types..\n", (int)(sizeof("Checking Types..\n") - 1) }));
+}
 int32_t type_errors = mod_src_typecheck_flo_check_modules(mods);
 if ((type_errors > ((int32_t)(INT64_C(0))))) {
 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
@@ -8719,7 +8734,12 @@ int should_run = 0;
 if ((has_output  &&  !(explicit_output))) {
 should_run = 1;
 }
-flower_print_string(((flower_string){ "Codegen...\n", (int)(sizeof("Codegen...\n") - 1) }));
+if (LOLA_VAR) {
+flower_print_string(((flower_string){ "She's writing your code! Patience..\n", (int)(sizeof("She's writing your code! Patience..\n") - 1) }));
+}
+else {
+flower_print_string(((flower_string){ "Generating Code..\n", (int)(sizeof("Generating Code..\n") - 1) }));
+}
 fflush(stdout);
 mod_src_codegen_flo_emit_string_runtime(output);
 mod_src_codegen_flo_emit_includes(mods, output);
