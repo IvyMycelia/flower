@@ -9,11 +9,12 @@ func set_current_file(f: @char): void
 end
 
 RED:    @char   =   "\033[0;31m"
-YELLOW: @char   =   "\033[0;33m"
 GREEN:  @char   =   "\033[0;32m"
-RESET:  @char   =   "\033[0m"
+YELLOW: @char   =   "\033[0;33m"
 BLUE:   @char   =   "\033[0;34m"
+LOLA:   @char   =   "\033[0;35m"
 BOLD:   @char   =   "\033[1m"
+RESET:  @char   =   "\033[0m"
 
 LOLA_VAR: bool  =   false
 

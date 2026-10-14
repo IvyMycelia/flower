@@ -77,9 +77,8 @@ func main(argc: int, argv: @char[]): int
             realpath(argv[i], abs_path)
             set_current_file(abs_path)
 
-            if LOLA_VAR: print("Lola is initializing the modules..\n")
-            else: print("Initializing modules..\n") end
-
+            if LOLA_VAR: print("Lola is initializing modules..\n")
+            else: print("Initializing Modules..\n") end
             mods: @ModuleSet = new ModuleSet
             init_modules(mods)
 
@@ -88,14 +87,8 @@ func main(argc: int, argv: @char[]): int
                 return -1
             end
 
-            if mods.parse_errors > 0:
-                printf("%sParse failed with %d error(s)%s\n", RED, mods.parse_errors, RESET)
-                return 1
-            end
-
             if LOLA_VAR: print("Type checking performed by Lola..\n")
             else: print("Checking Types..\n") end
-
             type_errors: int = check_modules(mods)
             if type_errors > 0:
                 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET)
@@ -138,13 +131,12 @@ func main(argc: int, argv: @char[]): int
             end
 
             if LOLA_VAR: print("She's writing your code! Patience..\n")
-            else: print("Generating Code..\n") end
-            fflush(stdout)
+            else: print("Generating Code..\n") end fflush(stdout)
             emit_string_runtime(output)
             emit_includes(mods, output)
             codegen(mods, output)
 
-            prune mods
+            prune_module_set(mods)
             fclose(output)
 
             bin_name: char[512]
@@ -159,9 +151,9 @@ func main(argc: int, argv: @char[]): int
 
             build_cmd: char[1024]
             if compiler_flags != null and compiler_flags[0] != '\0':
-                snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -w -o %s", compiler, compiler_flags, out_c, bin_name)
+                snprintf(build_cmd, sizeof(build_cmd), "%s %s %s -o %s", compiler, compiler_flags, out_c, bin_name)
             else:
-                snprintf(build_cmd, sizeof(build_cmd), "%s %s -w -o %s", compiler, out_c, bin_name)
+                snprintf(build_cmd, sizeof(build_cmd), "%s %s -o %s", compiler, out_c, bin_name)
             end
 
             build_status: int = system(build_cmd)
@@ -185,7 +177,8 @@ func main(argc: int, argv: @char[]): int
             end
 
             print("\n")
-            printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET)
+            if LOLA_VAR: printf("%sLola Compiled %s into %s%s!\n", LOLA, out_c, bin_name, RESET)
+            else: printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET) end
             break
         end
     end

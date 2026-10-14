@@ -139,11 +139,13 @@ void mod_src_globals_flo_set_current_file(char* f) {
 current_file = f;
 }
 char* RED = "\033[0;31m";
-char* YELLOW = "\033[0;33m";
 char* GREEN = "\033[0;32m";
-char* RESET = "\033[0m";
+char* YELLOW = "\033[0;33m";
 char* BLUE = "\033[0;34m";
+char* LOLA = "\033[0;35m";
 char* BOLD = "\033[1m";
+char* RESET = "\033[0m";
+int LOLA_VAR = 0;
 
 
 char* mod_src_globals_flo_resolve_path(char* importing_file, char* import_path) {
@@ -918,11 +920,9 @@ return &(ts->data[index]);
 }
 
 
-void mod_src_lexer_flo_free_token_stream(TokenStream* ts) {
+void mod_src_lexer_flo_prune_token_stream(TokenStream* ts) {
 free(ts->data);
-ts->data = NULL;
-ts->count = 0;
-ts->capacity = 0;
+free(ts);
 }
 int AST_FLOW_CONTROL = 0;
 int AST_LITERAL = 1;
@@ -1337,6 +1337,127 @@ NodeData data;
 } AST;
 
 
+void mod_src_ast_flo_prune_ast(AST* node) {
+if (node == NULL) {
+return;}
+mod_src_ast_flo_prune_ast(node->next);
+int kind = node->kind;
+if (kind == AST_FLOW_CONTROL) {
+mod_src_ast_flo_prune_ast(node->data._flow_ctrl.value);
+}
+else if (kind == AST_CAST) {
+mod_src_ast_flo_prune_ast(node->data._cast.value);
+}
+else if (kind == AST_TYPE_TEST) {
+mod_src_ast_flo_prune_ast(node->data._type_test.value);
+}
+else if (kind == AST_ARRAY_LIT) {
+mod_src_ast_flo_prune_ast(node->data._array.elements);
+}
+else if (kind == AST_SUBSCRIPT) {
+mod_src_ast_flo_prune_ast(node->data._subscript.array);
+mod_src_ast_flo_prune_ast(node->data._subscript.index);
+mod_src_ast_flo_prune_ast(node->data._subscript.value);
+}
+else if (kind == AST_STRUCT_LIT) {
+mod_src_ast_flo_prune_ast(node->data._struct_lit.elements);
+}
+else if (kind == AST_STRUCT_DEF) {
+mod_src_ast_flo_prune_ast(node->data._struct_def.fields);
+}
+else if (kind == AST_UNION_DEF) {
+mod_src_ast_flo_prune_ast(node->data._union_def.fields);
+}
+else if (kind == AST_DOT_ACCESS) {
+mod_src_ast_flo_prune_ast(node->data._dot_access.object);
+mod_src_ast_flo_prune_ast(node->data._dot_access.value);
+}
+else if (kind == AST_BINARY_OP) {
+mod_src_ast_flo_prune_ast(node->data._binary.left);
+mod_src_ast_flo_prune_ast(node->data._binary.right);
+}
+else if (kind == AST_UNARY_NOT) {
+mod_src_ast_flo_prune_ast(node->data._unary.operand);
+}
+else if (kind == AST_UNARY_NEG) {
+mod_src_ast_flo_prune_ast(node->data._unary.operand);
+}
+else if (kind == AST_PRUNE) {
+mod_src_ast_flo_prune_ast(node->data._prune_free.ptr);
+}
+else if (kind == AST_DEREF_ASS) {
+mod_src_ast_flo_prune_ast(node->data._deref_ass.value);
+}
+else if (kind == AST_DEREF) {
+mod_src_ast_flo_prune_ast(node->data._deref.operand);
+}
+else if (kind == AST_GET_ADDR) {
+mod_src_ast_flo_prune_ast(node->data._get_addr.operand);
+}
+else if (kind == AST_PROP) {
+mod_src_ast_flo_prune_ast(node->data._prop.decl);
+}
+else if (kind == AST_FORWARD) {
+mod_src_ast_flo_prune_ast(node->data._forward.params);
+}
+else if (kind == AST_ALIAS_CALL) {
+mod_src_ast_flo_prune_ast(node->data._alias_call.args);
+}
+else if (kind == AST_VAR_DECL) {
+mod_src_ast_flo_prune_ast(node->data._var_decl.value);
+}
+else if (kind == AST_VAR_ASS) {
+mod_src_ast_flo_prune_ast(node->data._var_ass.value);
+}
+else if (kind == AST_FUNC_DEF) {
+mod_src_ast_flo_prune_ast(node->data._func_def.params);
+mod_src_ast_flo_prune_ast(node->data._func_def.body);
+}
+else if (kind == AST_FUNC_CALL) {
+mod_src_ast_flo_prune_ast(node->data._func_call.args);
+}
+else if (kind == AST_WHILE) {
+mod_src_ast_flo_prune_ast(node->data._while_loop.condition);
+mod_src_ast_flo_prune_ast(node->data._while_loop.body);
+}
+else if (kind == AST_FOR) {
+mod_src_ast_flo_prune_ast(node->data._for_loop.from);
+mod_src_ast_flo_prune_ast(node->data._for_loop.to);
+mod_src_ast_flo_prune_ast(node->data._for_loop.body);
+}
+else if (kind == AST_IF) {
+mod_src_ast_flo_prune_ast(node->data._if_condition.condition);
+mod_src_ast_flo_prune_ast(node->data._if_condition.body);
+mod_src_ast_flo_prune_ast(node->data._if_condition.else_branch);
+}
+else if (kind == AST_PRINT) {
+mod_src_ast_flo_prune_ast(node->data._print.value);
+}
+if (kind == AST_CAST) {
+mod_src_ast_flo_prune_ast(node->data._cast.typeInfo.arr_size_expr);
+}
+else if (kind == AST_TYPE_TEST) {
+mod_src_ast_flo_prune_ast(node->data._type_test.typeInfo.arr_size_expr);
+}
+else if (kind == AST_NEW) {
+mod_src_ast_flo_prune_ast(node->data._new_alloc.typeInfo.arr_size_expr);
+}
+else if (kind == AST_SIZEOF) {
+mod_src_ast_flo_prune_ast(node->data._size_of.typeInfo.arr_size_expr);
+}
+else if (kind == AST_STRUCT_FIELD) {
+mod_src_ast_flo_prune_ast(node->data._struct_field.typeInfo.arr_size_expr);
+}
+else if (kind == AST_VAR_DECL) {
+mod_src_ast_flo_prune_ast(node->data._var_decl.typeInfo.arr_size_expr);
+}
+else if (kind == AST_PARAM) {
+mod_src_ast_flo_prune_ast(node->data._func_params.typeInfo.arr_size_expr);
+}
+free(node);
+}
+
+
 typedef struct Parser {
 TokenStream* ts;
 char* src;
@@ -1690,7 +1811,9 @@ node->data._type_alias.name_length = name->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_ASSIGN))) {
 return node;
 }
-node->data._type_alias.target = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._type_alias.target = *(tmp);
+free(tmp);
 return node;
 }
 
@@ -1711,7 +1834,9 @@ if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in variable declaration");
 return node;
 }
-node->data._var_decl.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._var_decl.typeInfo = *(tmp);
+free(tmp);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN) {
 mod_src_parser_flo_parser_advance(ps);
 if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF) {
@@ -1997,7 +2122,9 @@ return NULL;
 }
 AST* cast = mod_src_parser_flo_make_node(ps, AST_CAST);
 cast->data._cast.value = left;
-cast->data._cast.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+cast->data._cast.typeInfo = *(tmp);
+free(tmp);
 left = cast;
 }
 while (mod_src_parser_flo_get_precedence(mod_src_parser_flo_parser_peek(ps)->kind) > min_prec) {
@@ -2012,7 +2139,9 @@ return left;
 }
 AST* test = mod_src_parser_flo_make_node(ps, AST_TYPE_TEST);
 test->data._type_test.value = left;
-test->data._type_test.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+test->data._type_test.typeInfo = *(tmp);
+free(tmp);
 left = test;
 continue;
 }
@@ -2191,6 +2320,7 @@ return node;
 AST* operand = mod_src_parser_flo_parse_primary(ps);
 AST* drf = mod_src_parser_flo_make_node(ps, AST_DEREF);
 drf->data._unary.operand = operand;
+free(node);
 return drf;
 }
 while (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_DOT  ||  mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_LBRACK) {
@@ -2344,7 +2474,9 @@ mod_src_parser_flo_parser_error(ps, "Unexpected end of file after 'new'");
 return NULL;
 }
 AST* new_node = mod_src_parser_flo_make_node(ps, AST_NEW);
-new_node->data._new_alloc.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+new_node->data._new_alloc.typeInfo = *(tmp);
+free(tmp);
 return new_node;
 }
 else if (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NOT) {
@@ -2397,7 +2529,9 @@ if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_LPAREN))) {
 return NULL;
 }
 AST* node = mod_src_parser_flo_make_node(ps, AST_SIZEOF);
-node->data._size_of.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._size_of.typeInfo = *(tmp);
+free(tmp);
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 return node;
 }
@@ -2455,7 +2589,9 @@ node->data._func_def.params = param_head;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
-node->data._func_def.return_type = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._func_def.return_type = *(tmp);
+free(tmp);
 AST* body_head = NULL;
 AST* body_tail = NULL;
 while (mod_src_parser_flo_parser_peek(ps)->kind != TOKEN_END) {
@@ -2608,7 +2744,9 @@ node->data._func_params.name_length = name->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 return node;
 }
-node->data._func_params.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._func_params.typeInfo = *(tmp);
+free(tmp);
 return node;
 }
 
@@ -2653,7 +2791,9 @@ field->data._struct_field.name_length = fname->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+field->data._struct_field.typeInfo = *(tmp);
+free(tmp);
 if (field_head == NULL) {
 field_head = field;
 }
@@ -2711,7 +2851,9 @@ field->data._struct_field.name_length = fname->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+field->data._struct_field.typeInfo = *(tmp);
+free(tmp);
 if (field_head == NULL) {
 field_head = field;
 }
@@ -2826,7 +2968,9 @@ mod_src_parser_flo_parser_advance(ps);
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 node->data._forward.params = param_head;
 mod_src_parser_flo_parser_expect(ps, TOKEN_COLON);
-node->data._forward.return_type = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._forward.return_type = *(tmp);
+free(tmp);
 node->data._forward.is_func = 1;
 }
 else {
@@ -3181,6 +3325,23 @@ mod_src_module_flo_collect_exports(m);
 set->count = set->count + 1;
 mod_src_module_flo_load_imports(set, m);
 return m;
+}
+
+
+void mod_src_module_flo_prune_module(Module* mod) {
+free(mod->path);
+free(mod->src);
+free(mod->symbol_prefix);
+mod_src_lexer_flo_prune_token_stream(mod->tokens);
+mod_src_ast_flo_prune_ast(mod->ast);
+}
+
+
+void mod_src_module_flo_prune_module_set(ModuleSet* set) {
+for (int i = 0; ((0) > (set->count)) ? i > (set->count) : i < (set->count); ((0) > (set->count)) ? i-- : i++) {
+mod_src_module_flo_prune_module(set->modules + i);
+}
+free(set);
 }
 
 
@@ -6545,6 +6706,7 @@ fprintf(out, "((flower_sem_union_%d){ .tag = %d, .data = { .m%d = ", union_id, m
 mod_src_codegen_flo_gen_expr(value, out, src);
 fprintf(out, " } })");
 free(resolved);
+free(member_type);
 }
 
 
@@ -7301,6 +7463,10 @@ else if (flower_string_eq(flag, ((flower_string){ "version", (int)(sizeof("versi
 flower_print_string(((flower_string){ "Version: 1.3.0\n", (int)(sizeof("Version: 1.3.0\n") - 1) }));
 continue;
 }
+else if (flower_string_eq(flag, ((flower_string){ "lola", (int)(sizeof("lola") - 1) }))) {
+LOLA_VAR = 1;
+continue;
+}
 else {
 printf("%sUnrecognized flag argument! Use -help for more information.\n%s", RED, RESET);
 }
@@ -7310,14 +7476,24 @@ printf("%sCompiling file: %s%s\n", BLUE, argv[i], RESET);
 char abs_path[512];
 realpath(argv[i], abs_path);
 mod_src_globals_flo_set_current_file(abs_path);
-flower_print_string(((flower_string){ "Initializing modules..\n", (int)(sizeof("Initializing modules..\n") - 1) }));
+if (LOLA_VAR) {
+flower_print_string(((flower_string){ "Lola is initializing modules..\n", (int)(sizeof("Lola is initializing modules..\n") - 1) }));
+}
+else {
+flower_print_string(((flower_string){ "Initializing Modules..\n", (int)(sizeof("Initializing Modules..\n") - 1) }));
+}
 ModuleSet* mods = malloc(sizeof(ModuleSet));
 mod_src_module_flo_init_modules(mods);
 Module* main_mod = mod_src_module_flo_load_module(mods, abs_path);
 if (main_mod == NULL) {
 return -1;
 }
-flower_print_string(((flower_string){ "Checking types..\n", (int)(sizeof("Checking types..\n") - 1) }));
+if (LOLA_VAR) {
+flower_print_string(((flower_string){ "Type checking performed by Lola..\n", (int)(sizeof("Type checking performed by Lola..\n") - 1) }));
+}
+else {
+flower_print_string(((flower_string){ "Checking Types..\n", (int)(sizeof("Checking Types..\n") - 1) }));
+}
 int type_errors = mod_src_typecheck_flo_check_modules(mods);
 if (type_errors > 0) {
 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
@@ -7352,12 +7528,17 @@ int should_run = 0;
 if (has_output  &&  !(explicit_output)) {
 should_run = 1;
 }
-flower_print_string(((flower_string){ "Codegen...\n", (int)(sizeof("Codegen...\n") - 1) }));
+if (LOLA_VAR) {
+flower_print_string(((flower_string){ "She's writing your code! Patience..\n", (int)(sizeof("She's writing your code! Patience..\n") - 1) }));
+}
+else {
+flower_print_string(((flower_string){ "Generating Code..\n", (int)(sizeof("Generating Code..\n") - 1) }));
+}
 fflush(stdout);
 mod_src_codegen_flo_emit_string_runtime(output);
 mod_src_codegen_flo_emit_includes(mods, output);
 mod_src_codegen_flo_codegen(mods, output);
-free(mods);
+mod_src_module_flo_prune_module_set(mods);
 fclose(output);
 char bin_name[512];
 snprintf(bin_name, sizeof(bin_name), "%.*s", (int)(mod_src_stdlib_cstr_flo_len(out_c) - 2), out_c);
@@ -7391,7 +7572,12 @@ return -1;
 }
 }
 flower_print_string(((flower_string){ "\n", (int)(sizeof("\n") - 1) }));
+if (LOLA_VAR) {
+printf("%sLola Compiled %s into %s%s!\n", LOLA, out_c, bin_name, RESET);
+}
+else {
 printf("%sCompiled %s → %s%s\n", GREEN, out_c, bin_name, RESET);
+}
 break;
 }
 }
