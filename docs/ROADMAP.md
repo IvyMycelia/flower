@@ -87,6 +87,11 @@ Stop relying on C by introducing:
 - Better strings, arrays, and math
 - Errors that can be treated as values
 - A simple way to clean up prior to leaving a scope
+- Inferred variable declarations with `:=`
+- Postfix `?` for error propagation
+- Better inference for common expressions
+- Convenient, type-safe string formatting
+- Clear diagnostics for invalid inference
 
 The end goal is to write a real program using in-house tools rather than relying on the C backend for anything useful.
 
@@ -101,6 +106,13 @@ Real control over memory and how data lives in said memory, through the use of:
 - Packed data
 - Experiments with row-based and column-based layouts
 - No invisible allocation or rearranging of data
+- Compile-time ownership and borrowing validation
+- Prevent use-after-move and use-after-free
+- Prevent invalid mutable aliasing
+- Define lifetime and reference validity rules
+- Deterministic destruction of owned resources
+- Safe abstractions over manual allocation
+- Explicit boundaries for unsafe operations
 
 Ideally the compiler should know whetehr data is owned, borrowed, packed, copied, or just merely being viewed, and explain all of the aforementioned clearly.
 
@@ -140,7 +152,7 @@ C will remain here as a trusted bootstrap, but should (hopefully) be more or les
 
 Things Flower probably *won't* do:
 
-- **Garbage Collection**: Manual memory exists; use it.
+- **Garbage Collection**: No tracing garbage collector required. Memory management will use ownership, deterministic cleanup, and explicit allocation controls. Safe abstractions will make manual memory management unnecessaary for typical programs unless desired.
 - **Object-Oriented**: No classes, inheritance, or virtual methods. Use Structs and Functions.
 - **Implicit Conversion**: Be explicit. `x: int = 5.0 as int`
 - **Heavy OOP-Style Type Systems**: No classes or method-dispath model just to support data access or modules
