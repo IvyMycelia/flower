@@ -360,8 +360,8 @@ return NULL;
 char resolved[1024];
 if ((((import_path[((int32_t)(INT64_C(0)))] == '.')  &&  (import_path[((int32_t)(INT64_C(1)))] == '/'))  ||  (((import_path[((int32_t)(INT64_C(0)))] == '.')  &&  (import_path[((int32_t)(INT64_C(1)))] == '.'))  &&  (import_path[((int32_t)(INT64_C(2)))] == '/')))) {
 char dir[1024];
-mod_src_stdlib_cstr_flo_copy_n(dir, importing_file, flower_sub_i32(flower_integer_i32((uint64_t)(((uint64_t)sizeof(dir)))), ((int32_t)(INT64_C(1)))));
-dir[flower_sub_u64(((uint64_t)sizeof(dir)), ((uint64_t)(UINT64_C(1))))] = '\0';
+mod_src_stdlib_cstr_flo_copy_n(dir, importing_file, FLOWER_sub_i32(FLOWER_INTEGER_i32((uint64_t)(((uint64_t)sizeof(dir)))), ((int32_t)(INT64_C(1)))));
+dir[FLOWER_sub_u64(((uint64_t)sizeof(dir)), ((uint64_t)(UINT64_C(1))))] = '\0';
 char* last_slash = mod_src_stdlib_cstr_flo_find_last(dir, '/');
 if (last_slash) {
 last_slash = (last_slash + ((int32_t)(INT64_C(1))));
@@ -370,7 +370,7 @@ last_slash = (last_slash + ((int32_t)(INT64_C(1))));
 else {
 mod_src_stdlib_cstr_flo_copy(dir, "./");
 }
-if ((flower_add_i32(flower_add_i32(mod_src_stdlib_cstr_flo_len(dir), mod_src_stdlib_cstr_flo_len(import_path)), ((int32_t)(INT64_C(1)))) > flower_integer_i32((uint64_t)(((uint64_t)sizeof(resolved)))))) {
+if ((flower_add_i32(flower_add_i32(mod_src_stdlib_cstr_flo_len(dir), mod_src_stdlib_cstr_flo_len(import_path)), ((int32_t)(INT64_C(1)))) > FLOWER_INTEGER_i32((uint64_t)(((uint64_t)sizeof(resolved)))))) {
 printf("%sPath too long: %s%s%s\n", RED, dir, import_path, RESET);
 return NULL;
 }
@@ -515,7 +515,7 @@ ts->capacity = ((int32_t)(INT64_C(64)));
 else {
 ts->capacity = flower_mul_i32(ts->capacity, ((int32_t)(INT64_C(2))));
 }
-ts->data = realloc(ts->data, flower_mul_u64(flower_integer_u64((uint64_t)(ts->capacity)), flower_integer_u64((uint64_t)(((uint64_t)sizeof(Token))))));
+ts->data = realloc(ts->data, flower_mul_u64(flower_integer_u64((uint64_t)(ts->capacity)), FLOWER_INTEGER_u64((uint64_t)(((uint64_t)sizeof(Token))))));
 if ((ts->data == NULL)) {
 flower_print_string(((flower_string){ "Memory allocation failed\n", (int)(sizeof("Memory allocation failed\n") - 1) }));
 return;}
@@ -1369,6 +1369,11 @@ AST* ptr;
 
 typedef struct size_of {
 TypeInfo typeInfo;
+TypeInfo resolved_type;
+int is_object;
+int is_constant;
+int registered;
+AST* next_sizeof;
 } size_of;
 
 
@@ -3493,7 +3498,7 @@ char out[512];
 mod_src_stdlib_cstr_flo_copy(out, "mod_");
 int32_t i = ((int32_t)(INT64_C(0)));
 int32_t j = ((int32_t)(INT64_C(4)));
-while (((rel[i] != '\0')  &&  (j < flower_sub_i32(flower_integer_i32((uint64_t)(((uint64_t)sizeof(out)))), ((int32_t)(INT64_C(1))))))) {
+while (((rel[i] != '\0')  &&  (j < FLOWER_sub_i32(FLOWER_INTEGER_i32((uint64_t)(((uint64_t)sizeof(out)))), ((int32_t)(INT64_C(1))))))) {
 char c = rel[i];
 if (isalnum(c)) {
 out[j] = c;
@@ -3736,6 +3741,7 @@ int32_t error_count;
 } TypeEnv;
 ModuleSet* active_type_modules;
 Module* current_type_module;
+AST* resolved_sizeof_expressions = NULL;
 TypeInfo current_return_type;
 int32_t inside_function = ((int32_t)(INT64_C(0)));
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
@@ -5441,6 +5447,71 @@ return ((int32_t)(INT64_C(1)));
 }
 
 
+int mod_src_typecheck_flo_resolve_sizeof_operand(TypeEnv* env, AST* expr, char* src) {
+TypeInfo* operand = &(expr->data._size_of.typeInfo);
+TypeInfo* resolved = malloc(sizeof(TypeInfo));
+expr->data._size_of.is_object = 0;
+expr->data._size_of.is_constant = 0;
+if ((((((!(operand->is_union)  &&  !(operand->is_nullable))  &&  (operand->base == TOKEN_IDENTIFIER))  &&  (operand->pointer_depth == ((int32_t)(INT64_C(0)))))  &&  (operand->array_size == ((int32_t)(INT64_C(0)))))  &&  (operand->arr_size_expr == NULL))) {
+if (mod_src_typecheck_flo_lookup_storage_var_type(env, src, operand->name_start, operand->name_length, resolved)) {
+expr->data._size_of.is_object = 1;
+}
+}
+if (!(expr->data._size_of.is_object)) {
+mod_src_typecheck_flo_copy_type(resolved, operand);
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, resolved, expr))) {
+free(resolved);
+return 0;
+}
+if (((!(resolved->is_union)  &&  (resolved->base == TOKEN_VOID))  &&  (resolved->pointer_depth == ((int32_t)(INT64_C(0)))))) {
+mod_src_typecheck_flo_type_error(env, expr, "sizeof requires a sized type");
+free(resolved);
+return 0;
+}
+if (!(expr->data._size_of.is_object)) {
+if ((resolved->array_size == ((int32_t)(-INT64_C(1))))) {
+mod_src_typecheck_flo_type_error(env, expr, "sizeof requires a known array length");
+free(resolved);
+return 0;
+}
+if ((resolved->arr_size_expr != NULL)) {
+TypeInfo* length_type = malloc(sizeof(TypeInfo));
+int32_t previous_errors = env->error_count;
+if (!(mod_src_typecheck_flo_resolve_expr(env, resolved->arr_size_expr, length_type, src))) {
+if ((env->error_count == previous_errors)) {
+mod_src_typecheck_flo_type_error(env, expr, "could not resolve sizeof array length");
+}
+free(length_type);
+free(resolved);
+return 0;
+}
+if (!(mod_src_typecheck_flo_resolve_type_alias(env, length_type, resolved->arr_size_expr))) {
+free(length_type);
+free(resolved);
+return 0;
+}
+if (!(mod_src_typecheck_flo_is_scalar_fixed_integer(length_type))) {
+mod_src_typecheck_flo_type_error(env, resolved->arr_size_expr, "sizeof array length requires an integer type");
+free(length_type);
+free(resolved);
+return 0;
+}
+free(length_type);
+}
+}
+mod_src_typecheck_flo_copy_type(&(expr->data._size_of.resolved_type), resolved);
+expr->data._size_of.is_constant = (resolved->arr_size_expr == NULL);
+if (!(expr->data._size_of.registered)) {
+expr->data._size_of.next_sizeof = resolved_sizeof_expressions;
+resolved_sizeof_expressions = expr;
+expr->data._size_of.registered = 1;
+}
+free(resolved);
+return 1;
+}
+
+
 int32_t mod_src_typecheck_flo_resolve_expr_expected(TypeEnv* env, AST* expr, TypeInfo* expected, TypeInfo* out, char* src) {
 TypeInfo* target = malloc(sizeof(TypeInfo));
 mod_src_typecheck_flo_copy_type(target, expected);
@@ -5991,6 +6062,9 @@ free(target_type);
 return ((int32_t)(INT64_C(1)));
 }
 else if ((expr->kind == AST_SIZEOF)) {
+if (!(mod_src_typecheck_flo_resolve_sizeof_operand(env, expr, src))) {
+return ((int32_t)(INT64_C(0)));
+}
 mod_src_typecheck_flo_set_plain_type(out, TOKEN_U64);
 return ((int32_t)(INT64_C(1)));
 }
@@ -7723,6 +7797,11 @@ curr = curr->next;
 
 
 void mod_src_codegen_flo_collect_semantic_union_types(ModuleSet* mods) {
+AST* size_expr = resolved_sizeof_expressions;
+while ((size_expr != NULL)) {
+mod_src_codegen_flo_collect_semantic_union_type(&(size_expr->data._size_of.resolved_type));
+size_expr = size_expr->data._size_of.next_sizeof;
+}
 int32_t i = ((int32_t)(INT64_C(0)));
 while ((i < mods->count)) {
 mod_src_codegen_flo_collect_semantic_union_types_in_list(mods->modules[i].ast);
@@ -8063,6 +8142,9 @@ free(path);
 int mod_src_codegen_flo_is_constant_integer_cast_operand(AST* expr) {
 if ((expr == NULL)) {
 return 0;
+}
+if ((expr->kind == AST_SIZEOF)) {
+return expr->data._size_of.is_constant;
 }
 if (((mod_src_ast_flo_integer_literal_node(expr) != NULL)  ||  (expr->kind == AST_BOOL_LIT))) {
 return 1;
@@ -8435,7 +8517,25 @@ fprintf(out, ")");
 }
 else if ((ast->kind == AST_SIZEOF)) {
 fprintf(out, "((uint64_t)sizeof(");
-mod_src_codegen_flo_typeinfo_to_string(&(ast->data._size_of.typeInfo), out, src);
+if (ast->data._size_of.is_object) {
+char* name_src = ast->data._size_of.typeInfo.name_src;
+if ((name_src == NULL)) {
+name_src = src;
+}
+fprintf(out, "%.*s", ast->data._size_of.typeInfo.name_length, (name_src + ast->data._size_of.typeInfo.name_start));
+}
+else {
+TypeInfo* sized_type = &(ast->data._size_of.resolved_type);
+mod_src_codegen_flo_typeinfo_to_string(sized_type, out, src);
+if ((sized_type->array_size > ((int32_t)(INT64_C(0))))) {
+fprintf(out, "[%d]", sized_type->array_size);
+}
+else if ((sized_type->arr_size_expr != NULL)) {
+fprintf(out, "[");
+mod_src_codegen_flo_gen_expr(sized_type->arr_size_expr, out, src);
+fprintf(out, "]");
+}
+}
 fprintf(out, "))");
 }
 else if ((ast->kind == AST_CHAR_LIT)) {

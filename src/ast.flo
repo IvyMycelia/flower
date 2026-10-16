@@ -197,6 +197,11 @@ struct prune_free {
 
 struct size_of {
     typeInfo: TypeInfo,
+    resolved_type: TypeInfo,
+    is_object: bool,
+    is_constant: bool,
+    registered: bool,
+    next_sizeof: @AST
 }
 
 struct deref_ass {
@@ -448,7 +453,7 @@ struct AST {
 
     aggregate_union_type: TypeInfo,
     aggregate_union_member_index: int,
-    
+
     data: NodeData
 }
 

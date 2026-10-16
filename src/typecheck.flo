@@ -93,6 +93,7 @@ struct TypeEnv {
 
 active_type_modules: @ModuleSet
 current_type_module: @Module
+resolved_sizeof_expressions: @AST = null
 
 current_return_type: TypeInfo
 inside_function: int = 0
@@ -2024,6 +2025,85 @@ func resolve_aggregate_literal(env: @TypeEnv, expr: @AST, expected: @TypeInfo, o
     return 1
 end
 
+func resolve_sizeof_operand(env: @TypeEnv, expr: @AST, src: @char): bool
+    operand: @TypeInfo = &expr.data._size_of.typeInfo
+    resolved: @TypeInfo = new TypeInfo
+
+    expr.data._size_of.is_object = false
+    expr.data._size_of.is_constant = false
+
+    if not operand.is_union and not operand.is_nullable and operand.base == TOKEN_IDENTIFIER and operand.pointer_depth == 0and operand.array_size == 0 and operand.arr_size_expr == null:
+        if lookup_storage_var_type(env, src, operand.name_start, operand.name_length, resolved):
+            expr.data._size_of.is_object = true
+        end
+    end
+
+    if not expr.data._size_of.is_object:
+        copy_type(resolved, operand)
+    end
+
+    if not resolve_type_alias(env, resolved, expr):
+        prune resolved
+        return false
+    end
+
+    if not resolved.is_union and resolved.base == TOKEN_VOID and resolved.pointer_depth == 0:
+        type_error(env, expr, "sizeof requires a sized type")
+        prune resolved
+        return false
+    end
+
+    if not expr.data._size_of.is_object:
+        if resolved.array_size == -1:
+            type_error(env, expr, "sizeof requires a known array length")
+            prune resolved
+            return false
+        end
+
+        if resolved.arr_size_expr != null:
+            length_type: @TypeInfo = new TypeInfo
+            previous_errors: int = env.error_count
+
+            if not resolve_expr(env, resolved.arr_size_expr, length_type, src):
+                if env.error_count == previous_errors:
+                    type_error(env, expr, "could not resolve sizeof array length")
+                end
+
+                prune length_type
+                prune resolved
+                return false
+            end
+
+            if not resolve_type_alias(env, length_type, resolved.arr_size_expr):
+                prune length_type
+                prune resolved
+                return false
+            end
+
+            if not is_scalar_fixed_integer(length_type):
+                type_error(env, resolved.arr_size_expr, "sizeof array length requires an integer type")
+                prune length_type
+                prune resolved
+                return false
+            end
+
+            prune length_type
+        end
+    end
+    
+    copy_type(&expr.data._size_of.resolved_type, resolved)
+    expr.data._size_of.is_constant = resolved.arr_size_expr == null
+
+    if not expr.data._size_of.registered:
+        expr.data._size_of.next_sizeof = resolved_sizeof_expressions
+        resolved_sizeof_expressions = expr
+        expr.data._size_of.registered = true
+    end
+
+    prune resolved
+    return true
+end
+
 func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
     target: @TypeInfo = new TypeInfo
     copy_type(target, expected)
@@ -2666,6 +2746,10 @@ func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: 
         return 1
 
     else if expr.kind == AST_SIZEOF:
+        if not resolve_sizeof_operand(env, expr, src):
+            return 0
+        end
+        
         set_plain_type(out, TOKEN_U64)
         return 1
 

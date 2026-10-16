@@ -70,6 +70,7 @@ test: build
 	@sh ./scripts/tests/types/test_integer_array_aliases.sh
 	@sh ./scripts/tests/types/test_array_lengths.sh
 	@sh ./scripts/tests/types/test_sizeof_result.sh
+	@sh ./scripts/tests/types/test_sizeof_operands.sh
 
 clean:
 	@rm -rf output/

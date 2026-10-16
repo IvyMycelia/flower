@@ -975,6 +975,12 @@ func collect_semantic_union_types_in_list(list: @AST): void
 end
 
 func collect_semantic_union_types(mods: @ModuleSet): void
+    size_expr: @AST = resolved_sizeof_expressions
+    while size_expr != null:
+        collect_semantic_union_type(&size_expr.data._size_of.resolved_type)
+        size_expr = size_expr.data._size_of.next_sizeof
+    end
+
     i: int = 0
     while i < mods.count:
         collect_semantic_union_types_in_list(mods.modules[i].ast)
@@ -1452,6 +1458,10 @@ func is_constant_integer_cast_operand(expr: @AST): bool
         return false
     end
 
+    if expr.kind == AST_SIZEOF:
+        return expr.data._size_of.is_constant
+    end
+
     if integer_literal_node(expr) != null or expr.kind == AST_BOOL_LIT:
         return true
     end
@@ -1829,7 +1839,27 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         
     else if ast.kind == AST_SIZEOF:
         fprintf(out, "((uint64_t)sizeof(")
-        typeinfo_to_string(&ast.data._size_of.typeInfo, out, src)
+
+        if ast.data._size_of.is_object:
+            name_src: @char = ast.data._size_of.typeInfo.name_src
+            if name_src == null:
+                name_src = src
+            end
+
+            fprintf(out, "%.*s", ast.data._size_of.typeInfo.name_length, name_src + ast.data._size_of.typeInfo.name_start)
+        else:
+            sized_type: @TypeInfo = &ast.data._size_of.resolved_type
+            typeinfo_to_string(sized_type, out, src)
+
+            if sized_type.array_size > 0:
+                fprintf(out, "[%d]", sized_type.array_size)
+            else if sized_type.arr_size_expr != null:
+                fprintf(out, "[")
+                gen_expr(sized_type.arr_size_expr, out, src)
+                fprintf(out, "]")
+            end
+        end
+
         fprintf(out, "))")
         
     else if ast.kind == AST_CHAR_LIT:
