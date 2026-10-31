@@ -71,6 +71,7 @@ test: build
 	@sh ./scripts/tests/types/test_array_lengths.sh
 	@sh ./scripts/tests/types/test_sizeof_result.sh
 	@sh ./scripts/tests/types/test_sizeof_operands.sh
+	@sh ./scripts/tests/types/test_integer_ranges.sh
 
 clean:
 	@rm -rf output/

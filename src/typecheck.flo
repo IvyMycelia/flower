@@ -3054,6 +3054,49 @@ func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, dep
     return validate_nullable_type(env, ast, typeInfo)
 end
 
+func resolve_range_bounds(env: @TypeEnv, ast: @AST, from_type: @TypeInfo, to_type: @TypeInfo, src: @char): bool
+    from: @AST = ast.data._for_loop.from
+    to: @AST = ast.data._for_loop.to
+
+    if is_untyped_integer_expr(from) and not is_untyped_integer_expr(to):
+        if not resolve_expr(env, to, to_type, src):
+            return false
+        end
+
+        if not resolve_type_alias(env, to_type, to):
+            return false
+        end
+
+        if not resolve_expr_expected(env, from, to_type, from_type, src):
+            return false
+        end
+    else:
+        if not resolve_expr(env, from, from_type, src):
+            return false
+        end
+
+        if not resolve_type_alias(env, from_type, from):
+            return false
+        end
+
+        if is_untyped_integer_expr(to):
+            if not resolve_expr_expected(env, to, from_type, to_type, src):
+                return false
+            end
+        else:
+            if not resolve_expr(env, to, to_type, src):
+                return false
+            end
+        end
+    end
+
+    if not resolve_type_alias(env, from_type, from):
+        return false
+    end
+
+    return resolve_type_alias(env, to_type, to)
+end
+
 func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast, src)
@@ -3294,30 +3337,65 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         prune tmp
 
     else if ast.kind == AST_FOR:
-        saved_var_count: int = env.var_count
+        ast.data._for_loop.integer_base = 0
 
-        if env.var_count >= 2048:
-            type_error(env, ast, "type environment struct table overflow")
+        from_type: @TypeInfo = new TypeInfo
+        to_type: @TypeInfo = new TypeInfo
+        previous_errors: int = env.error_count
+
+        if not resolve_range_bounds(env, ast, from_type, to_type, src):
+            if env.error_count == previous_errors:
+                type_error(env, ast, "could not resolve range bounds")
+            end
+
+            prune to_type
+            prune from_type
             return
         end
+
+        if not is_scalar_fixed_integer(from_type) or not is_scalar_fixed_integer(to_type):
+            type_error(env, ast, "range bounds require integer types")
+            prune to_type
+            prune from_type
+            return
+        end
+
+        if from_type.base != to_type.base:
+            message: char[256]
+            snprintf(message, sizeof(message), "range bounds must have the same integer type: %s and %s; use an eplicit cast", integer_type_name(from_type.base), integer_type_name(to_type.base))
+            type_error(env, ast, message)
+            prune to_type
+            prune from_type
+            return
+        end
+
+        if env.var_count >= 2048:
+            type_error(env, ast, "type environment variable table overflow")
+            prune to_type
+            prune from_type
+            return
+        end
+
+        ast.data._for_loop.integer_base = from_type.base
+
+        saved_var_count: int = env.var_count
+        saved_narrow_count: int = env.narrow_count
 
         loop_var: @VarInfo = env.vars + env.var_count
         loop_var.src = src
         loop_var.name_start = ast.data._for_loop.var_start
         loop_var.name_length = ast.data._for_loop.var_length
-        set_plain_type(&loop_var.typeInfo, TOKEN_I32)
+        copy_type(&loop_var.typeInfo, from_type)
         loop_var.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
 
-        from_type: @TypeInfo = new TypeInfo
-        to_type: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._for_loop.from, from_type, src)
-        resolve_expr(env, ast.data._for_loop.to, to_type, src)
-        walk_statement_list(env, ast.data._for_loop.body, src)
-        prune from_type
         prune to_type
+        prune from_type
 
+        walk_statement_list(env, ast.data._for_loop.body, src)
+
+        env.narrow_count = saved_narrow_count
         env.var_count = saved_var_count
     
     else if ast.kind == AST_FLOW_CONTROL:

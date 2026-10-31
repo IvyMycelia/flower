@@ -393,6 +393,7 @@ struct for_loop {
     from: @AST,
     to: @AST,
     inclusive: bool,
+    integer_base: int,
     body: @AST,
 }
 
