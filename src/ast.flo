@@ -67,6 +67,7 @@ TYPE_TEST_UNION_TAG:    int = 3
 CAST_LOWER_NONE:            int = 0
 CAST_LOWER_UNION_EXTRACT:   int = 1
 CAST_LOWER_UNION_PACK:      int = 2
+CAST_LOWER_INTEGER:         int = 3
 
 BINARY_NULL_COMPARE_NONE:       int = 0
 BINARY_NULL_COMPARE_UNION_TAG:  int = 1
@@ -139,6 +140,12 @@ struct type_test {
     union_member_index: int,
 }
 
+struct integer_lit {
+    start: int,
+    length: int,
+    resolved_base: int
+}
+
 struct float_lit {
     start: int,
     length: int
@@ -176,6 +183,7 @@ struct subscript {
     // === Unary Operations ===
 struct unary {
     operand: @AST,
+    integer_base: int
 }
 
     // === Memory Management ===
@@ -189,6 +197,11 @@ struct prune_free {
 
 struct size_of {
     typeInfo: TypeInfo,
+    resolved_type: TypeInfo,
+    is_object: bool,
+    is_constant: bool,
+    registered: bool,
+    next_sizeof: @AST
 }
 
 struct deref_ass {
@@ -271,6 +284,8 @@ struct struct_field {
 
 struct struct_lit {
     elements: @AST,
+    resolved_type: TypeInfo,
+    is_typed: bool
 }
 
 
@@ -304,6 +319,7 @@ struct binary {
     left: @AST,   // left binary-op
     right: @AST,  // right bin-op
     op: int,
+    integer_base: int,
     is_string_compare: int,
     null_compare_kind: int,
     null_union_member_index: int,
@@ -377,6 +393,7 @@ struct for_loop {
     from: @AST,
     to: @AST,
     inclusive: bool,
+    integer_base: int,
     body: @AST,
 }
 
@@ -390,6 +407,7 @@ union NodeData {
     _type_test:     type_test,
     _type_alias:    type_alias,
     _cast:          cast,
+    _integer_lit:   integer_lit,
     _float_lit:     float_lit,
     _bool_lit:      bool_lit,
     _char_lit:      char_lit,
@@ -429,24 +447,141 @@ union NodeData {
 struct AST {
     kind: int,
     next: @AST,     // Next statement,
-    value: int,     // For vals
 
     src: @char,
     filename: @char,
     start: int,
 
+    aggregate_union_type: TypeInfo,
+    aggregate_union_member_index: int,
+
     data: NodeData
 }
 
+func integer_literal_node(expr: @AST): @AST
+    if expr == null:
+        return null
+    end
 
+    if expr.kind == AST_LITERAL:
+        return expr
+    end
+
+    if expr.kind == AST_UNARY_NEG and expr.data._unary.operand != null:
+        if expr.data._unary.operand.kind == AST_LITERAL:
+            return expr.data._unary.operand
+        end
+    end
+
+    return null
+end
+
+func compare_decimal_magnitudes(left: @char, left_length: int, right: @char,right_length: int): int
+    while left_length > 1 and left[0] == '0':
+        left = left + 1
+        left_length = left_length - 1
+    end
+
+    while right_length > 1 and right[0] == '0':
+        right = right + 1
+        right_length = right_length - 1
+    end
+
+    if left_length < right_length:
+        return -1
+    else if left_length > right_length:
+        return 1
+    end
+
+    i: int = 0
+    while i < left_length:
+        if left[i] < right[i]:
+            return -1
+        else if left[i] > right[i]:
+            return 1
+        end
+
+        i = i + 1
+    end
+
+    return 0
+end
+
+func integer_type_width(base: int): int
+    if base == TOKEN_I8 or base == TOKEN_U8:
+        return 8
+    else if base == TOKEN_I16 or base == TOKEN_U16:
+        return 16
+    else if base == TOKEN_I32 or base == TOKEN_U32:
+        return 32
+    else if base == TOKEN_I64 or base == TOKEN_U64:
+        return 64
+    end
+
+    return 0
+end
+
+func integer_type_signed(base: int): bool
+    return base == TOKEN_I8 or base == TOKEN_I16 or base == TOKEN_I32 or base == TOKEN_I64
+end
+
+func integer_type_name(base: int): @char
+    if base == TOKEN_I8:
+        return "i8"
+    else if base == TOKEN_U8:
+        return "u8"
+    else if base == TOKEN_I16:
+        return "i16"
+    else if base == TOKEN_U16:
+        return "u16"
+    else if base == TOKEN_I32:
+        return "i32"
+    else if base == TOKEN_U32:
+        return "u32"
+    else if base == TOKEN_I64:
+        return "i64"
+    else if base == TOKEN_U64:
+        return "u64"
+    else if base == TOKEN_INT:
+        return "int (i32)"
+    end
+
+    return "non-integer"
+end
+
+func is_integer_arithmetic_op(kind: int): bool
+    return kind == TOKEN_PLUS or kind == TOKEN_MINUS or kind == TOKEN_STAR or kind == TOKEN_SLASH
+end
+
+func is_untyped_integer_expr(expr: @AST): bool
+    if expr == null:
+        return false
+    end
+
+    if expr.kind == AST_LITERAL:
+        return true
+    end
+
+    if expr.kind == AST_UNARY_NEG:
+        return is_untyped_integer_expr(expr.data._unary.operand)
+    end
+
+    if expr.kind == AST_BINARY_OP and is_integer_arithmetic_op(expr.data._binary.op):
+        return is_untyped_integer_expr(expr.data._binary.left) and is_untyped_integer_expr(expr.data._binary.right)
+    end
+
+    return false
+end
 
 func prune_ast(node: @AST): void
-    if node == NULL: return end
+    if node == NULL:
+        return
+    end
     prune_ast(node.next)
 
     kind: int = node.kind
 
-         if kind == AST_FLOW_CONTROL: prune_ast(node.data._flow_ctrl.value)
+    if kind == AST_FLOW_CONTROL: prune_ast(node.data._flow_ctrl.value)
     else if kind == AST_CAST:         prune_ast(node.data._cast.value)
     else if kind == AST_TYPE_TEST:    prune_ast(node.data._type_test.value)
     else if kind == AST_ARRAY_LIT:    prune_ast(node.data._array.elements)
@@ -505,5 +640,3 @@ func prune_ast(node: @AST): void
 
     prune node
 end
-
-

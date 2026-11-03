@@ -20,7 +20,8 @@ struct StructInfo {
     name_start: int,
     name_length: int,
     fields: FieldInfo[128],
-    field_count: int
+    field_count: int,
+    is_raw_union: bool
 }
 
 VAR_BINDING_BASE:   int = 0
@@ -92,6 +93,7 @@ struct TypeEnv {
 
 active_type_modules: @ModuleSet
 current_type_module: @Module
+resolved_sizeof_expressions: @AST = null
 
 current_return_type: TypeInfo
 inside_function: int = 0
@@ -392,12 +394,16 @@ func can_accept_null(typeInfo: @TypeInfo): bool
     return is_pointer_like_type(typeInfo)
 end
 
+func is_scalar_fixed_integer(typeInfo: @TypeInfo): bool
+    return not typeInfo.is_union and not typeInfo.is_nullable and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0 and typeInfo.arr_size_expr == null and integer_type_width(typeInfo.base) != 0
+end
+
 func is_integer_type(typeInfo: @TypeInfo): bool
     if typeInfo.is_union:
         return false
     end
 
-    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_I32 or typeInfo.base == TOKEN_CHAR) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_decimal_type(typeInfo: @TypeInfo): bool
@@ -409,7 +415,7 @@ func is_decimal_type(typeInfo: @TypeInfo): bool
 end
 
 func is_condition_type(typeInfo: @TypeInfo): bool
-    return is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_pointer_like_type(typeInfo)
+    return is_bool_type(typeInfo) or is_scalar_fixed_integer(typeInfo) or is_integer_type(typeInfo) or is_pointer_like_type(typeInfo)
 end
 
 func is_string_type(typeInfo: @TypeInfo): bool
@@ -433,15 +439,15 @@ func is_numeric_type(typeInfo: @TypeInfo): bool
         return false
     end
 
-    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_INT or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
+    return not typeInfo.is_nullable and (typeInfo.base == TOKEN_I32 or typeInfo.base == TOKEN_FLOAT or typeInfo.base == TOKEN_DOUBLE) and typeInfo.pointer_depth == 0 and typeInfo.array_size == 0
 end
 
 func is_printable_type(typeInfo: @TypeInfo): bool
-    return is_string_type(typeInfo) or is_cstr_type(typeInfo) or is_bool_type(typeInfo) or is_integer_type(typeInfo) or is_decimal_type(typeInfo)
+    return is_string_type(typeInfo) or is_cstr_type(typeInfo) or is_bool_type(typeInfo) or is_scalar_fixed_integer(typeInfo) or is_integer_type(typeInfo) or is_decimal_type(typeInfo)
 end
 
 func numeric_rank(typeInfo: @TypeInfo): int
-    if typeInfo.base == TOKEN_INT:      
+    if typeInfo.base == TOKEN_I32:      
         return 1 
     end
     if typeInfo.base == TOKEN_FLOAT:    
@@ -497,15 +503,19 @@ func can_explicitly_convert(target: @TypeInfo, value: @TypeInfo): bool
         end
     end
 
-    if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)): 
+    if is_scalar_fixed_integer(target) and is_scalar_fixed_integer(value):
         return true 
     end
 
-    if is_bool_type(target) and value.base == TOKEN_INT and value.pointer_depth == 0 and value.array_size == 0: 
+    if is_bool_type(target) and is_scalar_fixed_integer(value):
         return true
     end
 
-    if is_bool_type(value) and target.base == TOKEN_INT and target.pointer_depth == 0 and target.array_size == 0:
+    if is_scalar_fixed_integer(target) and is_bool_type(value):
+        return true
+    end
+
+    if (is_integer_type(target) or is_decimal_type(target)) and (is_integer_type(value) or is_decimal_type(value)):
         return true
     end
 
@@ -604,7 +614,7 @@ func wider_numeric_base(left: @TypeInfo, right: @TypeInfo): int
         return TOKEN_FLOAT
     end
 
-    return TOKEN_INT
+    return TOKEN_I32
 end
 
 func set_plain_type(out: @TypeInfo, base: int): void
@@ -906,6 +916,42 @@ func type_error(env: @TypeEnv, ast: @AST, message: @char): void
     env.error_count = env.error_count + 1
 end
 
+func conversion_error(env: @TypeEnv, ast: @AST, expected: @TypeInfo, actual: @TypeInfo, context: @char): void
+    if not is_scalar_fixed_integer(expected) or not is_scalar_fixed_integer(actual):
+        type_error(env, ast, context)
+        return
+    end
+
+    if expected.base == actual.base:
+        type_error(env, ast, context)
+        return
+    end
+
+    expected_width: int = integer_type_width(expected.base)
+    actual_width: int = integer_type_width(actual.base)
+    signedness_changed: bool = integer_type_signed(expected.base) != integer_type_signed(actual.base)
+
+    reason: @char = "implicit integer signedness change"
+
+    if expected_width > actual_width:
+        if signedness_changed:
+            reason = "implicit integer widening with signedness change"
+        else:
+            reason = "implicit integer widening"
+        end
+    else if expected_width < actual_width:
+        if signedness_changed:
+            reason = "implicit integer narrowing with signedness change"
+        else:
+            reason = "implicit integer narrowing"
+        end
+    end
+
+    message: char[512]
+    snprintf(message, sizeof(message), "%s: %s from %s to %s; use an explicit cast", context, reason, integer_type_name(actual.base), integer_type_name(expected.base))
+    type_error(env, ast, message)
+end
+
 // === PASSES ===
 
 forward func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
@@ -923,11 +969,14 @@ forward func lookup_field(env: @TypeEnv, info: @StructInfo, src: @char, start: i
 forward func lookup_func_return_type_in_module(env: @TypeEnv, module_src: @char, call_src: @char, start: int, length: int, out: @TypeInfo): int
 forward func lookup_alias(env: @TypeEnv, src: @char, start: int, length: int): @AliasInfo
 
-forward func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
 forward func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+forward func resolve_expr_list(env: @TypeEnv, list: @AST, src: @char): void
+forward func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char, expected: @TypeInfo): int
+forward func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
 forward func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
 forward func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
+forward func resolve_parameter_types(env: @TypeEnv, params: @AST): bool
 
 forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
@@ -944,6 +993,13 @@ func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
 
         else if curr.kind == AST_FUNC_DEF:
             register_func(env, curr, src)
+
+        else if curr.kind == AST_FORWARD:
+            if curr.data._forward.is_func:
+                if not resolve_parameter_types(env, curr.data._forward.params):
+                    return
+                end
+            end
 
         else if curr.kind == AST_TYPE_ALIAS:
             register_type_alias(env, curr, src)
@@ -985,6 +1041,7 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
     info.name_start = ast.data._struct_def.name_start
     info.name_length = ast.data._struct_def.name_length
     info.field_count = 0
+    info.is_raw_union = false
 
     field: @AST = ast.data._struct_def.fields
     while field != null:
@@ -992,7 +1049,15 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
+
         copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
+
+        if not resolve_type_alias(env, &finfo.typeInfo, field):
+            return
+        end
+
+        copy_type(&field.data._struct_field.typeInfo, &finfo.typeInfo)
+
         resolve_type_alias(env, &finfo.typeInfo, field)
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
@@ -1016,6 +1081,7 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
     info.name_start = ast.data._union_def.name_start
     info.name_length = ast.data._union_def.name_length
     info.field_count = 0
+    info.is_raw_union = true
 
     field: @AST = ast.data._union_def.fields
     while field != null:
@@ -1023,7 +1089,15 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
         finfo.name_length = field.data._struct_field.name_length
+
         copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
+
+        if not resolve_type_alias(env, &finfo.typeInfo, field):
+            return
+        end
+
+        copy_type(&field.data._struct_field.typeInfo, &finfo.typeInfo)
+
         resolve_type_alias(env, &finfo.typeInfo, field)
         if finfo.typeInfo.is_union:
             type_error(env, field, "semantic union fields are not lowered yet")
@@ -1039,11 +1113,36 @@ func register_union(env: @TypeEnv, ast: @AST, src: @char): void
     env.struct_count = env.struct_count + 1
 end
 
+func resolve_parameter_types(env: @TypeEnv, params: @AST): bool
+    param: @AST = params
+
+    while param != null:
+        resolved: @TypeInfo = new TypeInfo
+        copy_type(resolved, &param.data._func_params.typeInfo)
+
+        if not resolve_type_alias(env, resolved, param):
+            prune resolved
+            return false
+        end
+
+        copy_type(&param.data._func_params.typeInfo, resolved)
+        prune resolved
+        param = param.next
+    end
+
+    return true
+end
+
 func register_func(env: @TypeEnv, ast: @AST, src: @char): void
     if env.func_count >= 1024:
         type_error(env, ast, "type environment struct table overflow")
         return
     end
+
+    if not resolve_parameter_types(env, ast.data._func_def.params):
+        return
+    end
+
     info: @FuncInfo = env.funcs + env.func_count
 
     info.src = src
@@ -1069,8 +1168,14 @@ func register_var(env: @TypeEnv, ast: @AST, src: @char): void
     info.src = src
     info.name_start = ast.data._var_decl.name_start
     info.name_length = ast.data._var_decl.name_length
+
     copy_type(&info.typeInfo, &ast.data._var_decl.typeInfo)
-    resolve_type_alias(env, &info.typeInfo, ast)
+
+    if not resolve_type_alias(env, &info.typeInfo, ast):
+        return
+    end
+
+    copy_type(&ast.data._var_decl.typeInfo, &info.typeInfo)
     info.binding_kind = VAR_BINDING_BASE
 
     env.var_count = env.var_count + 1
@@ -1178,7 +1283,7 @@ func resolve_builtin_c_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @cha
     resolve_expr_list(env, expr.data._func_call.args, src)
 
     if return_kind == 1:
-        set_plain_type(out, TOKEN_INT)
+        set_plain_type(out, TOKEN_I32)
     else:
         set_cstr_type(out)
     end
@@ -1577,9 +1682,533 @@ func try_lower_storage_union_null_compare(env: @TypeEnv, expr: @AST, src: @char)
     return false
 end
 
+func integer_literal_limit(base: int, negative: bool): @char
+    if base == TOKEN_I8:
+        if negative:
+            return "128"
+        end
+        return "127"
+    else if base == TOKEN_U8:
+        return "255"
+    else if base == TOKEN_I16:
+        if negative:
+            return "32768"
+        end
+        return "32767"
+    else if base == TOKEN_U16:
+        return "65535"
+    else if base == TOKEN_I32:
+        if negative:
+            return "2147483648"
+        end
+        return "2147483647"
+    else if base == TOKEN_U32:
+        return "4294967295"
+    else if base == TOKEN_I64:
+        if negative:
+            return "9223372036854775808"
+        end
+        return "9223372036854775807"
+    else if base == TOKEN_U64:
+        return "18446744073709551615"
+    end
+
+    return "0"
+end
+
+func resolve_integer_literal(env: @TypeEnv, expr: @AST, base: int, contextual: bool, out: @TypeInfo): int
+    literal: @AST = integer_literal_node(expr)
+    if literal == null:
+        return 0
+    end
+
+    negative: bool = expr.kind == AST_UNARY_NEG
+    message: char[256]
+
+    if negative and not integer_type_signed(base):
+        snprintf(message, sizeof(message), "negative integer literal cannot initialize %s", integer_type_name(base))
+        type_error(env, expr, message)
+        return 0
+    end
+
+    limit: @char = integer_literal_limit(base, negative)
+    digits: @char = literal.src + literal.data._integer_lit.start
+    length: int = literal.data._integer_lit.length
+
+    if compare_decimal_magnitudes(digits, length, limit, cstr.len(limit)) > 0:
+        if contextual:
+            snprintf(message, sizeof(message), "integer literal outside range of %s", integer_type_name(base))
+        else:
+            snprintf(message, sizeof(message), "integer literal outside default i32 range; provide an explicit integer type")
+        end
+
+        type_error(env, expr, message)
+        return 0
+    end
+
+    literal.data._integer_lit.resolved_base = base
+    set_plain_type(out, base)
+    return 1
+end
+
+func resolve_binary_operand_types(env: @TypeEnv, expr: @AST, expected: @TypeInfo, left_type: @TypeInfo, right_type: @TypeInfo, src: @char): int
+    left: @AST = expr.data._binary.left
+    right: @AST = expr.data._binary.right
+
+    left_untyped: bool = is_untyped_integer_expr(left)
+    right_untyped: bool = is_untyped_integer_expr(right)
+
+    if not is_logical_op(expr.data._binary.op):
+        if left_untyped and not right_untyped:
+            if not resolve_expr(env, right, right_type, src):
+                return 0
+            end
+
+            if not resolve_type_alias(env, right_type, right):
+                return 0
+            end
+
+            return resolve_expr_expected(env, left, right_type, left_type, src)
+
+        else if right_untyped and not left_untyped:
+            if not resolve_expr(env, left, left_type, src):
+                return 0
+            end
+
+            if not resolve_type_alias(env, left_type, left):
+                return 0
+            end
+
+            return resolve_expr_expected(env, right, left_type, right_type, src)
+        
+        else if left_untyped and right_untyped and is_integer_arithmetic_op(expr.data._binary.op):
+            if expected != null and is_scalar_fixed_integer(expected):
+                if not resolve_expr_expected(env, left, expected, left_type, src):
+                    return 0
+                end
+
+                return resolve_expr_expected(env, right, expected, right_type, src)
+            end
+        end
+    end
+
+    if not resolve_expr(env, left, left_type, src):
+        return 0
+    end
+
+    return resolve_expr(env, right, right_type, src)
+end
+
 func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
+    return resolve_expr_with_expected(env, expr, out, src, null)
+end
+
+func check_aggregate_literal_arity(env: @TypeEnv, expr: @AST, expected: @TypeInfo): bool
+    if expr == null:
+        return true
+    end
+
+    if expr.kind != AST_ARRAY_LIT and expr.kind != AST_STRUCT_LIT:
+        return true
+    end
+
+    target: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, expr):
+        prune target
+        return false
+    end
+
+    elements: @AST = null
+    if expr.kind == AST_ARRAY_LIT:
+        elements = expr.data._array.elements
+    else:
+        elements = expr.data._struct_lit.elements
+    end
+
+    found: int = 0
+    element: @AST = elements
+    while element != null:
+        found = found + 1
+        element = element.next
+    end
+
+    if expr.kind == AST_ARRAY_LIT:
+        if target.is_union or target.is_nullable:
+            type_error(env, expr, "array literal requires an array destination")
+            prune target
+            return false
+        end
+
+        if target.arr_size_expr != null:
+            type_error(env, expr, "array literal requires a statically known array length")
+            prune target
+            return false
+        end
+
+        if target.array_size == 0:
+            type_error(env, expr, "array literal requires an array destination")
+            prune target
+            return false
+        end
+
+        if target.array_size == -1:
+            if found == 0:
+                type_error(env, expr, "cannot infer array length from an empty literal")
+                prune target
+                return false
+            end
+        else if found != target.array_size:
+            message: char[256]
+            snprintf(message, sizeof(message), "array literal: expected %d elements, found %d", target.array_size, found)
+            type_error(env, expr, message)
+            prune target
+            return false
+        end
+
+        element_type: @TypeInfo = new TypeInfo
+        copy_type(element_type, target)
+        element_type.array_size = 0
+        element_type.arr_size_expr = null
+
+        element = elements
+        while element != null:
+            if not check_aggregate_literal_arity(env, element, element_type):
+                prune element_type
+                prune target
+                return false
+            end
+
+            element = element.next
+        end
+
+        prune element_type
+        prune target
+        return true
+    end
+
+    if target.is_union or target.is_nullable or target.pointer_depth != 0 or target.array_size != 0 or target.arr_size_expr != null or target.base != TOKEN_IDENTIFIER:
+        type_error(env, expr, "struct literal requires a struct destination")
+        prune target
+        return false
+    end
+
+    info: @StructInfo = lookup_struct(env, target.name_src, target.name_start, target.name_length)
+    if info == null:
+        type_error(env, expr, "could not resolve struct literal destination")
+        prune target
+        return false
+    end
+
+    if info.is_raw_union:
+        prune target
+        return true
+    end
+
+    if found != info.field_count:
+        message: char[256]
+        snprintf(message, sizeof(message), "struct literal: expected %d fields, found %d", info.field_count, found)
+        type_error(env, expr, message)
+        prune target
+        return false
+    end
+
+    index: int = 0
+    element = elements
+    while element != null:
+        field: @FieldInfo = info.fields + index
+        if not check_aggregate_literal_arity(env, element, &field.typeInfo):
+            prune target
+            return false
+        end
+
+        index = index + 1
+        element = element.next
+    end
+
+    prune target
+    return true
+end
+
+func resolve_aggregate_element(env: @TypeEnv, element: @AST, expected: @TypeInfo, src: @char): bool
+    element.aggregate_union_member_index = 0
+
+    target: @TypeInfo = new TypeInfo
+    actual: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, element):
+        prune actual
+        prune target
+        return false
+    end
+
+    if not resolve_expr_expected(env, element, target, actual, src):
+        prune actual
+        prune target
+        return false
+    end
+
+    if not resolve_type_alias(env, actual, element):
+        prune actual
+        prune target
+        return false
+    end
+
+    if not allow_string_literal_for_target(element, target) and not can_implicitly_convert(target, actual):
+        conversion_error(env, element, target, actual, "aggregate element does not match destination type")
+        prune actual
+        prune target
+        return false
+    end
+
+    if target.is_union and not actual.is_union:
+        member_index: int = find_union_member_index(target, actual)
+
+        if member_index == 0:
+            type_error(env, element, "aggregate element does not select a union member")
+            prune actual
+            prune target
+            return false
+        end
+
+        copy_type(&element.aggregate_union_type, target)
+        element.aggregate_union_member_index = member_index
+    end
+
+    prune actual
+    prune target
+    return true
+end
+
+func resolve_aggregate_literal(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
+    if not check_aggregate_literal_arity(env, expr, expected):
+        return 0
+    end
+
+    target: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, expr):
+        prune target
+        return 0
+    end
+
+    if expr.kind == AST_ARRAY_LIT:
+        element_type: @TypeInfo = new TypeInfo
+        copy_type(element_type, target)
+        element_type.array_size = 0
+        element_type.arr_size_expr = null
+
+        element: @AST = expr.data._array.elements
+        while element != null:
+            if not resolve_aggregate_element(env, element, element_type, src):
+                prune element_type
+                prune target
+                return 0
+            end
+
+            element = element.next
+        end
+
+        copy_type(out, target)
+        prune element_type
+        prune target
+        return 1
+    end
+
+    expr.data._struct_lit.is_typed = false
+
+    info: @StructInfo = lookup_struct(env, target.name_src, target.name_start, target.name_length)
+    if info == null:
+        type_error(env, expr, "could not resolve struct literal destination")
+        prune target
+        return 0
+    end
+
+    if info.is_raw_union:
+        copy_type(out, target)
+        prune target
+        return 1
+    end
+
+    index: int = 0
+    element: @AST = expr.data._struct_lit.elements
+    while element != null:
+        field: @FieldInfo = info.fields + index
+
+        if current_type_module != null and field.src != current_type_module.src and field.is_hidden:
+            type_error(env, element, "cannot initialize a hidden field from this module")
+            prune target
+            return 0
+        end
+
+        if not resolve_aggregate_element(env, element, &field.typeInfo, src):
+            prune target
+            return 0
+        end
+
+        index = index + 1
+        element = element.next
+    end
+
+    copy_type(&expr.data._struct_lit.resolved_type, target)
+    expr.data._struct_lit.is_typed = true
+    copy_type(out, target)
+
+    prune target
+    return 1
+end
+
+func resolve_sizeof_operand(env: @TypeEnv, expr: @AST, src: @char): bool
+    operand: @TypeInfo = &expr.data._size_of.typeInfo
+    resolved: @TypeInfo = new TypeInfo
+
+    expr.data._size_of.is_object = false
+    expr.data._size_of.is_constant = false
+
+    if not operand.is_union and not operand.is_nullable and operand.base == TOKEN_IDENTIFIER and operand.pointer_depth == 0and operand.array_size == 0 and operand.arr_size_expr == null:
+        if lookup_storage_var_type(env, src, operand.name_start, operand.name_length, resolved):
+            expr.data._size_of.is_object = true
+        end
+    end
+
+    if not expr.data._size_of.is_object:
+        copy_type(resolved, operand)
+    end
+
+    if not resolve_type_alias(env, resolved, expr):
+        prune resolved
+        return false
+    end
+
+    if not resolved.is_union and resolved.base == TOKEN_VOID and resolved.pointer_depth == 0:
+        type_error(env, expr, "sizeof requires a sized type")
+        prune resolved
+        return false
+    end
+
+    if not expr.data._size_of.is_object:
+        if resolved.array_size == -1:
+            type_error(env, expr, "sizeof requires a known array length")
+            prune resolved
+            return false
+        end
+
+        if resolved.arr_size_expr != null:
+            length_type: @TypeInfo = new TypeInfo
+            previous_errors: int = env.error_count
+
+            if not resolve_expr(env, resolved.arr_size_expr, length_type, src):
+                if env.error_count == previous_errors:
+                    type_error(env, expr, "could not resolve sizeof array length")
+                end
+
+                prune length_type
+                prune resolved
+                return false
+            end
+
+            if not resolve_type_alias(env, length_type, resolved.arr_size_expr):
+                prune length_type
+                prune resolved
+                return false
+            end
+
+            if not is_scalar_fixed_integer(length_type):
+                type_error(env, resolved.arr_size_expr, "sizeof array length requires an integer type")
+                prune length_type
+                prune resolved
+                return false
+            end
+
+            prune length_type
+        end
+    end
+    
+    copy_type(&expr.data._size_of.resolved_type, resolved)
+    expr.data._size_of.is_constant = resolved.arr_size_expr == null
+
+    if not expr.data._size_of.registered:
+        expr.data._size_of.next_sizeof = resolved_sizeof_expressions
+        resolved_sizeof_expressions = expr
+        expr.data._size_of.registered = true
+    end
+
+    prune resolved
+    return true
+end
+
+func resolve_expr_expected(env: @TypeEnv, expr: @AST, expected: @TypeInfo, out: @TypeInfo, src: @char): int
+    target: @TypeInfo = new TypeInfo
+    copy_type(target, expected)
+
+    if not resolve_type_alias(env, target, expr):
+        prune target
+        return 0
+    end
+
+    if target.is_union and is_untyped_integer_expr(expr):
+        integer_count: int = 0
+        integer_index: int = -1
+        member: @TypeInfo = new TypeInfo
+
+        i: int = 0
+        while i < target.union_count:
+            copy_atom_to_type(member, target.union_members + i)
+
+            if is_scalar_fixed_integer(member):
+                integer_count = integer_count + 1
+                integer_index = i
+            end
+
+            i = i + 1
+        end
+
+        if integer_count > 1:
+            type_error(env, expr, "ambiguous integer-union initializer; use an explicit cast")
+            prune member
+            prune target
+            return 0
+        end
+
+        if integer_count == 1:
+            copy_atom_to_type(member, target.union_members + integer_index)
+            result: int = resolve_expr_with_expected(env, expr, out, src, member)
+            prune member
+            prune target
+            return result
+        end
+
+        prune member
+    end
+
+    result: int = resolve_expr_with_expected(env, expr, out, src, target)
+    prune target
+    return result
+end
+
+func resolve_expr_with_expected(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char, expected: @TypeInfo): int
     if expr == null:
         return 0
+    end
+
+    if expr.kind == AST_ARRAY_LIT or expr.kind == AST_STRUCT_LIT:
+        if expected == null:
+            type_error(env, expr, "aggregate literal requires a destination")
+            return 0
+        end
+
+        return resolve_aggregate_literal(env, expr, expected, out, src)
+    end
+
+    if integer_literal_node(expr) != null:
+        if expected != null and is_scalar_fixed_integer(expected):
+            return resolve_integer_literal(env, expr, expected.base, true, out)
+        end
+
+        return resolve_integer_literal(env, expr, TOKEN_I32, false, out)
     end
 
     if expr.kind == AST_VAR_REF:
@@ -1731,7 +2360,17 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_SUBSCRIPT:
-        if !resolve_expr(env, expr.data._subscript.array, out, src):
+        expr.data._subscript.is_string = 0
+
+        previous_errors: int = env.error_count
+        if not resolve_expr(env, expr.data._subscript.array, out, src):
+            if env.error_count == previous_errors:
+                type_error(env, expr, "could not resolve indexed object")
+            end
+            return 0
+        end
+
+        if not resolve_type_alias(env, out, expr.data._subscript.array):
             return 0
         end
 
@@ -1740,13 +2379,28 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
-        expr.data._subscript.is_string = 0
-
         idx_type: @TypeInfo = new TypeInfo
-        if !resolve_expr(env, expr.data._subscript.index, idx_type, src):
+        previous_errors = env.error_count
+
+        if not resolve_expr(env, expr.data._subscript.index, idx_type, src):
+            if env.error_count == previous_errors:
+                type_error(env, expr.data._subscript.index, "could not resolve subscript index")
+            end
             prune idx_type
             return 0
         end
+
+        if not resolve_type_alias(env, idx_type, expr.data._subscript.index):
+            prune idx_type
+            return 0
+        end
+
+        if not is_scalar_fixed_integer(idx_type):
+            type_error(env, expr.data._subscript.index, "subscript requires an integer type")
+            prune idx_type
+            return 0
+        end
+
         prune idx_type
 
         if is_string_type(out):
@@ -1756,7 +2410,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 1
         end
 
-        if out.array_size != 0:
+        if out.array_size != 0 or out.arr_size_expr != null:
             out.array_size = 0
             out.arr_size_expr = null
             out.is_nullable = false
@@ -1773,16 +2427,11 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 0
 
     else if expr.kind == AST_BINARY_OP:
+        expr.data._binary.integer_base = 0
         left_type: @TypeInfo = new TypeInfo
         right_type: @TypeInfo = new TypeInfo
 
-        if !resolve_expr(env, expr.data._binary.left, left_type, src):
-            prune left_type
-            prune right_type
-            return 0
-        end
-
-        if !resolve_expr(env, expr.data._binary.right, right_type, src):
+        if not resolve_binary_operand_types(env, expr, expected, left_type, right_type, src):
             prune left_type
             prune right_type
             return 0
@@ -1818,6 +2467,44 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             prune left_type
             prune right_type
             return 0
+        end
+
+        if not is_logical_op(expr.data._binary.op) and is_scalar_fixed_integer(left_type) and is_scalar_fixed_integer(right_type):
+            if left_type.base != right_type.base:
+                operation: @char = "arithmetic"
+                if is_comparison_op(expr.data._binary.op):
+                    operation = "comparison"
+                end
+
+                mismatch: @char = "mixed-width"
+                if integer_type_signed(left_type.base) != integer_type_signed(right_type.base):
+                    mismatch = "mixed-signedness"
+                end
+
+                message: char[256]
+                snprintf(message, sizeof(message), "%s %s: %s and %s; use an explicit cast", mismatch, operation, integer_type_name(left_type.base), integer_type_name(right_type.base))
+                type_error(env, expr, message)
+
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            if is_comparison_op(expr.data._binary.op):
+                set_plain_type(out, TOKEN_BOOL)
+            else if is_integer_arithmetic_op(expr.data._binary.op):
+                expr.data._binary.integer_base = left_type.base
+                copy_type(out, left_type)
+            else:
+                type_error(env, expr, "unsupported integer operator")
+                prune left_type
+                prune right_type
+                return 0
+            end
+
+            prune left_type
+            prune right_type
+            return 1
         end
 
         if is_logical_op(expr.data._binary.op):
@@ -1872,7 +2559,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 return 0
             end
 
-            if (expr.data._binary.op == TOKEN_PLUS or expr.data._binary.op == TOKEN_MINUS) and is_pointer_like_type(left_type) and is_integer_type(right_type):
+            if (expr.data._binary.op == TOKEN_PLUS or expr.data._binary.op == TOKEN_MINUS) and is_pointer_like_type(left_type) and (is_integer_type(right_type) or is_scalar_fixed_integer(right_type)):
                 copy_type(out, left_type)
 
                 if out.array_size != 0:
@@ -1886,7 +2573,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
                 return 1
             end
 
-            if expr.data._binary.op == TOKEN_PLUS and is_integer_type(left_type) and is_pointer_like_type(right_type):
+            if expr.data._binary.op == TOKEN_PLUS and (is_integer_type(left_type) or is_scalar_fixed_integer(left_type)) and is_pointer_like_type(right_type):
                 copy_type(out, right_type)
 
                 if out.array_size != 0:
@@ -1921,7 +2608,7 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
     else if expr.kind == AST_UNARY_NOT:
         operand_type: @TypeInfo = new TypeInfo
 
-        if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+        if not resolve_expr(env, expr.data._unary.operand, operand_type, src):
             prune operand_type
             return 0
         end
@@ -1932,33 +2619,41 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
-        if !is_condition_type(operand_type):
+        if not is_condition_type(operand_type):
             type_error(env, expr, "not requires a condition-compatible operand")
             prune operand_type
             return 0
         end
 
         prune operand_type
-
         set_plain_type(out, TOKEN_BOOL)
         return 1
 
     else if expr.kind == AST_UNARY_NEG:
+        expr.data._unary.integer_base = 0
         operand_type: @TypeInfo = new TypeInfo
+        resolved: int = 0
 
-        if !resolve_expr(env, expr.data._unary.operand, operand_type, src):
+        if expected != null and is_scalar_fixed_integer(expected):
+            resolved = resolve_expr_expected(env, expr.data._unary.operand, expected, operand_type, src)
+        else:
+            resolved = resolve_expr(env, expr.data._unary.operand, operand_type, src)
+        end
+
+        if not resolved:
             prune operand_type
             return 0
         end
 
-        if operand_type.is_union:
-            type_error(env, expr, "semantic union requires explicit type before unary use")
+        if not resolve_type_alias(env, operand_type, expr.data._unary.operand):
             prune operand_type
             return 0
         end
 
-        if is_bool_type(operand_type):
-            type_error(env, expr, "unary minus does not accept bool")
+        if is_scalar_fixed_integer(operand_type):
+            expr.data._unary.integer_base = operand_type.base
+        else if not is_integer_type(operand_type) and not is_decimal_type(operand_type):
+            type_error(env, expr, "unary minus requires an integer, char, or floating-point operand")
             prune operand_type
             return 0
         end
@@ -1979,6 +2674,31 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        copy_type(&expr.data._cast.typeInfo, target_type)
+        expr.data._cast.lower_kind = CAST_LOWER_NONE
+        expr.data._cast.union_member_index = 0
+
+        if is_scalar_fixed_integer(target_type) and integer_literal_node(expr.data._cast.value) != null:
+            source_base: int = TOKEN_U64
+            if expr.data._cast.value.kind == AST_UNARY_NEG:
+                source_base = TOKEN_I64
+            end
+
+            if not resolve_integer_literal(env, expr.data._cast.value, source_base, true, value_type):
+                prune value_type
+                prune target_type
+                return 0
+            end
+
+            copy_type(&expr.data._cast.value_type, value_type)
+            expr.data._cast.lower_kind = CAST_LOWER_INTEGER
+            copy_type(out, target_type)
+
+            prune value_type
+            prune target_type
+            return 1
+        end
+
         if not resolve_expr(env, expr.data._cast.value, value_type, src):
             prune value_type
             prune target_type
@@ -1990,10 +2710,6 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             prune target_type
             return 0
         end
-
-        copy_type(&expr.data._cast.typeInfo, target_type)
-        expr.data._cast.lower_kind = CAST_LOWER_NONE
-        expr.data._cast.union_member_index = 0
 
         if expr.data._cast.value != null and is_narrowable_expr(expr.data._cast.value):
             source_union: @TypeInfo = new TypeInfo
@@ -2046,6 +2762,12 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             return 0
         end
 
+        if is_scalar_fixed_integer(target_type):
+            if is_scalar_fixed_integer(value_type) or is_bool_type(value_type):
+                expr.data._cast.lower_kind = CAST_LOWER_INTEGER
+            end
+        end
+
         if expr.data._cast.value.kind == AST_STRING_LIT:
             if is_string_type(target_type) or is_cstr_type(target_type):
                 force_string_literal_lowering(expr.data._cast.value)
@@ -2060,12 +2782,17 @@ func resolve_expr(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
         return 1
 
     else if expr.kind == AST_SIZEOF:
-        set_plain_type(out, TOKEN_INT)
+        if not resolve_sizeof_operand(env, expr, src):
+            return 0
+        end
+        
+        set_plain_type(out, TOKEN_U64)
         return 1
 
-    else if expr.kind == AST_LITERAL:
-        set_plain_type(out, TOKEN_INT)
-        return 1
+    // COMMENTED OUT: Unreachable due to new integer handler
+    // else if expr.kind == AST_LITERAL:
+    //     set_plain_type(out, TOKEN_I32)
+    //     return 1
 
     else if expr.kind == AST_FLOAT_LIT:
         set_plain_type(out, TOKEN_FLOAT)
@@ -2125,7 +2852,7 @@ func resolve_dot(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): int
             expr.data._dot_access.is_readonly = 1
             expr.data._dot_access.owner_src = null
 
-            set_plain_type(out, TOKEN_INT)
+            set_plain_type(out, TOKEN_I32)
             copy_type(&expr.data._dot_access.resolved_type, out)
             prune object_type
             return 1
@@ -2230,8 +2957,43 @@ func resolve_alias_call(env: @TypeEnv, expr: @AST, out: @TypeInfo, src: @char): 
     return 1
 end
 
+func is_scalar_integer_atom(atom: @TypeAtom): bool
+    return not atom.is_nullable and atom.pointer_depth == 0 and atom.array_size == 0 and atom.arr_size_expr == null and integer_type_width(atom.base) != 0
+end
+
 func resolve_type_alias(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST): bool
-    return resolve_type_alias_depth(env, typeInfo, ast, 0)
+    if not resolve_type_alias_depth(env, typeInfo, ast, 0):
+        return false
+    end
+
+    if not typeInfo.is_union:
+        return true
+    end
+
+    i: int = 0
+    while i < typeInfo.union_count:
+        member: @TypeAtom = typeInfo.union_members + i
+
+        if is_scalar_integer_atom(member):
+            j: int = 0
+            while j < i:
+                previous: @TypeAtom = typeInfo.union_members + j
+
+                if is_scalar_integer_atom(previous) and union_atom_exact_match(member, previous):
+                    message: char[256]
+                    snprintf(message, sizeof(message), "duplicate canonical integer member: %s", integer_type_name(member.base))
+                    type_error(env, ast, message)
+                    return false
+                end
+
+                j = j + 1
+            end
+        end
+
+        i = i + 1
+    end
+
+    return true
 end
 
 func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, depth: int): bool
@@ -2328,6 +3090,49 @@ func resolve_type_alias_depth(env: @TypeEnv, typeInfo: @TypeInfo, ast: @AST, dep
     return validate_nullable_type(env, ast, typeInfo)
 end
 
+func resolve_range_bounds(env: @TypeEnv, ast: @AST, from_type: @TypeInfo, to_type: @TypeInfo, src: @char): bool
+    from: @AST = ast.data._for_loop.from
+    to: @AST = ast.data._for_loop.to
+
+    if is_untyped_integer_expr(from) and not is_untyped_integer_expr(to):
+        if not resolve_expr(env, to, to_type, src):
+            return false
+        end
+
+        if not resolve_type_alias(env, to_type, to):
+            return false
+        end
+
+        if not resolve_expr_expected(env, from, to_type, from_type, src):
+            return false
+        end
+    else:
+        if not resolve_expr(env, from, from_type, src):
+            return false
+        end
+
+        if not resolve_type_alias(env, from_type, from):
+            return false
+        end
+
+        if is_untyped_integer_expr(to):
+            if not resolve_expr_expected(env, to, from_type, to_type, src):
+                return false
+            end
+        else:
+            if not resolve_expr(env, to, to_type, src):
+                return false
+            end
+        end
+    end
+
+    if not resolve_type_alias(env, from_type, from):
+        return false
+    end
+
+    return resolve_type_alias(env, to_type, to)
+end
+
 func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
     if ast.kind == AST_VAR_DECL:
         register_var(env, ast, src)
@@ -2343,13 +3148,17 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 return
             end
 
-            if resolve_expr(env, ast.data._var_decl.value, value_type, src):
-                if not allow_string_literal_for_target(ast.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
-                    type_error(env, ast, "variable initializer does not match declared type")
-                    prune expected_type
-                    prune value_type
-                    return
-                end
+            if not resolve_expr_expected(env, ast.data._var_decl.value, expected_type, value_type, src):
+                prune expected_type
+                prune value_type
+                return
+            end
+
+            if not allow_string_literal_for_target(ast.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
+                conversion_error(env, ast, expected_type, value_type, "variable initializer does not match declared type")
+                prune expected_type
+                prune value_type
+                return
             end
 
             ast.data._var_decl.union_member_index = 0
@@ -2376,9 +3185,9 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
         assignment_ok: bool = false
 
-        if resolve_expr(env, ast.data._var_ass.value, value_type, src):
+        if resolve_expr_expected(env, ast.data._var_ass.value, target_type, value_type, src):
             if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
-                type_error(env, ast, "assigned value does not match variable type")
+                conversion_error(env, ast, target_type, value_type, "assigned value does not match variable type")
             else:
                 assignment_ok = true
             end
@@ -2396,6 +3205,56 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         prune target_type
         prune value_type
 
+    else if ast.kind == AST_DEREF_ASS:
+        target_type: @TypeInfo = new TypeInfo
+        value_type: @TypeInfo = new TypeInfo
+
+        if not lookup_storage_var_type(env, src, ast.data._deref_ass.name_start, ast.data._deref_ass.name_length, target_type):
+            type_error(env, ast, "unknown variable in dereference assignment")
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if not resolve_type_alias(env, target_type, ast):
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if target_type.is_union or target_type.is_nullable or target_type.pointer_depth <= 0 or target_type.array_size != 0 or target_type.arr_size_expr != null:
+            type_error(env, ast, "dereference assignment requires a concrete pointer type")
+            prune value_type
+            prune target_type
+            return
+        end
+
+        target_type.pointer_depth = target_type.pointer_depth - 1
+
+        previous_errors: int = env.error_count
+        if not resolve_expr_expected(env, ast.data._deref_ass.value, target_type, value_type, src):
+            if env.error_count == previous_errors:
+                type_error(env, ast, "could not resolve value in dereference assignment")
+            end
+
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if not resolve_type_alias(env, value_type, ast.data._deref_ass.value):
+            prune value_type
+            prune target_type
+            return
+        end
+
+        if not allow_string_literal_for_target(ast.data._deref_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
+            conversion_error(env, ast, target_type, value_type, "dereference assignment value does not match pointee type")
+        end
+
+        prune value_type
+        prune target_type
+
     else if ast.kind == AST_SUBSCRIPT:
         target_type: @TypeInfo = new TypeInfo
         if !resolve_expr(env, ast, target_type, src):
@@ -2411,9 +3270,9 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             end
 
             value_type: @TypeInfo = new TypeInfo
-            if resolve_expr(env, ast.data._subscript.value, value_type, src):
+            if resolve_expr_expected(env, ast.data._subscript.value, target_type, value_type, src):
                 if not can_implicitly_convert(target_type, value_type):
-                    type_error(env, ast, "subscript assignment value does not match element type")
+                    conversion_error(env, ast, target_type, value_type, "subscript assignment value does not match element type")
                 end
             end
             prune value_type
@@ -2458,7 +3317,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
             copy_type(&ast.data._dot_access.resolved_type, target_type)
 
-            if resolve_expr(env, ast.data._dot_access.value, value_type, src):
+            if resolve_expr_expected(env, ast.data._dot_access.value, target_type, value_type, src):
                 if not resolve_type_alias(env, value_type, ast.data._dot_access.value):
                     prune target_type
                     prune value_type
@@ -2466,7 +3325,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 end
 
                 if not allow_string_literal_for_target(ast.data._dot_access.value, target_type) and not can_implicitly_convert(target_type, value_type):
-                    type_error(env, ast, "assigned value does not match field type")
+                    conversion_error(env, ast, target_type, value_type, "assigned value does not match field type")
                 else if target_type.is_union and not value_type.is_union:
                     ast.data._dot_access.union_member_index = find_union_member_index(target_type, value_type)
                 end
@@ -2514,30 +3373,65 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         prune tmp
 
     else if ast.kind == AST_FOR:
-        saved_var_count: int = env.var_count
+        ast.data._for_loop.integer_base = 0
 
-        if env.var_count >= 2048:
-            type_error(env, ast, "type environment struct table overflow")
+        from_type: @TypeInfo = new TypeInfo
+        to_type: @TypeInfo = new TypeInfo
+        previous_errors: int = env.error_count
+
+        if not resolve_range_bounds(env, ast, from_type, to_type, src):
+            if env.error_count == previous_errors:
+                type_error(env, ast, "could not resolve range bounds")
+            end
+
+            prune to_type
+            prune from_type
             return
         end
+
+        if not is_scalar_fixed_integer(from_type) or not is_scalar_fixed_integer(to_type):
+            type_error(env, ast, "range bounds require integer types")
+            prune to_type
+            prune from_type
+            return
+        end
+
+        if from_type.base != to_type.base:
+            message: char[256]
+            snprintf(message, sizeof(message), "range bounds must have the same integer type: %s and %s; use an eplicit cast", integer_type_name(from_type.base), integer_type_name(to_type.base))
+            type_error(env, ast, message)
+            prune to_type
+            prune from_type
+            return
+        end
+
+        if env.var_count >= 2048:
+            type_error(env, ast, "type environment variable table overflow")
+            prune to_type
+            prune from_type
+            return
+        end
+
+        ast.data._for_loop.integer_base = from_type.base
+
+        saved_var_count: int = env.var_count
+        saved_narrow_count: int = env.narrow_count
 
         loop_var: @VarInfo = env.vars + env.var_count
         loop_var.src = src
         loop_var.name_start = ast.data._for_loop.var_start
         loop_var.name_length = ast.data._for_loop.var_length
-        set_plain_type(&loop_var.typeInfo, TOKEN_INT)
+        copy_type(&loop_var.typeInfo, from_type)
         loop_var.binding_kind = VAR_BINDING_BASE
 
         env.var_count = env.var_count + 1
 
-        from_type: @TypeInfo = new TypeInfo
-        to_type: @TypeInfo = new TypeInfo
-        resolve_expr(env, ast.data._for_loop.from, from_type, src)
-        resolve_expr(env, ast.data._for_loop.to, to_type, src)
-        walk_statement_list(env, ast.data._for_loop.body, src)
-        prune from_type
         prune to_type
+        prune from_type
 
+        walk_statement_list(env, ast.data._for_loop.body, src)
+
+        env.narrow_count = saved_narrow_count
         env.var_count = saved_var_count
     
     else if ast.kind == AST_FLOW_CONTROL:
@@ -2560,7 +3454,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
                 copy_type(&ast.data._flow_ctrl.resolved_type, expected_type)
 
-                if resolve_expr(env, ast.data._flow_ctrl.value, actual_type, src):
+                if resolve_expr_expected(env, ast.data._flow_ctrl.value, expected_type, actual_type, src):
                     if not resolve_type_alias(env, actual_type, ast.data._flow_ctrl.value):
                         prune expected_type
                         prune actual_type
@@ -2568,7 +3462,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                     end
 
                     if not allow_string_literal_for_target(ast.data._flow_ctrl.value, expected_type) and not can_implicitly_convert(expected_type, actual_type):
-                        type_error(env, ast, "return value does not match function return type")
+                        conversion_error(env, ast, expected_type, actual_type, "return value does not match function return type")
                     else if expected_type.is_union and not actual_type.is_union:
                         ast.data._flow_ctrl.union_member_index = find_union_member_index(expected_type, actual_type)
                     end
@@ -2611,6 +3505,23 @@ end
 func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
     curr: @AST = ast
     while curr != null:
+        alias_decl: @AST = null
+
+        if curr.kind == AST_TYPE_ALIAS:
+            alias_decl = curr
+        else if curr.kind == AST_PROP and curr.data._prop.decl != null:
+            if curr.data._prop.decl.kind == AST_TYPE_ALIAS:
+                alias_decl = curr.data._prop.decl
+            end
+        end
+
+        if alias_decl != null:
+            alias_target: @TypeInfo = new TypeInfo
+            copy_type(alias_target, &alias_decl.data._type_alias.target)
+            resolve_type_alias(env, alias_target, alias_decl)
+            prune alias_target
+        end
+
         if curr.kind == AST_FUNC_DEF:
             saved_var_count: int = env.var_count
             inside_function = 1
@@ -2644,20 +3555,29 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
                     prune value_type
                     return
                 end
+
+                if not resolve_expr_expected(env, curr.data._var_decl.value, expected_type, value_type, src):
+                    prune expected_type
+                    prune value_type
+                    return
+                end
+
+                if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
+                    prune expected_type
+                    prune value_type
+                    return
+                end
                 
-                if resolve_expr(env, curr.data._var_decl.value, value_type, src):
-                    if not resolve_type_alias(env, value_type, curr.data._var_decl.value):
-                        prune expected_type
-                        prune value_type
-                        return
-                    end
-                    
-                    if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
-                        type_error(env, curr, "variable initializer does not match declared type")
-                        prune expected_type
-                        prune value_type
-                        return
-                    end
+                if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
+                    conversion_error(env, curr, expected_type, value_type, "variable initializer does not match declared type")
+                    prune expected_type
+                    prune value_type
+                    return
+                end
+
+                curr.data._var_decl.union_member_index = 0
+                if expected_type.is_union and not value_type.is_union:
+                    curr.data._var_decl.union_member_index = find_union_member_index(expected_type, value_type)
                 end
 
                 prune expected_type
@@ -2831,7 +3751,7 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
             return false
         end
 
-        if not resolve_expr(env, arg, arg_type, src):
+        if not resolve_expr_expected(env, arg, expected_type, arg_type, src):
             prune expected_type
             prune arg_type
             return false
@@ -2844,7 +3764,7 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
         end
 
         if not allow_string_literal_for_target(arg, expected_type) and not can_pass_arg(expected_type, arg_type):
-            type_error(env, arg, "function argument does not match parameter type")
+            conversion_error(env, arg, expected_type, arg_type, "function argument does not match parameter type")
             prune expected_type
             prune arg_type
             return false

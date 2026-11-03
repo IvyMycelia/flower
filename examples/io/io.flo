@@ -1,12 +1,24 @@
 import <stdio>
 
 import "examples/io/print.flo" as prints
+import "examples/io/integer_print.flo" as integer
 
 prop func test(): bool
     total: int = 0
     pass: int = 0
 
     print("  print... ")
+    total = total + 1
+    print("\'")
+    if prints.test():
+        print("\' ")
+        pass = pass + 1
+        print("OK\n")
+    else:
+        print("FAIL\n")
+    end
+
+    print("  integer print...")
     total = total + 1
     print("\'")
     if prints.test():

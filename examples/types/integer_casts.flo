@@ -1,0 +1,61 @@
+type CastByte = u8
+
+cast_global: CastByte = 300 as CastByte
+cast_global_signed: i64 = 18446744073709551615 as i64
+cast_global_bool: u16 = true as u16
+cast_global_nested: u8 = (300 as u16) as u8
+cast_calls: int = 0
+
+func cast_next(): u16
+    cast_calls = cast_calls + 1
+    return 300
+end
+
+func main(): int
+    print(cast_global)
+    print("\n")
+    print(cast_global_signed)
+    print("\n")
+    print(cast_global_bool)
+    print("\n")
+    print(cast_global_nested)
+    print("\n")
+
+    wide: u16 = 300
+    print(wide as u8)
+    print("\n")
+
+    bits: u8 = 255
+    print(bits as i8)
+    print("\n")
+    print(bits as i16)
+    print("\n")
+
+    negative: i8 = -1
+    print(negative as i64)
+    print("\n")
+    print(negative as u64)
+    print("\n")
+
+    minimum: i64 = -9223372036854775808
+    print(minimum as u64)
+    print("\n")
+
+    print(18446744073709551615 as i8)
+    print("\n")
+    print(-129 as i8)
+    print("\n")
+
+    print(cast_next() as u8)
+    print("\n")
+    print(cast_calls)
+    print("\n")
+
+    zero: u64 = 0
+    print(zero as bool)
+    print("\n")
+    print(bits as bool)
+    print("\n")
+
+    return 0
+end

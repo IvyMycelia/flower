@@ -1,0 +1,145 @@
+    
+    // === Primitives ===
+
+TOKEN_INT:          int = 1     // Integer
+TOKEN_I8:           int = 2     // 8-bit Integer
+TOKEN_U8:           int = 3     // 8-bit Unsigned Integer
+TOKEN_I16:          int = 4     // 16-bit Integer
+TOKEN_U16:          int = 5     // 16-bit Unsigned Integer
+TOKEN_I32:          int = 6     // 32-bit Integer
+TOKEN_U32:          int = 7     // 32-bit Unsigned Integer
+TOKEN_I64:          int = 8     // 64-bit Integer
+TOKEN_U64:          int = 9     // 64-bit Unsigned Integer
+TOKEN_FLOAT:        int = 10    // Float-point value
+TOKEN_DOUBLE:       int = 11    // Double-point value
+TOKEN_BOOL:         int = 12    // true / false, 1 / 0
+TOKEN_CHAR:         int = 13    // Characters (represented as integers)
+
+    // === Types ===
+
+TOKEN_STRING:       int = 14    // Array of char (char*)
+TOKEN_STRUCT:       int = 15    // Struct keyword
+TOKEN_UNION:        int = 16
+TOKEN_NULL:         int = 17    // Empty value
+TOKEN_TYPE:         int = 18    // type alias declaration
+
+    // === Unary Operations ===
+
+TOKEN_TILDE:        int = 19     // bitwise operation
+    
+    // === Identifiers === 
+
+TOKEN_IDENTIFIER:   int = 20    // Variable & Function names
+TOKEN_NUMBER:       int = 21    // Number
+TOKEN_FLOAT_LIT:    int = 22    // Decimal number
+TOKEN_STRING_LIT:   int = 23    // String literal "Hello, World!"
+TOKEN_CHAR_LIT:     int = 24    // Char literal 'a'
+TOKEN_VOID:         int = 25    // Void (empty)
+TOKEN_TRUE:         int = 26
+TOKEN_FALSE:        int = 27
+
+    // === Keywords ===
+
+TOKEN_RETURN:       int = 28    // Return from block
+TOKEN_CONTINUE:     int = 29    // Skip a loop iteration
+TOKEN_BREAK:        int = 30    // Stop a loop
+TOKEN_WHILE:        int = 31    // While loop
+TOKEN_FUNC:         int = 32    // Functions
+TOKEN_FOR:          int = 33    // For loop
+TOKEN_IN:           int = 34    // in
+TOKEN_END:          int = 35    // Close block
+TOKEN_IF:           int = 36    // If statement
+TOKEN_ELSE:         int = 37    // Else block
+TOKEN_NOT:          int = 38    // opposite of a value
+TOKEN_AND:          int = 39    // logical and
+TOKEN_OR:           int = 40    // logical or
+TOKEN_IS:           int = 41    // type is
+
+    // === Import System ===
+
+TOKEN_IMPORT:       int = 42    // .flo imports
+TOKEN_FORWARD:      int = 43    // forward declarations
+TOKEN_AS:           int = 44    // Alias for imports
+TOKEN_PROP:         int = 45    // Propagating functions (making them public)
+TOKEN_HIDDEN:       int = 46    // Field hidden outside module
+TOKEN_READONLY:     int = 47    // Field readable but not externally writable
+TOKEN_FROZEN:       int = 48    // Field assignable once
+
+    // === Memory Management ===
+
+TOKEN_NEW:          int = 49    // Automatically allocate memory
+TOKEN_PRUNE:        int = 50    // Free memory
+TOKEN_SIZEOF:       int = 51    // sizeof(x)
+    
+    // === stdio ===
+
+TOKEN_PRINT:        int = 52    // Prints out to console
+
+    // === Operators ===
+
+TOKEN_DOT:          int = 53    // Dot access
+TOKEN_DOTDOT:       int = 54    // ..
+TOKEN_DOTDOTEQ:     int = 55    // ..=
+TOKEN_PLUS:         int = 56    // Addition
+TOKEN_MINUS:        int = 57    // Subtraction
+TOKEN_STAR:         int = 58    // Multiplication
+TOKEN_CARET:        int = 59    // ^ for exponents (eventually)
+TOKEN_SLASH:        int = 60    // Division
+TOKEN_AMPERSAND:    int = 61    // Memory address
+TOKEN_AT:           int = 62    // Pointer / deref, @
+TOKEN_ASSIGN:       int = 63    // Assign value
+TOKEN_LT:           int = 64    // Less than
+TOKEN_GT:           int = 65    // Greater than
+TOKEN_COMP:         int = 66    // Comparison `==`
+TOKEN_NEQ:          int = 67    // !=
+TOKEN_GEQ:          int = 68    // >=
+TOKEN_LEQ:          int = 69    // <=
+
+    // === Punctuation ===
+
+TOKEN_LPAREN:       int = 70    // Function handling
+TOKEN_RPAREN:       int = 71    // Function handling
+TOKEN_LBRACK:       int = 72    // Array handling
+TOKEN_RBRACK:       int = 73    // Array handling
+TOKEN_LBRACE:       int = 74    // Struct handling
+TOKEN_RBRACE:       int = 75    // Struct handling
+TOKEN_COLON:        int = 76    // Start block
+TOKEN_COMMA:        int = 77    // Separate parameters
+TOKEN_QUESTION:     int = 78    // Nullable types
+TOKEN_PIPE:         int = 79    // Semantic Union types
+TOKEN_SEMI:         int = 80    // Semicolon for starting a new statement
+
+TOKEN_NEWLINE:      int = 81    // For determining next statement
+
+TOKEN_EOF:          int = 82    // End of File
+
+struct Token {
+    kind: int,
+    start: int,  // Index into source buffer
+    length: int  // Length of token
+}
+
+struct TokenStream {
+    data: @Token,
+    count: int,
+    capacity: int
+}
+
+prop func get_line(src: @char, pos: int): int
+    line: int = 1;
+    for i in 0..pos:
+        if src[i] == '\n':
+            line = line + 1;
+        end
+    end
+    return line;
+end
+
+prop func get_col(src: @char, pos: int): int
+    col: int = 1
+    while pos > 0 and src[pos - 1] != '\n':
+        col = col + 1
+        pos = pos - 1
+    end
+    return col
+end

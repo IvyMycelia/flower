@@ -1,0 +1,67 @@
+arithmetic_global_u8: u8 = 255 + 1
+arithmetic_global_i8: i8 = 127 + 1
+arithmetic_global_div: u64 = 18446744073709551615 / 3
+arithmetic_calls: int = 0
+
+func arithmetic_next(): u8
+    arithmetic_calls = arithmetic_calls + 1
+    return 255
+end
+
+func arithmetic_increment(value: u8): u8
+    return value + 1
+end
+
+func main(): int
+    print(arithmetic_global_u8)
+    print("\n")
+    print(arithmetic_global_i8)
+    print("\n")
+    print(arithmetic_global_div)
+    print("\n")
+    print(arithmetic_increment(255))
+    print("\n")
+
+    negative: i64 = -7
+    positive: i64 = 3
+    negative_divisor: i64 = -3
+
+    print(negative / positive)
+    print("\n")
+    print(negative / negative_divisor)
+    print("\n")
+
+    arithmetic_calls = 0
+    print(arithmetic_next() + arithmetic_next())
+    print("\n")
+    print(arithmetic_calls)
+    print("\n")
+
+    arithmetic_calls = 0
+    print(-arithmetic_next())
+    print("\n")
+    print(arithmetic_calls)
+    print("\n")
+
+    arithmetic_calls = 0
+    print(arithmetic_next() / arithmetic_next())
+    print("\n")
+    print(arithmetic_calls)
+    print("\n")
+
+    arithmetic_calls = 0
+    skipped: bool = false and arithmetic_next() > 0
+    if skipped:
+        return 1
+    end
+
+    skipped = true or arithmetic_next() > 0
+    if not skipped:
+        return 0
+    end
+
+    print(arithmetic_calls)
+    print("\n")
+
+    return 0
+end

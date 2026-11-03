@@ -7,14 +7,113 @@ import "src/stdlib/cstr.flo" as cstr
 has_stdlib: int = 0
 has_stdio: int = 0
 
+next_range_id: int = 0
+
 // Currently processing (for circular detection)
 active_modules: @ModuleSet
 current_codegen_module: @Module
 
 // === UTILITIES ===
 
+forward func integer_c_type_name(base: int): @char
+
+func emit_integer_conversion_family(out: @FILE, signed_base: int, unsigned_base: int, width: int): void
+    signed_name: @char = integer_type_name(signed_base)
+    unsigned_name: @char = integer_type_name(unsigned_base)
+    signed_c: @char = integer_c_type_name(signed_base)
+    unsigned_c: @char = integer_c_type_name(unsigned_base)
+    
+    fprintf(out, "#define FLOWER_INTEGER_%s(value) ", signed_name)
+    fprintf(out, "((%s)(", signed_c)
+    fprintf(out, "((%s)(value) <= INT%d_MAX) ? ", unsigned_c, width)
+    fprintf(out, "(int64_t)(%s)(value) : ", unsigned_c)
+    fprintf(out, "(-INT64_C(1) - (int64_t)(UINT%d_MAX - (%s)(value)))))\n", width, unsigned_c)
+
+    fprintf(out, "#define FLOWER_INTEGER_%s(value) ((%s)(value))\n", unsigned_name, unsigned_c)
+
+    fprintf(out, "static %s flower_integer_%s(uint64_t value) {\n", signed_c, signed_name)
+    fprintf(out, "  return FLOWER_INTEGER_%s(value);\n", signed_name)
+    fprintf(out, "}\n")
+
+    fprintf(out, "static %s flower_integer_%s(uint64_t value) {\n", unsigned_c, unsigned_name)
+    fprintf(out, "  return FLOWER_INTEGER_%s(value);\n", unsigned_name)
+    fprintf(out, "}\n")
+end
+
+func emit_wrapping_binary(out: @FILE, base: int, operation: @char, symbol: @char): void
+    name: @char = integer_type_name(base)
+    c_type: @char = integer_c_type_name(base)
+
+    fprintf(out, "#define FLOWER_%s_%s(a, b) FLOWER_INTEGER_%s((uint64_t)(a) %s (uint64_t)(b))\n", operation, name, name, symbol)
+    fprintf(out, "static %s flower_%s_%s(%s a, %s b) {\n", c_type, operation, name, c_type, c_type)
+    fprintf(out, "  return FLOWER_%s_%s(a, b);\n", operation, name)
+    fprintf(out, "}\n")
+end
+
+func emit_integer_arithmetic_family(out: @FILE, base: int): void
+    name: @char = integer_type_name(base)
+    c_type: @char = integer_c_type_name(base)
+    width: int = integer_type_width(base)
+
+    emit_wrapping_binary(out, base, "add", "+")
+    emit_wrapping_binary(out, base, "sub", "-")
+    emit_wrapping_binary(out, base, "mul", "*")
+
+    fprintf(out, "#define FLOWER_neg_%s(a) FLOWER_INTEGER_%s(UINT64_C(0) - (uint64_t)(a))\n", name, name)
+    fprintf(out, "static %s flower_neg_%s(%s a) {\n", c_type, name, c_type)
+    fprintf(out, "  return FLOWER_neg_%s(a);\n", name)
+    fprintf(out, "}\n")
+
+    fprintf(out, "#define FLOWER_div_%s(a, b) ((b) == 0 ? (flower_integer_trap(\"integer division by zero\"), (%s)0) : ", name, c_type)
+
+    if integer_type_signed(base):
+        fprintf(out, "((a) == INT%d_MIN && (b) == -1 ? (flower_integer_trap(\"signed integer division overflow\"), (%s)0) : (%s)((a) / (b))))\n", width, c_type, c_type)
+    else:
+        fprintf(out, "(%s)((a) / (b)))\n", c_type)
+    end
+
+    fprintf(out, "static %s flower_div_%s(%s a, %s b) {\n", c_type, name, c_type, c_type)
+    fprintf(out, "  return FLOWER_div_%s(a, b);\n", name)
+    fprintf(out, "}\n")
+end
+
+func emit_integer_arithmetic_runtime(out: @FILE): void
+    fprintf(out, "#include <stdlib.h>\n")
+    fprintf(out, "static void flower_integer_trap(const char* message) {\n")
+    fprintf(out, "  fputs(message, stderr);\n")
+    fprintf(out, "  fputc('\\n', stderr);\n")
+    fprintf(out, "  exit(1);\n")
+    fprintf(out, "}\n")
+
+    emit_integer_arithmetic_family(out, TOKEN_I8)
+    emit_integer_arithmetic_family(out, TOKEN_U8)
+    emit_integer_arithmetic_family(out, TOKEN_I16)
+    emit_integer_arithmetic_family(out, TOKEN_U16)
+    emit_integer_arithmetic_family(out, TOKEN_I32)
+    emit_integer_arithmetic_family(out, TOKEN_U32)
+    emit_integer_arithmetic_family(out, TOKEN_I64)
+    emit_integer_arithmetic_family(out, TOKEN_U64)
+end
+
 func emit_string_runtime(out: @FILE): void
+    fprintf(out, "#include <stdint.h>\n")
+    fprintf(out, "#include <limits.h>\n")
+
+    fprintf(out, "#if SIZE_MAX > UINT64_MAX\n")
+    fprintf(out, "#error Flower sizeof requires size_t to fit in u64\n")
+    fprintf(out, "#endif\n")
+
+    fprintf(out, "#if CHAR_BIT != 8 || INT_MAX != 2147483647 || INT_MIN != (-2147483647 - 1)\n")
+    fprintf(out, "#error Flower C backend requires 8-bit bytes and a signed 32-bit C int type\n")
+    fprintf(out, "#endif\n")
+    fprintf(out, "typedef char flower_int_storage_must_be_4_bytes[(sizeof(int) == 4) ? 1 : -1];\n")
+
     fprintf(out, "#include <stdio.h>\n")
+
+    emit_integer_conversion_family(out, TOKEN_I8, TOKEN_U8, 8)
+    emit_integer_conversion_family(out, TOKEN_I16, TOKEN_U16, 16)
+    emit_integer_conversion_family(out, TOKEN_I32, TOKEN_U32, 32)
+    emit_integer_conversion_family(out, TOKEN_I64, TOKEN_U64, 64)
 
     fprintf(out, "typedef struct { char* data; int length; } flower_string;\n")
 
@@ -49,6 +148,8 @@ func emit_string_runtime(out: @FILE): void
     fprintf(out, "      i++;\n")
     fprintf(out, "  }\n")
     fprintf(out, "}\n")
+
+    emit_integer_arithmetic_runtime(out)
 end
 
 func emit_includes(mods: @ModuleSet, out: @FILE): void
@@ -110,7 +211,7 @@ end
 
 
 func token_to_string(kind: int): @char
-    if kind == TOKEN_INT:
+    if kind == TOKEN_I32:
         return "int"
 
     else if kind == TOKEN_BOOL:
@@ -474,6 +575,28 @@ end
 
 forward func ensure_semantic_union_shape(typeInfo: @TypeInfo): int
 
+func integer_c_type_name(base: int): @char
+    if base == TOKEN_I8:
+        return "int8_t"
+    else if base == TOKEN_U8:
+        return "uint8_t"
+    else if base == TOKEN_I16:
+        return "int16_t"
+    else if base == TOKEN_U16:
+        return "uint16_t"
+    else if base == TOKEN_I32:
+        return "int32_t"
+    else if base == TOKEN_U32:
+        return "uint32_t"
+    else if base == TOKEN_I64:
+        return "int64_t"
+    else if base == TOKEN_U64:
+        return "uint64_t"
+    else:
+        return "ERROR" // Default to ERROR for unknown types
+    end
+end
+
 func typeinfo_to_string(typeInfo: @TypeInfo, out: @FILE, src: @char): void
     resolved: @TypeInfo = new TypeInfo
     copy_typeInfo(resolved, typeInfo)
@@ -495,6 +618,9 @@ func typeinfo_to_string(typeInfo: @TypeInfo, out: @FILE, src: @char): void
 
     else if resolved.base == TOKEN_STRING:
         fprintf(out, "flower_string")
+
+    else if integer_type_width(resolved.base) != 0:
+        fprintf(out, "%s", integer_c_type_name(resolved.base))
 
     else:
         fprintf(out, "%s", token_to_string(resolved.base))
@@ -559,74 +685,79 @@ func gen_while(ast: @AST, out: @FILE, src: @char): void
     fprintf(out, "}\n")
 end
 
+func range_prefix_in_source(prefix: @char): bool
+    prefix_length: int = cstr.len(prefix)
+    module_index: int = 0
+
+    while module_index < active_modules.count:
+        module_src: @char = active_modules.modules[module_index].src
+        source_length: int = cstr.len(module_src)
+        position: int = 0
+
+        while position <= source_length - prefix_length:
+            if cstr.eq_n(module_src + position, prefix, prefix_length):
+                return true
+            end
+
+            position = position + 1
+        end
+
+        module_index = module_index + 1
+    end
+
+    return false
+end
+
 func gen_for(ast: @AST, out: @FILE, src: @char): void
-    desc_op: @char
-    asc_op: @char
+    prefix: char[64]
+
+    while true:
+        snprintf(prefix, sizeof(prefix), "__flower_range_%d_", next_range_id)
+        next_range_id = next_range_id + 1
+
+        if not range_prefix_in_source(prefix):
+            break
+        end
+    end
+
+    c_type: @char = integer_c_type_name(ast.data._for_loop.integer_base)
+    integer_name: @char = integer_type_name(ast.data._for_loop.integer_base)
+    name: @char = src + ast.data._for_loop.var_start
+    name_length: int = ast.data._for_loop.var_length
+
+    desc_op: @char = ">"
+    asc_op: @char = "<"
     if ast.data._for_loop.inclusive:
         desc_op = ">="
         asc_op = "<="
-    else:
-        desc_op = ">"
-        asc_op = "<"
     end
 
-    add_op: @char = "++"
-    sub_op: @char = "--"
+    fprintf(out, "{\n")
 
-    from: @AST = ast.data._for_loop.from
-    to: @AST = ast.data._for_loop.to
-    if from.kind == AST_LITERAL and to.kind == AST_LITERAL:
-        reverse: int
-        if from.value > to.value:
-            reverse = 1
-        else:
-            reverse = 0
-        end
+    fprintf(out, "const %s %sfrom = ", c_type, prefix)
+    gen_expr(ast.data._for_loop.from, out, src)
+    fprintf(out, ";\n")
 
-        op: @char
-        math_op: @char
-        if reverse:
-            op = desc_op
-            math_op = sub_op
-        else:
-            op = asc_op
-            math_op = add_op
-        end
+    fprintf(out, "const %s %sto = ", c_type, prefix)
+    gen_expr(ast.data._for_loop.to, out, src)
+    fprintf(out, ";\n")
 
-        fprintf(out, "for (int %.*s = ", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start)
-        gen_expr(ast.data._for_loop.from, out, src)
-        fprintf(out, "; %.*s %s ", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start, op)
-        gen_expr(ast.data._for_loop.to, out, src)
+    fprintf(out, "const int %sdescending = %sfrom > %sto;\n", prefix, prefix, prefix)
+    fprintf(out, "int %sactive = 1;\n", prefix)
 
-        fprintf(out, "; %.*s%s) {\n", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start, math_op)
-    else:
-        fprintf(out, "for (int %.*s = ", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start)
-        gen_expr(ast.data._for_loop.from, out, src)
-
-        fprintf(out, "; ((")
-        gen_expr(ast.data._for_loop.from, out, src)
-        fprintf(out, ") > (")
-        gen_expr(ast.data._for_loop.to, out, src)
-        fprintf(out, ")) ? %.*s %s (", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start, desc_op)
-        gen_expr(ast.data._for_loop.to, out, src)
-        fprintf(out, ") : %.*s %s (", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start, asc_op)
-        gen_expr(ast.data._for_loop.to, out, src)
-
-        fprintf(out, "); ((")
-        gen_expr(ast.data._for_loop.from, out, src)
-        fprintf(out, ") > (")
-        gen_expr(ast.data._for_loop.to, out, src)
-        fprintf(out, ")) ? %.*s-- : %.*s++) {\n", ast.data._for_loop.var_length, src + ast.data._for_loop.var_start, ast.data._for_loop.var_length, src + ast.data._for_loop.var_start)
-    end
+    fprintf(out, "for (%s %.*s = %sfrom;\n", c_type, name_length, name, prefix)
+    fprintf(out, "  %sactive && (%sdescending ? %.*s %s %sto : %.*s %s %sto);\n", prefix, prefix, name_length, name, desc_op, prefix, name_length, name, asc_op, prefix)
+    fprintf(out, "  %sactive = (%.*s != %sto),\n", prefix, name_length, name, prefix)
+    fprintf(out, "  %.*s = %sactive ? (%sdescending ? flower_sub_%s(%.*s, 1) : flower_add_%s(%.*s, 1)) : %.*s) {\n", name_length, name, prefix, prefix, integer_name, name_length, name, integer_name, name_length, name, name_length, name)
 
     statement: @AST = ast.data._for_loop.body
     while statement != null:
         gen_statement(statement, out, src)
         statement = statement.next
     end
-    fprintf(out, "}\n")
-end
 
+    fprintf(out, "}\n}\n")
+end
 
 
 // === CONTROL FLOW ===
@@ -788,6 +919,13 @@ func collect_semantic_union_types_in_list(list: @AST): void
         if curr.kind == AST_VAR_DECL:
             collect_semantic_union_type(&curr.data._var_decl.typeInfo)
 
+        else if curr.kind == AST_STRUCT_DEF:
+            field: @AST = curr.data._struct_def.fields
+            while field != null:
+                collect_semantic_union_type(&field.data._struct_field.typeInfo)
+                field = field.next
+            end
+
         else if curr.kind == AST_FUNC_DEF:
             param: @AST = curr.data._func_def.params
             while param != null:
@@ -824,6 +962,14 @@ func collect_semantic_union_types_in_list(list: @AST): void
 
             if decl.kind == AST_VAR_DECL:
                 collect_semantic_union_type(&decl.data._var_decl.typeInfo)
+
+            else if curr.kind == AST_STRUCT_DEF:
+                field: @AST = decl.data._struct_def.fields
+                while field != null:
+                    collect_semantic_union_type(&field.data._struct_field.typeInfo)
+                    field = field.next
+                end
+
             else if decl.kind == AST_FUNC_DEF:
                 param: @AST = decl.data._func_def.params
                 while param != null:
@@ -841,6 +987,12 @@ func collect_semantic_union_types_in_list(list: @AST): void
 end
 
 func collect_semantic_union_types(mods: @ModuleSet): void
+    size_expr: @AST = resolved_sizeof_expressions
+    while size_expr != null:
+        collect_semantic_union_type(&size_expr.data._size_of.resolved_type)
+        size_expr = size_expr.data._size_of.next_sizeof
+    end
+
     i: int = 0
     while i < mods.count:
         collect_semantic_union_types_in_list(mods.modules[i].ast)
@@ -1314,12 +1466,145 @@ end
 
 // === EXECUTIVE ===
 
+func is_constant_integer_cast_operand(expr: @AST): bool
+    if expr == null:
+        return false
+    end
+
+    if expr.kind == AST_SIZEOF:
+        return expr.data._size_of.is_constant
+    end
+
+    if integer_literal_node(expr) != null or expr.kind == AST_BOOL_LIT:
+        return true
+    end
+
+    if expr.kind == AST_CAST:
+        if expr.data._cast.lower_kind == CAST_LOWER_INTEGER or is_bool_type(&expr.data._cast.typeInfo):
+            return is_constant_integer_cast_operand(expr.data._cast.value)
+        end
+    end
+
+    if expr.kind == AST_BINARY_OP:
+        if expr.data._binary.integer_base != 0 or is_comparison_op(expr.data._binary.op) or is_logical_op(expr.data._binary.op):
+            return is_constant_integer_cast_operand(expr.data._binary.left) and is_constant_integer_cast_operand(expr.data._binary.right)
+        end
+    end
+
+    if expr.kind == AST_UNARY_NEG and expr.data._unary.integer_base != 0:
+        return is_constant_integer_cast_operand(expr.data._unary.operand)
+    end
+
+    if expr.kind == AST_UNARY_NOT:
+        return is_constant_integer_cast_operand(expr.data._unary.operand)
+    end
+
+    return false
+end
+
+func integer_operation_name(kind: int): @char
+    if kind == TOKEN_PLUS:
+        return "add"
+    else if kind == TOKEN_MINUS:
+        return "sub"
+    else if kind == TOKEN_STAR:
+        return "mul"
+    else if kind == TOKEN_SLASH:
+        return "div"
+    end
+
+    return "invalid"
+end
+
+func gen_integer_binary(ast: @AST, out: @FILE, src: @char): void
+    operation: @char = integer_operation_name(ast.data._binary.op)
+    name: @char = integer_type_name(ast.data._binary.integer_base)
+
+    if is_constant_integer_cast_operand(ast):
+        fprintf(out, "FLOWER_%s_%s(", operation, name)
+    else:
+        fprintf(out, "flower_%s_%s(", operation, name)
+    end
+
+    gen_expr(ast.data._binary.left, out, src)
+    fprintf(out, ", ")
+    gen_expr(ast.data._binary.right, out, src)
+    fprintf(out, ")")
+end
+
+func gen_integer_negation(ast: @AST, out: @FILE, src: @char): void
+    name: @char = integer_type_name(ast.data._unary.integer_base)
+
+    if is_constant_integer_cast_operand(ast):
+        fprintf(out, "FLOWER_neg_%s(", name)
+    else:
+        fprintf(out, "flower_neg_%s(", name)
+    end
+
+    gen_expr(ast.data._unary.operand, out, src)
+    fprintf(out, ")")
+end
+
+func gen_integer_cast(ast: @AST, out: @FILE, src: @char): void
+    target_name: @char = integer_type_name(ast.data._cast.typeInfo.base)
+
+    if is_constant_integer_cast_operand(ast.data._cast.value):
+        fprintf(out, "FLOWER_INTEGER_%s((uint64_t)(", target_name)
+    else:
+        fprintf(out, "flower_integer_%s((uint64_t)(", target_name)
+    end
+
+    gen_expr(ast.data._cast.value, out, src)
+    fprintf(out, "))")
+end
+
+func gen_integer_literal(literal: @AST, negative: bool, out: @FILE): void
+    base: int = literal.data._integer_lit.resolved_base
+    digits: @char = literal.src + literal.data._integer_lit.start
+    length: int = literal.data._integer_lit.length
+
+    if base == 0:
+        if negative:
+            fprintf(out, "-")
+        end
+        fprintf(out, "%.*s", length, digits)
+        return
+    end
+
+    fprintf(out, "((%s)(", integer_c_type_name(base))
+
+    if integer_type_signed(base):
+        if negative:
+            if base == TOKEN_I64 and compare_decimal_magnitudes(digits, length, "9223372036854775808", 19) == 0:
+                fprintf(out, "-INT64_C(9223372036854775807) - INT64_C(1)")
+            else:
+                fprintf(out, "-INT64_C(%.*s)", length, digits)
+            end
+        else:
+            fprintf(out, "INT64_C(%.*s)", length, digits)
+        end
+    else:
+        fprintf(out, "UINT64_C(%.*s)", length, digits)
+    end
+
+    fprintf(out, "))")
+end
+
+func gen_aggregate_element(element: @AST, out: @FILE, src: @char): void
+    if element.aggregate_union_member_index != 0:
+        gen_packed_union_value(&element.aggregate_union_type, element.aggregate_union_member_index, element, out, src)
+    else:
+        gen_expr(element, out, src)
+    end
+end
+
 func gen_expr(ast: @AST, out: @FILE, src: @char): void
     if ast.kind == AST_VAR_REF:
         fprintf(out, "%.*s", ast.data._var_ref.name_length, src + ast.data._var_ref.name_start)
 
     else if ast.kind == AST_LITERAL:
-        fprintf(out, "%d", ast.value)
+        gen_integer_literal(ast, false, out)
+        // fprintf(out, "%.*s", ast.data._integer_lit.length, ast.src + ast.data._integer_lit.start)
 
     else if ast.kind == AST_FLOAT_LIT:
         fprintf(out, "%.*s", ast.data._float_lit.length, src + ast.data._float_lit.start)
@@ -1347,7 +1632,10 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         end
         
     else if ast.kind == AST_BINARY_OP: 
-        if ast.data._binary.is_string_compare:
+        if ast.data._binary.integer_base != 0:
+            gen_integer_binary(ast, out, src)
+
+        else if ast.data._binary.is_string_compare:
             if ast.data._binary.op == TOKEN_NEQ:
                 fprintf(out, "(!flower_string_eq(")
             else:
@@ -1375,9 +1663,11 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
             fprintf(out, ").tag %s %d)", token_to_string(ast.data._binary.op), ast.data._binary.null_union_member_index)
 
         else:
+            fprintf(out, "(")
             gen_expr(ast.data._binary.left, out, src)
             fprintf(out, " %s ", token_to_string(ast.data._binary.op))
             gen_expr(ast.data._binary.right, out, src)
+            fprintf(out, ")")
         end
         
     else if ast.kind == AST_FUNC_CALL: 
@@ -1405,7 +1695,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "{")
         elem: @AST = ast.data._array.elements
         while elem != null:
-            gen_expr(elem, out, src)
+            gen_aggregate_element(elem, out, src)
             if elem.next != null:
                 fprintf(out, ", ")
             end
@@ -1414,16 +1704,26 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, "}")
         
     else if ast.kind == AST_STRUCT_LIT:
+        if ast.data._struct_lit.is_typed:
+            fprintf(out, "((")
+            typeinfo_to_string(&ast.data._struct_lit.resolved_type, out, src)
+            fprintf(out, ")")
+        end
+
         fprintf(out, "{")
         struct_elem: @AST = ast.data._struct_lit.elements
         while struct_elem != null:
-            gen_expr(struct_elem, out, src)
+            gen_aggregate_element(struct_elem, out, src)
             if struct_elem.next != null:
                 fprintf(out, ", ")
-                struct_elem = struct_elem.next
             end
+            struct_elem = struct_elem.next
         end
         fprintf(out, "}")
+
+        if ast.data._struct_lit.is_typed:
+            fprintf(out, ")")
+        end
         
     else if ast.kind == AST_CAST:
         if ast.data._cast.lower_kind == CAST_LOWER_UNION_EXTRACT:
@@ -1433,6 +1733,9 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
 
         else if ast.data._cast.lower_kind == CAST_LOWER_UNION_PACK:
             gen_packed_union_value(&ast.data._cast.typeInfo, ast.data._cast.union_member_index, ast.data._cast.value, out, src)
+
+        else if ast.data._cast.lower_kind == CAST_LOWER_INTEGER:
+            gen_integer_cast(ast, out, src)
 
         else if ast.data._cast.typeInfo.base == TOKEN_CHAR and ast.data._cast.typeInfo.pointer_depth == 1 and ast.data._cast.typeInfo.array_size == 0 and ast.data._cast.value_type.base == TOKEN_STRING and ast.data._cast.value_type.pointer_depth == 0 and ast.data._cast.value_type.array_size == 0:
             fprintf(out, "(")
@@ -1447,7 +1750,7 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         else if ast.data._cast.typeInfo.base == TOKEN_BOOL and ast.data._cast.typeInfo.pointer_depth == 0 and ast.data._cast.typeInfo.array_size == 0:
             fprintf(out, "((")
             gen_expr(ast.data._cast.value, out, src)
-            fprintf(out, ") != 0")
+            fprintf(out, ") != 0)")
 
         else:
             fprintf(out, "(")
@@ -1525,8 +1828,17 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
                 
     else if ast.kind == AST_UNARY_NEG:
-        fprintf(out, "-")
-        gen_expr(ast.data._unary.operand, out, src)
+        literal: @AST = integer_literal_node(ast)
+
+        if literal != null:
+            gen_integer_literal(literal, true, out)
+        else if ast.data._unary.integer_base != 0:
+            gen_integer_negation(ast, out, src)
+        else:
+            fprintf(out, "-(")
+            gen_expr(ast.data._unary.operand, out, src)
+            fprintf(out, ")")
+        end
         
     else if ast.kind == AST_DEREF:
         fprintf(out, "*(")
@@ -1539,9 +1851,29 @@ func gen_expr(ast: @AST, out: @FILE, src: @char): void
         fprintf(out, ")")
         
     else if ast.kind == AST_SIZEOF:
-        fprintf(out, "sizeof(")
-        typeinfo_to_string(&ast.data._size_of.typeInfo, out, src)
-        fprintf(out, ")")
+        fprintf(out, "((uint64_t)sizeof(")
+
+        if ast.data._size_of.is_object:
+            name_src: @char = ast.data._size_of.typeInfo.name_src
+            if name_src == null:
+                name_src = src
+            end
+
+            fprintf(out, "%.*s", ast.data._size_of.typeInfo.name_length, name_src + ast.data._size_of.typeInfo.name_start)
+        else:
+            sized_type: @TypeInfo = &ast.data._size_of.resolved_type
+            typeinfo_to_string(sized_type, out, src)
+
+            if sized_type.array_size > 0:
+                fprintf(out, "[%d]", sized_type.array_size)
+            else if sized_type.arr_size_expr != null:
+                fprintf(out, "[")
+                gen_expr(sized_type.arr_size_expr, out, src)
+                fprintf(out, "]")
+            end
+        end
+
+        fprintf(out, "))")
         
     else if ast.kind == AST_CHAR_LIT:
         fprintf(out, "%.*s", ast.data._char_lit.length, src + ast.data._char_lit.start)
@@ -1657,10 +1989,15 @@ func gen_statement(ast: @AST, out: @FILE, src: @char): void
             gen_expr(ast.data._print.value, out, src)
             fprintf(out, ") ? \"true\" : \"false\");\n")
 
-        else if ast.data._print.value_type.base == TOKEN_INT and ast.data._print.value_type.pointer_depth == 0 and ast.data._print.value_type.array_size == 0:
-            fprintf(out, "printf(\"%%d\", ")
+        else if is_scalar_fixed_integer(&ast.data._print.value_type):
+            if integer_type_signed(ast.data._print.value_type.base):
+                fprintf(out, "printf(\"%%jd\", (intmax_t)(")
+            else:
+                fprintf(out, "printf(\"%%ju\", (uintmax_t)(")
+            end
+            
             gen_expr(ast.data._print.value, out, src)
-            fprintf(out, ");\n")
+            fprintf(out, "));\n")
             
         else:
             fprintf(out, "printf(")
