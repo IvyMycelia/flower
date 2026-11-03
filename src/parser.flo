@@ -535,7 +535,7 @@ func parse_return(ps: @Parser): @AST
 
     parser_advance(ps)
 
-    if parser_peek(ps).kind == TOKEN_NEWLINE or parser_peek(ps).kind == TOKEN_SEMI or parser_peek(ps).kind == TOKEN_EOF:
+    if parser_peek(ps).kind == TOKEN_NEWLINE or parser_peek(ps).kind == TOKEN_SEMI or parser_peek(ps).kind == TOKEN_EOF or parser_peek(ps).kind == TOKEN_END:
         node.data._flow_ctrl.value = null
         return node
     end

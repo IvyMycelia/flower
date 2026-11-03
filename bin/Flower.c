@@ -1222,9 +1222,7 @@ return &(ts->data[index]);
 
 void mod_src_lexer_flo_prune_token_stream(TokenStream* ts) {
 free(ts->data);
-ts->data = NULL;
-ts->count = ((int32_t)(INT64_C(0)));
-ts->capacity = ((int32_t)(INT64_C(0)));
+free(ts);
 }
 int32_t AST_FLOW_CONTROL = ((int32_t)(INT64_C(0)));
 int32_t AST_LITERAL = ((int32_t)(INT64_C(1)));
@@ -1780,6 +1778,127 @@ return 0;
 }
 
 
+void mod_src_ast_flo_prune_ast(AST* node) {
+if ((node == NULL)) {
+return;}
+mod_src_ast_flo_prune_ast(node->next);
+int32_t kind = node->kind;
+if ((kind == AST_FLOW_CONTROL)) {
+mod_src_ast_flo_prune_ast(node->data._flow_ctrl.value);
+}
+else if ((kind == AST_CAST)) {
+mod_src_ast_flo_prune_ast(node->data._cast.value);
+}
+else if ((kind == AST_TYPE_TEST)) {
+mod_src_ast_flo_prune_ast(node->data._type_test.value);
+}
+else if ((kind == AST_ARRAY_LIT)) {
+mod_src_ast_flo_prune_ast(node->data._array.elements);
+}
+else if ((kind == AST_SUBSCRIPT)) {
+mod_src_ast_flo_prune_ast(node->data._subscript.array);
+mod_src_ast_flo_prune_ast(node->data._subscript.index);
+mod_src_ast_flo_prune_ast(node->data._subscript.value);
+}
+else if ((kind == AST_STRUCT_LIT)) {
+mod_src_ast_flo_prune_ast(node->data._struct_lit.elements);
+}
+else if ((kind == AST_STRUCT_DEF)) {
+mod_src_ast_flo_prune_ast(node->data._struct_def.fields);
+}
+else if ((kind == AST_UNION_DEF)) {
+mod_src_ast_flo_prune_ast(node->data._union_def.fields);
+}
+else if ((kind == AST_DOT_ACCESS)) {
+mod_src_ast_flo_prune_ast(node->data._dot_access.object);
+mod_src_ast_flo_prune_ast(node->data._dot_access.value);
+}
+else if ((kind == AST_BINARY_OP)) {
+mod_src_ast_flo_prune_ast(node->data._binary.left);
+mod_src_ast_flo_prune_ast(node->data._binary.right);
+}
+else if ((kind == AST_UNARY_NOT)) {
+mod_src_ast_flo_prune_ast(node->data._unary.operand);
+}
+else if ((kind == AST_UNARY_NEG)) {
+mod_src_ast_flo_prune_ast(node->data._unary.operand);
+}
+else if ((kind == AST_PRUNE)) {
+mod_src_ast_flo_prune_ast(node->data._prune_free.ptr);
+}
+else if ((kind == AST_DEREF_ASS)) {
+mod_src_ast_flo_prune_ast(node->data._deref_ass.value);
+}
+else if ((kind == AST_DEREF)) {
+mod_src_ast_flo_prune_ast(node->data._deref.operand);
+}
+else if ((kind == AST_GET_ADDR)) {
+mod_src_ast_flo_prune_ast(node->data._get_addr.operand);
+}
+else if ((kind == AST_PROP)) {
+mod_src_ast_flo_prune_ast(node->data._prop.decl);
+}
+else if ((kind == AST_FORWARD)) {
+mod_src_ast_flo_prune_ast(node->data._forward.params);
+}
+else if ((kind == AST_ALIAS_CALL)) {
+mod_src_ast_flo_prune_ast(node->data._alias_call.args);
+}
+else if ((kind == AST_VAR_DECL)) {
+mod_src_ast_flo_prune_ast(node->data._var_decl.value);
+}
+else if ((kind == AST_VAR_ASS)) {
+mod_src_ast_flo_prune_ast(node->data._var_ass.value);
+}
+else if ((kind == AST_FUNC_DEF)) {
+mod_src_ast_flo_prune_ast(node->data._func_def.params);
+mod_src_ast_flo_prune_ast(node->data._func_def.body);
+}
+else if ((kind == AST_FUNC_CALL)) {
+mod_src_ast_flo_prune_ast(node->data._func_call.args);
+}
+else if ((kind == AST_WHILE)) {
+mod_src_ast_flo_prune_ast(node->data._while_loop.condition);
+mod_src_ast_flo_prune_ast(node->data._while_loop.body);
+}
+else if ((kind == AST_FOR)) {
+mod_src_ast_flo_prune_ast(node->data._for_loop.from);
+mod_src_ast_flo_prune_ast(node->data._for_loop.to);
+mod_src_ast_flo_prune_ast(node->data._for_loop.body);
+}
+else if ((kind == AST_IF)) {
+mod_src_ast_flo_prune_ast(node->data._if_condition.condition);
+mod_src_ast_flo_prune_ast(node->data._if_condition.body);
+mod_src_ast_flo_prune_ast(node->data._if_condition.else_branch);
+}
+else if ((kind == AST_PRINT)) {
+mod_src_ast_flo_prune_ast(node->data._print.value);
+}
+if ((kind == AST_CAST)) {
+mod_src_ast_flo_prune_ast(node->data._cast.typeInfo.arr_size_expr);
+}
+else if ((kind == AST_TYPE_TEST)) {
+mod_src_ast_flo_prune_ast(node->data._type_test.typeInfo.arr_size_expr);
+}
+else if ((kind == AST_NEW)) {
+mod_src_ast_flo_prune_ast(node->data._new_alloc.typeInfo.arr_size_expr);
+}
+else if ((kind == AST_SIZEOF)) {
+mod_src_ast_flo_prune_ast(node->data._size_of.typeInfo.arr_size_expr);
+}
+else if ((kind == AST_STRUCT_FIELD)) {
+mod_src_ast_flo_prune_ast(node->data._struct_field.typeInfo.arr_size_expr);
+}
+else if ((kind == AST_VAR_DECL)) {
+mod_src_ast_flo_prune_ast(node->data._var_decl.typeInfo.arr_size_expr);
+}
+else if ((kind == AST_PARAM)) {
+mod_src_ast_flo_prune_ast(node->data._func_params.typeInfo.arr_size_expr);
+}
+free(node);
+}
+
+
 typedef struct Parser {
 TokenStream* ts;
 char* src;
@@ -2193,7 +2312,9 @@ if ((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF)) {
 mod_src_parser_flo_parser_error(ps, "Unexpected end of file in variable declaration");
 return node;
 }
-node->data._var_decl.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._var_decl.typeInfo = *(tmp);
+free(tmp);
 if ((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_ASSIGN)) {
 mod_src_parser_flo_parser_advance(ps);
 if ((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF)) {
@@ -2263,7 +2384,7 @@ AST* mod_src_parser_flo_parse_return(Parser* ps) {
 AST* node = mod_src_parser_flo_make_node(ps, AST_FLOW_CONTROL);
 node->data._flow_ctrl.base = mod_src_parser_flo_parser_peek(ps);
 mod_src_parser_flo_parser_advance(ps);
-if ((((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE)  ||  (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI))  ||  (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF))) {
+if (((((mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_NEWLINE)  ||  (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_SEMI))  ||  (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_EOF))  ||  (mod_src_parser_flo_parser_peek(ps)->kind == TOKEN_END))) {
 node->data._flow_ctrl.value = NULL;
 return node;
 }
@@ -3185,7 +3306,9 @@ field->data._struct_field.name_length = fname->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+field->data._struct_field.typeInfo = *(tmp);
+free(tmp);
 if ((field_head == NULL)) {
 field_head = field;
 }
@@ -3243,7 +3366,9 @@ field->data._struct_field.name_length = fname->length;
 if (!(mod_src_parser_flo_parser_expect(ps, TOKEN_COLON))) {
 continue;
 }
-field->data._struct_field.typeInfo = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+field->data._struct_field.typeInfo = *(tmp);
+free(tmp);
 if ((field_head == NULL)) {
 field_head = field;
 }
@@ -3358,7 +3483,9 @@ mod_src_parser_flo_parser_advance(ps);
 mod_src_parser_flo_parser_expect(ps, TOKEN_RPAREN);
 node->data._forward.params = param_head;
 mod_src_parser_flo_parser_expect(ps, TOKEN_COLON);
-node->data._forward.return_type = *(mod_src_parser_flo_parse_type(ps));
+TypeInfo* tmp = mod_src_parser_flo_parse_type(ps);
+node->data._forward.return_type = *(tmp);
+free(tmp);
 node->data._forward.is_func = ((int32_t)(INT64_C(1)));
 }
 else {
@@ -3762,8 +3889,17 @@ mod_src_ast_flo_prune_ast(mod->ast);
 
 
 void mod_src_module_flo_prune_module_set(ModuleSet* set) {
-for (int i = 0; ((0) > (set->count)) ? i > (set->count) : i < (set->count); ((0) > (set->count)) ? i-- : i++) {
-mod_src_module_flo_prune_module(set->modules + i);
+{
+const int32_t __flower_range_8_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_8_to = set->count;
+const int __flower_range_8_descending = __flower_range_8_from > __flower_range_8_to;
+int __flower_range_8_active = 1;
+for (int32_t i = __flower_range_8_from;
+  __flower_range_8_active && (__flower_range_8_descending ? i > __flower_range_8_to : i < __flower_range_8_to);
+  __flower_range_8_active = (i != __flower_range_8_to),
+  i = __flower_range_8_active ? (__flower_range_8_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+mod_src_module_flo_prune_module((set->modules + i));
+}
 }
 free(set);
 }
@@ -6879,14 +7015,14 @@ curr = curr->next;
 
 StructInfo* mod_src_typecheck_flo_lookup_struct(TypeEnv* env, char* src, int32_t start, int32_t length) {
 {
-const int32_t __flower_range_8_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_8_to = env->struct_count;
-const int __flower_range_8_descending = __flower_range_8_from > __flower_range_8_to;
-int __flower_range_8_active = 1;
-for (int32_t i = __flower_range_8_from;
-  __flower_range_8_active && (__flower_range_8_descending ? i > __flower_range_8_to : i < __flower_range_8_to);
-  __flower_range_8_active = (i != __flower_range_8_to),
-  i = __flower_range_8_active ? (__flower_range_8_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_9_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_9_to = env->struct_count;
+const int __flower_range_9_descending = __flower_range_9_from > __flower_range_9_to;
+int __flower_range_9_active = 1;
+for (int32_t i = __flower_range_9_from;
+  __flower_range_9_active && (__flower_range_9_descending ? i > __flower_range_9_to : i < __flower_range_9_to);
+  __flower_range_9_active = (i != __flower_range_9_to),
+  i = __flower_range_9_active ? (__flower_range_9_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 StructInfo* info = (env->structs + i);
 if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
 return info;
@@ -6899,14 +7035,14 @@ return NULL;
 
 FieldInfo* mod_src_typecheck_flo_lookup_field(TypeEnv* env, StructInfo* info, char* src, int32_t start, int32_t length) {
 {
-const int32_t __flower_range_9_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_9_to = info->field_count;
-const int __flower_range_9_descending = __flower_range_9_from > __flower_range_9_to;
-int __flower_range_9_active = 1;
-for (int32_t i = __flower_range_9_from;
-  __flower_range_9_active && (__flower_range_9_descending ? i > __flower_range_9_to : i < __flower_range_9_to);
-  __flower_range_9_active = (i != __flower_range_9_to),
-  i = __flower_range_9_active ? (__flower_range_9_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_10_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_10_to = info->field_count;
+const int __flower_range_10_descending = __flower_range_10_from > __flower_range_10_to;
+int __flower_range_10_active = 1;
+for (int32_t i = __flower_range_10_from;
+  __flower_range_10_active && (__flower_range_10_descending ? i > __flower_range_10_to : i < __flower_range_10_to);
+  __flower_range_10_active = (i != __flower_range_10_to),
+  i = __flower_range_10_active ? (__flower_range_10_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 FieldInfo* field = (info->fields + i);
 if (mod_src_typecheck_flo_same_name(field->src, field->name_start, field->name_length, src, start, length)) {
 return field;
@@ -6947,14 +7083,14 @@ return ((int32_t)(INT64_C(0)));
 
 int32_t mod_src_typecheck_flo_lookup_func_return_type(TypeEnv* env, char* src, int32_t start, int32_t length, TypeInfo* out) {
 {
-const int32_t __flower_range_10_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_10_to = env->func_count;
-const int __flower_range_10_descending = __flower_range_10_from > __flower_range_10_to;
-int __flower_range_10_active = 1;
-for (int32_t i = __flower_range_10_from;
-  __flower_range_10_active && (__flower_range_10_descending ? i > __flower_range_10_to : i < __flower_range_10_to);
-  __flower_range_10_active = (i != __flower_range_10_to),
-  i = __flower_range_10_active ? (__flower_range_10_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_11_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_11_to = env->func_count;
+const int __flower_range_11_descending = __flower_range_11_from > __flower_range_11_to;
+int __flower_range_11_active = 1;
+for (int32_t i = __flower_range_11_from;
+  __flower_range_11_active && (__flower_range_11_descending ? i > __flower_range_11_to : i < __flower_range_11_to);
+  __flower_range_11_active = (i != __flower_range_11_to),
+  i = __flower_range_11_active ? (__flower_range_11_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 FuncInfo* info = (env->funcs + i);
 if (mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, src, start, length)) {
 mod_src_typecheck_flo_copy_type(out, &(info->return_type));
@@ -6968,14 +7104,14 @@ return ((int32_t)(INT64_C(0)));
 
 int32_t mod_src_typecheck_flo_lookup_func_return_type_in_module(TypeEnv* env, char* module_src, char* call_src, int32_t start, int32_t length, TypeInfo* out) {
 {
-const int32_t __flower_range_11_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_11_to = env->func_count;
-const int __flower_range_11_descending = __flower_range_11_from > __flower_range_11_to;
-int __flower_range_11_active = 1;
-for (int32_t i = __flower_range_11_from;
-  __flower_range_11_active && (__flower_range_11_descending ? i > __flower_range_11_to : i < __flower_range_11_to);
-  __flower_range_11_active = (i != __flower_range_11_to),
-  i = __flower_range_11_active ? (__flower_range_11_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_12_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_12_to = env->func_count;
+const int __flower_range_12_descending = __flower_range_12_from > __flower_range_12_to;
+int __flower_range_12_active = 1;
+for (int32_t i = __flower_range_12_from;
+  __flower_range_12_active && (__flower_range_12_descending ? i > __flower_range_12_to : i < __flower_range_12_to);
+  __flower_range_12_active = (i != __flower_range_12_to),
+  i = __flower_range_12_active ? (__flower_range_12_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 FuncInfo* info = (env->funcs + i);
 if (((info->src == module_src)  &&  mod_src_typecheck_flo_same_name(info->src, info->name_start, info->name_length, call_src, start, length))) {
 mod_src_typecheck_flo_copy_type(out, &(info->return_type));
@@ -7125,20 +7261,6 @@ TypeEnv* env = malloc(sizeof(TypeEnv));
 mod_src_typecheck_flo_init_type_env(env);
 active_type_modules = mods;
 {
-const int32_t __flower_range_12_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_12_to = mods->count;
-const int __flower_range_12_descending = __flower_range_12_from > __flower_range_12_to;
-int __flower_range_12_active = 1;
-for (int32_t i = __flower_range_12_from;
-  __flower_range_12_active && (__flower_range_12_descending ? i > __flower_range_12_to : i < __flower_range_12_to);
-  __flower_range_12_active = (i != __flower_range_12_to),
-  i = __flower_range_12_active ? (__flower_range_12_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
-Module* m = (mods->modules + i);
-current_type_module = m;
-mod_src_typecheck_flo_typecheck_collect(env, m->ast, m->src);
-}
-}
-{
 const int32_t __flower_range_13_from = ((int32_t)(INT64_C(0)));
 const int32_t __flower_range_13_to = mods->count;
 const int __flower_range_13_descending = __flower_range_13_from > __flower_range_13_to;
@@ -7147,6 +7269,20 @@ for (int32_t i = __flower_range_13_from;
   __flower_range_13_active && (__flower_range_13_descending ? i > __flower_range_13_to : i < __flower_range_13_to);
   __flower_range_13_active = (i != __flower_range_13_to),
   i = __flower_range_13_active ? (__flower_range_13_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+Module* m = (mods->modules + i);
+current_type_module = m;
+mod_src_typecheck_flo_typecheck_collect(env, m->ast, m->src);
+}
+}
+{
+const int32_t __flower_range_14_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_14_to = mods->count;
+const int __flower_range_14_descending = __flower_range_14_from > __flower_range_14_to;
+int __flower_range_14_active = 1;
+for (int32_t i = __flower_range_14_from;
+  __flower_range_14_active && (__flower_range_14_descending ? i > __flower_range_14_to : i < __flower_range_14_to);
+  __flower_range_14_active = (i != __flower_range_14_to),
+  i = __flower_range_14_active ? (__flower_range_14_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (mods->modules + i);
 current_type_module = m;
 mod_src_typecheck_flo_typecheck_ast(env, m->ast, m->src);
@@ -7292,14 +7428,14 @@ int32_t need_string_h = ((int32_t)(INT64_C(0)));
 int32_t need_ctype = ((int32_t)(INT64_C(0)));
 int32_t need_unistd = ((int32_t)(INT64_C(0)));
 {
-const int32_t __flower_range_14_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_14_to = mods->count;
-const int __flower_range_14_descending = __flower_range_14_from > __flower_range_14_to;
-int __flower_range_14_active = 1;
-for (int32_t i = __flower_range_14_from;
-  __flower_range_14_active && (__flower_range_14_descending ? i > __flower_range_14_to : i < __flower_range_14_to);
-  __flower_range_14_active = (i != __flower_range_14_to),
-  i = __flower_range_14_active ? (__flower_range_14_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_15_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_15_to = mods->count;
+const int __flower_range_15_descending = __flower_range_15_from > __flower_range_15_to;
+int __flower_range_15_active = 1;
+for (int32_t i = __flower_range_15_from;
+  __flower_range_15_active && (__flower_range_15_descending ? i > __flower_range_15_to : i < __flower_range_15_to);
+  __flower_range_15_active = (i != __flower_range_15_to),
+  i = __flower_range_15_active ? (__flower_range_15_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (mods->modules + i);
 if ((mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NULL)  ||  mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NEW))) {
 has_stdlib = ((int32_t)(INT64_C(1)));
@@ -7522,14 +7658,14 @@ dst->union_count = ((int32_t)(INT64_C(0)));
 
 int mod_src_codegen_flo_find_type_alias(char* src, int32_t start, int32_t length, TypeInfo* out) {
 {
-const int32_t __flower_range_15_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_15_to = active_modules->count;
-const int __flower_range_15_descending = __flower_range_15_from > __flower_range_15_to;
-int __flower_range_15_active = 1;
-for (int32_t i = __flower_range_15_from;
-  __flower_range_15_active && (__flower_range_15_descending ? i > __flower_range_15_to : i < __flower_range_15_to);
-  __flower_range_15_active = (i != __flower_range_15_to),
-  i = __flower_range_15_active ? (__flower_range_15_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_16_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_16_to = active_modules->count;
+const int __flower_range_16_descending = __flower_range_16_from > __flower_range_16_to;
+int __flower_range_16_active = 1;
+for (int32_t i = __flower_range_16_from;
+  __flower_range_16_active && (__flower_range_16_descending ? i > __flower_range_16_to : i < __flower_range_16_to);
+  __flower_range_16_active = (i != __flower_range_16_to),
+  i = __flower_range_16_active ? (__flower_range_16_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (active_modules->modules + i);
 if ((m->src != src)) {
 continue;
@@ -7903,14 +8039,14 @@ int32_t defined_count = ((int32_t)(INT64_C(0)));
 
 void mod_src_codegen_flo_gen_struct(AST* ast, FILE* out, char* src) {
 {
-const int32_t __flower_range_16_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_16_to = defined_count;
-const int __flower_range_16_descending = __flower_range_16_from > __flower_range_16_to;
-int __flower_range_16_active = 1;
-for (int32_t i = __flower_range_16_from;
-  __flower_range_16_active && (__flower_range_16_descending ? i > __flower_range_16_to : i < __flower_range_16_to);
-  __flower_range_16_active = (i != __flower_range_16_to),
-  i = __flower_range_16_active ? (__flower_range_16_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_17_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_17_to = defined_count;
+const int __flower_range_17_descending = __flower_range_17_from > __flower_range_17_to;
+int __flower_range_17_active = 1;
+for (int32_t i = __flower_range_17_from;
+  __flower_range_17_active && (__flower_range_17_descending ? i > __flower_range_17_to : i < __flower_range_17_to);
+  __flower_range_17_active = (i != __flower_range_17_to),
+  i = __flower_range_17_active ? (__flower_range_17_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 if (((defined_structs[i].length == ast->data._struct_def.name_length)  &&  mod_src_stdlib_cstr_flo_eq_n(defined_structs[i].name, (src + ast->data._struct_def.name_start), ast->data._struct_def.name_length))) {
 return;}
 }
@@ -8162,14 +8298,14 @@ int32_t defined_union_count = ((int32_t)(INT64_C(0)));
 
 void mod_src_codegen_flo_gen_union(AST* ast, FILE* out, char* src) {
 {
-const int32_t __flower_range_17_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_17_to = defined_union_count;
-const int __flower_range_17_descending = __flower_range_17_from > __flower_range_17_to;
-int __flower_range_17_active = 1;
-for (int32_t i = __flower_range_17_from;
-  __flower_range_17_active && (__flower_range_17_descending ? i > __flower_range_17_to : i < __flower_range_17_to);
-  __flower_range_17_active = (i != __flower_range_17_to),
-  i = __flower_range_17_active ? (__flower_range_17_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_18_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_18_to = defined_union_count;
+const int __flower_range_18_descending = __flower_range_18_from > __flower_range_18_to;
+int __flower_range_18_active = 1;
+for (int32_t i = __flower_range_18_from;
+  __flower_range_18_active && (__flower_range_18_descending ? i > __flower_range_18_to : i < __flower_range_18_to);
+  __flower_range_18_active = (i != __flower_range_18_to),
+  i = __flower_range_18_active ? (__flower_range_18_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 if (((defined_unions[i].length == ast->data._union_def.name_length)  &&  mod_src_stdlib_cstr_flo_eq_n(defined_unions[i].name, (src + ast->data._union_def.name_start), ast->data._union_def.name_length))) {
 return;}
 }
@@ -8418,14 +8554,14 @@ if (ast->data._import.has_alias) {
 snprintf(alias, ((uint64_t)sizeof(alias)), "%.*s", ast->data._import.alias_length, (src + ast->data._import.alias_start));
 }
 {
-const int32_t __flower_range_18_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_18_to = emitted_count;
-const int __flower_range_18_descending = __flower_range_18_from > __flower_range_18_to;
-int __flower_range_18_active = 1;
-for (int32_t i = __flower_range_18_from;
-  __flower_range_18_active && (__flower_range_18_descending ? i > __flower_range_18_to : i < __flower_range_18_to);
-  __flower_range_18_active = (i != __flower_range_18_to),
-  i = __flower_range_18_active ? (__flower_range_18_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_19_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_19_to = emitted_count;
+const int __flower_range_19_descending = __flower_range_19_from > __flower_range_19_to;
+int __flower_range_19_active = 1;
+for (int32_t i = __flower_range_19_from;
+  __flower_range_19_active && (__flower_range_19_descending ? i > __flower_range_19_to : i < __flower_range_19_to);
+  __flower_range_19_active = (i != __flower_range_19_to),
+  i = __flower_range_19_active ? (__flower_range_19_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 if (mod_src_stdlib_cstr_flo_eq(emitted_imports[i].path, path)) {
 free(path);
 return;}
@@ -9036,14 +9172,14 @@ printf("%sMissing arguments! Use -help for usage instructions.%s\n", RED, RESET)
 return ((int32_t)(-INT64_C(1)));
 }
 {
-const int32_t __flower_range_19_from = ((int32_t)(INT64_C(1)));
-const int32_t __flower_range_19_to = argc;
-const int __flower_range_19_descending = __flower_range_19_from > __flower_range_19_to;
-int __flower_range_19_active = 1;
-for (int32_t i = __flower_range_19_from;
-  __flower_range_19_active && (__flower_range_19_descending ? i > __flower_range_19_to : i < __flower_range_19_to);
-  __flower_range_19_active = (i != __flower_range_19_to),
-  i = __flower_range_19_active ? (__flower_range_19_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_20_from = ((int32_t)(INT64_C(1)));
+const int32_t __flower_range_20_to = argc;
+const int __flower_range_20_descending = __flower_range_20_from > __flower_range_20_to;
+int __flower_range_20_active = 1;
+for (int32_t i = __flower_range_20_from;
+  __flower_range_20_active && (__flower_range_20_descending ? i > __flower_range_20_to : i < __flower_range_20_to);
+  __flower_range_20_active = (i != __flower_range_20_to),
+  i = __flower_range_20_active ? (__flower_range_20_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 char* arg = argv[i];
 if ((arg[((int32_t)(INT64_C(0)))] == '-')) {
 while ((arg[((int32_t)(INT64_C(0)))] == '-')) {
@@ -9051,14 +9187,14 @@ arg = (arg + ((int32_t)(INT64_C(1))));
 }
 flower_string flag = flower_string_from_cstr(arg);
 {
-const int32_t __flower_range_20_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_20_to = flag.length;
-const int __flower_range_20_descending = __flower_range_20_from > __flower_range_20_to;
-int __flower_range_20_active = 1;
-for (int32_t i = __flower_range_20_from;
-  __flower_range_20_active && (__flower_range_20_descending ? i > __flower_range_20_to : i < __flower_range_20_to);
-  __flower_range_20_active = (i != __flower_range_20_to),
-  i = __flower_range_20_active ? (__flower_range_20_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_21_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_21_to = flag.length;
+const int __flower_range_21_descending = __flower_range_21_from > __flower_range_21_to;
+int __flower_range_21_active = 1;
+for (int32_t i = __flower_range_21_from;
+  __flower_range_21_active && (__flower_range_21_descending ? i > __flower_range_21_to : i < __flower_range_21_to);
+  __flower_range_21_active = (i != __flower_range_21_to),
+  i = __flower_range_21_active ? (__flower_range_21_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 arg[i] = (char)(tolower((char)(arg[i])));
 }
 }
@@ -9121,8 +9257,9 @@ flower_print_string(((flower_string){ "Type checking performed by Lola..\n", (in
 else {
 flower_print_string(((flower_string){ "Checking Types..\n", (int)(sizeof("Checking Types..\n") - 1) }));
 }
-int type_errors = mod_src_typecheck_flo_check_modules(mods);
-if (type_errors > 0) {
+fflush(stdout);
+int32_t type_errors = mod_src_typecheck_flo_check_modules(mods);
+if ((type_errors > ((int32_t)(INT64_C(0))))) {
 printf("%sTypecheck failed with %d error(s)%s\n", RED, type_errors, RESET);
 return ((int32_t)(-INT64_C(1)));
 }
@@ -9146,14 +9283,14 @@ return ((int32_t)(-INT64_C(1)));
 }
 int32_t has_output = ((int32_t)(INT64_C(0)));
 {
-const int32_t __flower_range_21_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_21_to = mods->count;
-const int __flower_range_21_descending = __flower_range_21_from > __flower_range_21_to;
-int __flower_range_21_active = 1;
-for (int32_t j = __flower_range_21_from;
-  __flower_range_21_active && (__flower_range_21_descending ? j > __flower_range_21_to : j < __flower_range_21_to);
-  __flower_range_21_active = (j != __flower_range_21_to),
-  j = __flower_range_21_active ? (__flower_range_21_descending ? flower_sub_i32(j, 1) : flower_add_i32(j, 1)) : j) {
+const int32_t __flower_range_22_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_22_to = mods->count;
+const int __flower_range_22_descending = __flower_range_22_from > __flower_range_22_to;
+int __flower_range_22_active = 1;
+for (int32_t j = __flower_range_22_from;
+  __flower_range_22_active && (__flower_range_22_descending ? j > __flower_range_22_to : j < __flower_range_22_to);
+  __flower_range_22_active = (j != __flower_range_22_to),
+  j = __flower_range_22_active ? (__flower_range_22_descending ? flower_sub_i32(j, 1) : flower_add_i32(j, 1)) : j) {
 Module* m = (mods->modules + j);
 if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = ((int32_t)(INT64_C(1)));
