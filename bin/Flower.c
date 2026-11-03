@@ -4571,6 +4571,39 @@ printf("%serror:%s %s\n", RED, RESET, message);
 }
 env->error_count = flower_add_i32(env->error_count, ((int32_t)(INT64_C(1))));
 }
+
+
+void mod_src_typecheck_flo_conversion_error(TypeEnv* env, AST* ast, TypeInfo* expected, TypeInfo* actual, char* context) {
+if ((!(mod_src_typecheck_flo_is_scalar_fixed_integer(expected))  ||  !(mod_src_typecheck_flo_is_scalar_fixed_integer(actual)))) {
+mod_src_typecheck_flo_type_error(env, ast, context);
+return;}
+if ((expected->base == actual->base)) {
+mod_src_typecheck_flo_type_error(env, ast, context);
+return;}
+int32_t expected_width = mod_src_ast_flo_integer_type_width(expected->base);
+int32_t actual_width = mod_src_ast_flo_integer_type_width(actual->base);
+int signedness_changed = (mod_src_ast_flo_integer_type_signed(expected->base) != mod_src_ast_flo_integer_type_signed(actual->base));
+char* reason = "implicit integer signedness change";
+if ((expected_width > actual_width)) {
+if (signedness_changed) {
+reason = "implicit integer widening with signedness change";
+}
+else {
+reason = "implicit integer widening";
+}
+}
+else if ((expected_width < actual_width)) {
+if (signedness_changed) {
+reason = "implicit integer narrowing with signedness change";
+}
+else {
+reason = "implicit integer narrowing";
+}
+}
+char message[512];
+snprintf(message, ((uint64_t)sizeof(message)), "%s: %s from %s to %s; use an explicit cast", context, reason, mod_src_ast_flo_integer_type_name(actual->base), mod_src_ast_flo_integer_type_name(expected->base));
+mod_src_typecheck_flo_type_error(env, ast, message);
+}
 void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src);
 void mod_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src);
 void mod_src_typecheck_flo_register_func(TypeEnv* env, AST* ast, char* src);
@@ -5433,7 +5466,7 @@ free(target);
 return 0;
 }
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(element, target))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target, actual)))) {
-mod_src_typecheck_flo_type_error(env, element, "aggregate element does not match destination type");
+mod_src_typecheck_flo_conversion_error(env, element, target, actual, "aggregate element does not match destination type");
 free(actual);
 free(target);
 return 0;
@@ -6457,7 +6490,7 @@ free(expected_type);
 free(value_type);
 return;}
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_decl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, value_type)))) {
-mod_src_typecheck_flo_type_error(env, ast, "variable initializer does not match declared type");
+mod_src_typecheck_flo_conversion_error(env, ast, expected_type, value_type, "variable initializer does not match declared type");
 free(expected_type);
 free(value_type);
 return;}
@@ -6481,7 +6514,7 @@ mod_src_typecheck_flo_copy_type(&(ast->data._var_ass.resolved_type), target_type
 int assignment_ok = 0;
 if (mod_src_typecheck_flo_resolve_expr_expected(env, ast->data._var_ass.value, target_type, value_type, src)) {
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._var_ass.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type)))) {
-mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match variable type");
+mod_src_typecheck_flo_conversion_error(env, ast, target_type, value_type, "assigned value does not match variable type");
 }
 else {
 assignment_ok = 1;
@@ -6528,7 +6561,7 @@ free(value_type);
 free(target_type);
 return;}
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._deref_ass.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type)))) {
-mod_src_typecheck_flo_type_error(env, ast, "dereference assignment value does not match pointee type");
+mod_src_typecheck_flo_conversion_error(env, ast, target_type, value_type, "dereference assignment value does not match pointee type");
 }
 free(value_type);
 free(target_type);
@@ -6546,7 +6579,7 @@ return;}
 TypeInfo* value_type = malloc(sizeof(TypeInfo));
 if (mod_src_typecheck_flo_resolve_expr_expected(env, ast->data._subscript.value, target_type, value_type, src)) {
 if (!(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type))) {
-mod_src_typecheck_flo_type_error(env, ast, "subscript assignment value does not match element type");
+mod_src_typecheck_flo_conversion_error(env, ast, target_type, value_type, "subscript assignment value does not match element type");
 }
 }
 free(value_type);
@@ -6586,7 +6619,7 @@ free(target_type);
 free(value_type);
 return;}
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._dot_access.value, target_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(target_type, value_type)))) {
-mod_src_typecheck_flo_type_error(env, ast, "assigned value does not match field type");
+mod_src_typecheck_flo_conversion_error(env, ast, target_type, value_type, "assigned value does not match field type");
 }
 else if ((target_type->is_union  &&  !(value_type->is_union))) {
 ast->data._dot_access.union_member_index = mod_src_typecheck_flo_find_union_member_index(target_type, value_type);
@@ -6697,7 +6730,7 @@ free(expected_type);
 free(actual_type);
 return;}
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(ast->data._flow_ctrl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, actual_type)))) {
-mod_src_typecheck_flo_type_error(env, ast, "return value does not match function return type");
+mod_src_typecheck_flo_conversion_error(env, ast, expected_type, actual_type, "return value does not match function return type");
 }
 else if ((expected_type->is_union  &&  !(actual_type->is_union))) {
 ast->data._flow_ctrl.union_member_index = mod_src_typecheck_flo_find_union_member_index(expected_type, actual_type);
@@ -6793,7 +6826,7 @@ free(expected_type);
 free(value_type);
 return;}
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(curr->data._var_decl.value, expected_type))  &&  !(mod_src_typecheck_flo_can_implicitly_convert(expected_type, value_type)))) {
-mod_src_typecheck_flo_type_error(env, curr, "variable initializer does not match declared type");
+mod_src_typecheck_flo_conversion_error(env, curr, expected_type, value_type, "variable initializer does not match declared type");
 free(expected_type);
 free(value_type);
 return;}
@@ -7010,7 +7043,7 @@ free(arg_type);
 return 0;
 }
 if ((!(mod_src_typecheck_flo_allow_string_literal_for_target(arg, expected_type))  &&  !(mod_src_typecheck_flo_can_pass_arg(expected_type, arg_type)))) {
-mod_src_typecheck_flo_type_error(env, arg, "function argument does not match parameter type");
+mod_src_typecheck_flo_conversion_error(env, arg, expected_type, arg_type, "function argument does not match parameter type");
 free(expected_type);
 free(arg_type);
 return 0;

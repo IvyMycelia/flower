@@ -916,6 +916,42 @@ func type_error(env: @TypeEnv, ast: @AST, message: @char): void
     env.error_count = env.error_count + 1
 end
 
+func conversion_error(env: @TypeEnv, ast: @AST, expected: @TypeInfo, actual: @TypeInfo, context: @char): void
+    if not is_scalar_fixed_integer(expected) or not is_scalar_fixed_integer(actual):
+        type_error(env, ast, context)
+        return
+    end
+
+    if expected.base == actual.base:
+        type_error(env, ast, context)
+        return
+    end
+
+    expected_width: int = integer_type_width(expected.base)
+    actual_width: int = integer_type_width(actual.base)
+    signedness_changed: bool = integer_type_signed(expected.base) != integer_type_signed(actual.base)
+
+    reason: @char = "implicit integer signedness change"
+
+    if expected_width > actual_width:
+        if signedness_changed:
+            reason = "implicit integer widening with signedness change"
+        else:
+            reason = "implicit integer widening"
+        end
+    else if expected_width < actual_width:
+        if signedness_changed:
+            reason = "implicit integer narrowing with signedness change"
+        else:
+            reason = "implicit integer narrowing"
+        end
+    end
+
+    message: char[512]
+    snprintf(message, sizeof(message), "%s: %s from %s to %s; use an explicit cast", context, reason, integer_type_name(actual.base), integer_type_name(expected.base))
+    type_error(env, ast, message)
+end
+
 // === PASSES ===
 
 forward func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
@@ -1921,7 +1957,7 @@ func resolve_aggregate_element(env: @TypeEnv, element: @AST, expected: @TypeInfo
     end
 
     if not allow_string_literal_for_target(element, target) and not can_implicitly_convert(target, actual):
-        type_error(env, element, "aggregate element does not match destination type")
+        conversion_error(env, element, target, actual, "aggregate element does not match destination type")
         prune actual
         prune target
         return false
@@ -3119,7 +3155,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             end
 
             if not allow_string_literal_for_target(ast.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
-                type_error(env, ast, "variable initializer does not match declared type")
+                conversion_error(env, ast, expected_type, value_type, "variable initializer does not match declared type")
                 prune expected_type
                 prune value_type
                 return
@@ -3151,7 +3187,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
 
         if resolve_expr_expected(env, ast.data._var_ass.value, target_type, value_type, src):
             if not allow_string_literal_for_target(ast.data._var_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
-                type_error(env, ast, "assigned value does not match variable type")
+                conversion_error(env, ast, target_type, value_type, "assigned value does not match variable type")
             else:
                 assignment_ok = true
             end
@@ -3213,7 +3249,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
         end
 
         if not allow_string_literal_for_target(ast.data._deref_ass.value, target_type) and not can_implicitly_convert(target_type, value_type):
-            type_error(env, ast, "dereference assignment value does not match pointee type")
+            conversion_error(env, ast, target_type, value_type, "dereference assignment value does not match pointee type")
         end
 
         prune value_type
@@ -3236,7 +3272,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
             value_type: @TypeInfo = new TypeInfo
             if resolve_expr_expected(env, ast.data._subscript.value, target_type, value_type, src):
                 if not can_implicitly_convert(target_type, value_type):
-                    type_error(env, ast, "subscript assignment value does not match element type")
+                    conversion_error(env, ast, target_type, value_type, "subscript assignment value does not match element type")
                 end
             end
             prune value_type
@@ -3289,7 +3325,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                 end
 
                 if not allow_string_literal_for_target(ast.data._dot_access.value, target_type) and not can_implicitly_convert(target_type, value_type):
-                    type_error(env, ast, "assigned value does not match field type")
+                    conversion_error(env, ast, target_type, value_type, "assigned value does not match field type")
                 else if target_type.is_union and not value_type.is_union:
                     ast.data._dot_access.union_member_index = find_union_member_index(target_type, value_type)
                 end
@@ -3426,7 +3462,7 @@ func typecheck_statement(env: @TypeEnv, ast: @AST, src: @char): void
                     end
 
                     if not allow_string_literal_for_target(ast.data._flow_ctrl.value, expected_type) and not can_implicitly_convert(expected_type, actual_type):
-                        type_error(env, ast, "return value does not match function return type")
+                        conversion_error(env, ast, expected_type, actual_type, "return value does not match function return type")
                     else if expected_type.is_union and not actual_type.is_union:
                         ast.data._flow_ctrl.union_member_index = find_union_member_index(expected_type, actual_type)
                     end
@@ -3533,7 +3569,7 @@ func typecheck_ast(env: @TypeEnv, ast: @AST, src: @char): void
                 end
                 
                 if not allow_string_literal_for_target(curr.data._var_decl.value, expected_type) and not can_implicitly_convert(expected_type, value_type):
-                    type_error(env, curr, "variable initializer does not match declared type")
+                    conversion_error(env, curr, expected_type, value_type, "variable initializer does not match declared type")
                     prune expected_type
                     prune value_type
                     return
@@ -3728,7 +3764,7 @@ func check_call_args(env: @TypeEnv, call_ast: @AST, args: @AST, params: @AST, sr
         end
 
         if not allow_string_literal_for_target(arg, expected_type) and not can_pass_arg(expected_type, arg_type):
-            type_error(env, arg, "function argument does not match parameter type")
+            conversion_error(env, arg, expected_type, arg_type, "function argument does not match parameter type")
             prune expected_type
             prune arg_type
             return false
