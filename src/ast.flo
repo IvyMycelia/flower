@@ -116,6 +116,59 @@ struct TypeInfo {
     union_count: int,
 }
 
+func type_atom_copy(dst: @TypeAtom, source: @TypeAtom): void
+    dst.base = source.base
+    dst.pointer_depth = source.pointer_depth
+    dst.array_size = source.array_size
+    dst.arr_size_expr = source.arr_size_expr
+    dst.name_start = source.name_start
+    dst.name_length = source.name_length
+    dst.name_src = source.name_src
+    dst.is_nullable = source.is_nullable
+end
+
+func type_info_copy(dst: @TypeInfo, source: @TypeInfo): void
+    dst.base = source.base
+    dst.pointer_depth = source.pointer_depth
+    dst.array_size = source.array_size
+    dst.arr_size_expr = source.arr_size_expr
+    dst.name_start = source.name_start
+    dst.name_length = source.name_length
+    dst.name_src = source.name_src
+    dst.is_nullable = source.is_nullable
+    dst.is_union = source.is_union
+    dst.union_count = source.union_count
+
+    i: int = 0
+    while i < source.union_count:
+        type_atom_copy(&dst.union_members[i], &source.union_members[i])
+        i = i + 1
+    end
+end
+
+func type_atom_from_info(dst: @TypeAtom, source: @TypeInfo): void
+    dst.base = source.base
+    dst.pointer_depth = source.pointer_depth
+    dst.array_size = source.array_size
+    dst.arr_size_expr = source.arr_size_expr
+    dst.name_start = source.name_start
+    dst.name_length = source.name_length
+    dst.name_src = source.name_src
+    dst.is_nullable = source.is_nullable
+end
+
+func type_info_from_atom(dst: @TypeInfo, source: @TypeAtom): void
+    dst.base = source.base
+    dst.pointer_depth = source.pointer_depth
+    dst.array_size = source.array_size
+    dst.arr_size_expr = source.arr_size_expr
+    dst.name_start = source.name_start
+    dst.name_length = source.name_length
+    dst.name_src = source.name_src
+    dst.is_nullable = source.is_nullable
+    dst.is_union = false
+    dst.union_count = 0
+end
 
 struct type_alias {
     name_start: int,

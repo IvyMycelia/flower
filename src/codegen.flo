@@ -332,53 +332,15 @@ func token_to_string(kind: int): @char
 end
 
 func copy_typeInfo(dst: @TypeInfo, src_type: @TypeInfo): void
-    dst.base = src_type.base
-    dst.pointer_depth = src_type.pointer_depth
-    dst.array_size = src_type.array_size
-    dst.arr_size_expr = src_type.arr_size_expr
-    dst.is_nullable = src_type.is_nullable
-    dst.name_start = src_type.name_start
-    dst.name_length = src_type.name_length
-    dst.name_src = src_type.name_src
-    dst.is_union = src_type.is_union
-    dst.union_count = src_type.union_count
-
-    i: int = 0
-    while i < src_type.union_count:
-        dst.union_members[i].base = src_type.union_members[i].base
-        dst.union_members[i].pointer_depth = src_type.union_members[i].pointer_depth
-        dst.union_members[i].array_size = src_type.union_members[i].array_size
-        dst.union_members[i].arr_size_expr = src_type.union_members[i].arr_size_expr
-        dst.union_members[i].name_start = src_type.union_members[i].name_start
-        dst.union_members[i].name_length = src_type.union_members[i].name_length
-        dst.union_members[i].name_src = src_type.union_members[i].name_src
-        dst.union_members[i].is_nullable = src_type.union_members[i].is_nullable
-        i = i + 1
-    end
+    type_info_copy(dst, src_type)
 end
 
 func copy_type_to_atom(dst: @TypeAtom, src_type: @TypeInfo): void
-    dst.base = src_type.base
-    dst.pointer_depth = src_type.pointer_depth
-    dst.array_size = src_type.array_size
-    dst.arr_size_expr = src_type.arr_size_expr
-    dst.name_start = src_type.name_start
-    dst.name_length = src_type.name_length
-    dst.name_src = src_type.name_src
-    dst.is_nullable = src_type.is_nullable
+    type_atom_from_info(dst, src_type)
 end
 
 func copy_atom_to_type(dst: @TypeInfo, src_type: @TypeAtom): void
-    dst.base = src_type.base
-    dst.pointer_depth = src_type.pointer_depth
-    dst.array_size = src_type.array_size
-    dst.arr_size_expr = src_type.arr_size_expr
-    dst.name_start = src_type.name_start
-    dst.name_length = src_type.name_length
-    dst.name_src = src_type.name_src
-    dst.is_nullable = src_type.is_nullable
-    dst.is_union = false
-    dst.union_count = 0
+    type_info_from_atom(dst, src_type)
 end
 
 func find_type_alias(src: @char, start: int, length: int, out: @TypeInfo): bool

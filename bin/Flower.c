@@ -1308,6 +1308,63 @@ int32_t union_count;
 } TypeInfo;
 
 
+void mod_src_ast_flo_type_atom_copy(TypeAtom* dst, TypeAtom* source) {
+dst->base = source->base;
+dst->pointer_depth = source->pointer_depth;
+dst->array_size = source->array_size;
+dst->arr_size_expr = source->arr_size_expr;
+dst->name_start = source->name_start;
+dst->name_length = source->name_length;
+dst->name_src = source->name_src;
+dst->is_nullable = source->is_nullable;
+}
+
+
+void mod_src_ast_flo_type_info_copy(TypeInfo* dst, TypeInfo* source) {
+dst->base = source->base;
+dst->pointer_depth = source->pointer_depth;
+dst->array_size = source->array_size;
+dst->arr_size_expr = source->arr_size_expr;
+dst->name_start = source->name_start;
+dst->name_length = source->name_length;
+dst->name_src = source->name_src;
+dst->is_nullable = source->is_nullable;
+dst->is_union = source->is_union;
+dst->union_count = source->union_count;
+int32_t i = ((int32_t)(INT64_C(0)));
+while ((i < source->union_count)) {
+mod_src_ast_flo_type_atom_copy(&(dst->union_members[i]), &(source->union_members[i]));
+i = flower_add_i32(i, ((int32_t)(INT64_C(1))));
+}
+}
+
+
+void mod_src_ast_flo_type_atom_from_info(TypeAtom* dst, TypeInfo* source) {
+dst->base = source->base;
+dst->pointer_depth = source->pointer_depth;
+dst->array_size = source->array_size;
+dst->arr_size_expr = source->arr_size_expr;
+dst->name_start = source->name_start;
+dst->name_length = source->name_length;
+dst->name_src = source->name_src;
+dst->is_nullable = source->is_nullable;
+}
+
+
+void mod_src_ast_flo_type_info_from_atom(TypeInfo* dst, TypeAtom* source) {
+dst->base = source->base;
+dst->pointer_depth = source->pointer_depth;
+dst->array_size = source->array_size;
+dst->arr_size_expr = source->arr_size_expr;
+dst->name_start = source->name_start;
+dst->name_length = source->name_length;
+dst->name_src = source->name_src;
+dst->is_nullable = source->is_nullable;
+dst->is_union = 0;
+dst->union_count = ((int32_t)(INT64_C(0)));
+}
+
+
 typedef struct type_alias {
 int32_t name_start;
 int32_t name_length;
@@ -2007,40 +2064,12 @@ typeInfo->union_count = ((int32_t)(INT64_C(0)));
 
 
 void mod_src_parser_flo_copy_parsed_type(TypeInfo* dst, TypeInfo* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
-dst->is_union = src_type->is_union;
-dst->union_count = src_type->union_count;
-int32_t i = ((int32_t)(INT64_C(0)));
-while ((i < src_type->union_count)) {
-dst->union_members[i].base = src_type->union_members[i].base;
-dst->union_members[i].pointer_depth = src_type->union_members[i].pointer_depth;
-dst->union_members[i].array_size = src_type->union_members[i].array_size;
-dst->union_members[i].arr_size_expr = src_type->union_members[i].arr_size_expr;
-dst->union_members[i].name_start = src_type->union_members[i].name_start;
-dst->union_members[i].name_length = src_type->union_members[i].name_length;
-dst->union_members[i].name_src = src_type->union_members[i].name_src;
-dst->union_members[i].is_nullable = src_type->union_members[i].is_nullable;
-i = flower_add_i32(i, ((int32_t)(INT64_C(1))));
-}
+mod_src_ast_flo_type_info_copy(dst, src_type);
 }
 
 
 void mod_src_parser_flo_copy_type_member(TypeAtom* dst, TypeInfo* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
+mod_src_ast_flo_type_atom_from_info(dst, src_type);
 }
 
 
@@ -4039,28 +4068,7 @@ return 0;
 
 
 void mod_src_typecheck_flo_copy_type(TypeInfo* dst, TypeInfo* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->is_nullable = src_type->is_nullable;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_union = src_type->is_union;
-dst->union_count = src_type->union_count;
-int32_t i = ((int32_t)(INT64_C(0)));
-while ((i < src_type->union_count)) {
-dst->union_members[i].base = src_type->union_members[i].base;
-dst->union_members[i].pointer_depth = src_type->union_members[i].pointer_depth;
-dst->union_members[i].array_size = src_type->union_members[i].array_size;
-dst->union_members[i].arr_size_expr = src_type->union_members[i].arr_size_expr;
-dst->union_members[i].name_start = src_type->union_members[i].name_start;
-dst->union_members[i].name_length = src_type->union_members[i].name_length;
-dst->union_members[i].name_src = src_type->union_members[i].name_src;
-dst->union_members[i].is_nullable = src_type->union_members[i].is_nullable;
-i = flower_add_i32(i, ((int32_t)(INT64_C(1))));
-}
+mod_src_ast_flo_type_info_copy(dst, src_type);
 }
 int mod_src_typecheck_flo_resolve_type_alias(TypeEnv* env, TypeInfo* typeInfo, AST* ast);
 
@@ -4072,40 +4080,17 @@ return mod_src_typecheck_flo_resolve_type_alias(env, dst, ast);
 
 
 void mod_src_typecheck_flo_copy_type_atom(TypeAtom* dst, TypeAtom* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
+mod_src_ast_flo_type_atom_copy(dst, src_type);
 }
 
 
 void mod_src_typecheck_flo_copy_type_to_atom(TypeAtom* dst, TypeInfo* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
+mod_src_ast_flo_type_atom_from_info(dst, src_type);
 }
 
 
 void mod_src_typecheck_flo_copy_atom_to_type(TypeInfo* dst, TypeAtom* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
-dst->is_union = 0;
-dst->union_count = ((int32_t)(INT64_C(0)));
+mod_src_ast_flo_type_info_from_atom(dst, src_type);
 }
 
 
@@ -7605,54 +7590,17 @@ return "ERROR";
 
 
 void mod_src_codegen_flo_copy_typeInfo(TypeInfo* dst, TypeInfo* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->is_nullable = src_type->is_nullable;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_union = src_type->is_union;
-dst->union_count = src_type->union_count;
-int32_t i = ((int32_t)(INT64_C(0)));
-while ((i < src_type->union_count)) {
-dst->union_members[i].base = src_type->union_members[i].base;
-dst->union_members[i].pointer_depth = src_type->union_members[i].pointer_depth;
-dst->union_members[i].array_size = src_type->union_members[i].array_size;
-dst->union_members[i].arr_size_expr = src_type->union_members[i].arr_size_expr;
-dst->union_members[i].name_start = src_type->union_members[i].name_start;
-dst->union_members[i].name_length = src_type->union_members[i].name_length;
-dst->union_members[i].name_src = src_type->union_members[i].name_src;
-dst->union_members[i].is_nullable = src_type->union_members[i].is_nullable;
-i = flower_add_i32(i, ((int32_t)(INT64_C(1))));
-}
+mod_src_ast_flo_type_info_copy(dst, src_type);
 }
 
 
 void mod_src_codegen_flo_copy_type_to_atom(TypeAtom* dst, TypeInfo* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
+mod_src_ast_flo_type_atom_from_info(dst, src_type);
 }
 
 
 void mod_src_codegen_flo_copy_atom_to_type(TypeInfo* dst, TypeAtom* src_type) {
-dst->base = src_type->base;
-dst->pointer_depth = src_type->pointer_depth;
-dst->array_size = src_type->array_size;
-dst->arr_size_expr = src_type->arr_size_expr;
-dst->name_start = src_type->name_start;
-dst->name_length = src_type->name_length;
-dst->name_src = src_type->name_src;
-dst->is_nullable = src_type->is_nullable;
-dst->is_union = 0;
-dst->union_count = ((int32_t)(INT64_C(0)));
+mod_src_ast_flo_type_info_from_atom(dst, src_type);
 }
 
 
