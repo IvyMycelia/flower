@@ -1,4 +1,5 @@
 import "src/type_store.flo" as semantic_types
+import "src/type_bridge.flo" as type_bridge
 import "src/module.flo" as module
 import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
@@ -759,6 +760,13 @@ func union_atom_exact_match(a: @TypeAtom, b: @TypeAtom): bool
         return false
     end
 
+    a_id: int = type_bridge.builtin_atom_id(a)
+    b_id: int = type_bridge.builtin_atom_id(b)
+
+    if a_id != 0 and b_id != 0:
+        return a_id == b_id
+    end
+
     if a.base == TOKEN_IDENTIFIER:
         return same_name(a.name_src, a.name_start, a.name_length, b.name_src, b.name_start, b.name_length)
     end
@@ -842,10 +850,13 @@ func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
         return true
     end
 
-    if is_scalar_fixed_integer(expected) and is_scalar_fixed_integer(actual):
-        expected_id: int = semantic_types.primitive_from_token(expected.base)
-        actual_id: int = semantic_types.primitive_from_token(actual.base)
-        return expected_id == actual_id
+    if expected.array_size == 0 and actual.array_size == 0 and expected.arr_size_expr == null and actual.arr_size_expr == null:
+        expected_id: int = type_bridge.builtin_type_id(expected)
+        actual_id: int = type_bridge.builtin_type_id(actual)
+
+        if expected_id != 0 and actual_id != 0:
+            return expected_id == actual_id
+        end
     end
 
     if expected.base != actual.base:

@@ -74,6 +74,7 @@ test: build
 	@sh ./scripts/tests/types/test_integer_ranges.sh
 	@sh ./scripts/tests/types/test_integer_conversion_diagnostics.sh
 	@sh ./scripts/tests/types/test_type_store.sh
+	@sh ./scripts/tests/types/test_type_bridge.sh
 
 clean:
 	@rm -rf output/

@@ -4039,6 +4039,42 @@ semantic_type_count = ((int32_t)(INT64_C(0)));
 }
 
 
+int32_t mod_src_type_bridge_flo_builtin_shape_id(int32_t base, int32_t pointer_depth, int32_t array_size, AST* arr_size_expr, int is_nullable) {
+if (is_nullable) {
+return ((int32_t)(INT64_C(0)));
+}
+if ((((arr_size_expr != NULL)  ||  (array_size < ((int32_t)(INT64_C(0)))))  ||  (pointer_depth < ((int32_t)(INT64_C(0)))))) {
+return ((int32_t)(INT64_C(0)));
+}
+if (((base != TOKEN_INT)  &&  !(((((base >= TOKEN_I8)  &&  (base <= TOKEN_STRING))  ||  (base == TOKEN_VOID))  ||  (base == TOKEN_NULL))))) {
+return ((int32_t)(INT64_C(0)));
+}
+int32_t result = mod_src_type_store_flo_primitive_from_token(base);
+int32_t depth = ((int32_t)(INT64_C(0)));
+while ((depth < pointer_depth)) {
+result = mod_src_type_store_flo_pointer_type(result);
+depth = flower_add_i32(depth, ((int32_t)(INT64_C(1))));
+}
+if ((array_size > ((int32_t)(INT64_C(0))))) {
+result = mod_src_type_store_flo_array_type(result, flower_integer_u64((uint64_t)(array_size)));
+}
+return result;
+}
+
+
+int32_t mod_src_type_bridge_flo_builtin_type_id(TypeInfo* typeInfo) {
+if (typeInfo->is_union) {
+return ((int32_t)(INT64_C(0)));
+}
+return mod_src_type_bridge_flo_builtin_shape_id(typeInfo->base, typeInfo->pointer_depth, typeInfo->array_size, typeInfo->arr_size_expr, typeInfo->is_nullable);
+}
+
+
+int32_t mod_src_type_bridge_flo_builtin_atom_id(TypeAtom* atom) {
+return mod_src_type_bridge_flo_builtin_shape_id(atom->base, atom->pointer_depth, atom->array_size, atom->arr_size_expr, atom->is_nullable);
+}
+
+
 typedef struct FieldInfo {
 char* src;
 int32_t name_start;
@@ -4737,6 +4773,11 @@ return 0;
 if ((a->is_nullable != b->is_nullable)) {
 return 0;
 }
+int32_t a_id = mod_src_type_bridge_flo_builtin_atom_id(a);
+int32_t b_id = mod_src_type_bridge_flo_builtin_atom_id(b);
+if (((a_id != ((int32_t)(INT64_C(0))))  &&  (b_id != ((int32_t)(INT64_C(0)))))) {
+return (a_id == b_id);
+}
 if ((a->base == TOKEN_IDENTIFIER)) {
 return mod_src_typecheck_flo_same_name(a->name_src, a->name_start, a->name_length, b->name_src, b->name_start, b->name_length);
 }
@@ -4807,10 +4848,12 @@ return 0;
 if ((mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual))) {
 return 1;
 }
-if ((mod_src_typecheck_flo_is_scalar_fixed_integer(expected)  &&  mod_src_typecheck_flo_is_scalar_fixed_integer(actual))) {
-int32_t expected_id = mod_src_type_store_flo_primitive_from_token(expected->base);
-int32_t actual_id = mod_src_type_store_flo_primitive_from_token(actual->base);
+if (((((expected->array_size == ((int32_t)(INT64_C(0))))  &&  (actual->array_size == ((int32_t)(INT64_C(0)))))  &&  (expected->arr_size_expr == NULL))  &&  (actual->arr_size_expr == NULL))) {
+int32_t expected_id = mod_src_type_bridge_flo_builtin_type_id(expected);
+int32_t actual_id = mod_src_type_bridge_flo_builtin_type_id(actual);
+if (((expected_id != ((int32_t)(INT64_C(0))))  &&  (actual_id != ((int32_t)(INT64_C(0)))))) {
 return (expected_id == actual_id);
+}
 }
 if ((expected->base != actual->base)) {
 return 0;

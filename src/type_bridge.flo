@@ -1,0 +1,43 @@
+import "src/token.flo"
+import "src/ast.flo"
+import "src/type_store.flo" as semantic_types
+
+func builtin_shape_id(base: int, pointer_depth: int, array_size: int, arr_size_expr: @AST, is_nullable: bool): int
+    if is_nullable:
+        return 0
+    end
+
+    if arr_size_expr != null or array_size < 0 or pointer_depth < 0:
+        return 0
+    end
+
+    if base != TOKEN_INT and not ((base >= TOKEN_I8 and base <= TOKEN_STRING) or base == TOKEN_VOID or base == TOKEN_NULL):
+        return 0
+    end
+
+    result: int = semantic_types.primitive_from_token(base)
+
+    depth: int = 0
+    while depth < pointer_depth:
+        result = semantic_types.pointer_type(result)
+        depth = depth + 1
+    end
+
+    if array_size > 0:
+        result = semantic_types.array_type(result, array_size as u64)
+    end
+
+    return result
+end
+
+prop func builtin_type_id(typeInfo: @TypeInfo): int
+    if typeInfo.is_union:
+        return 0
+    end
+
+    return builtin_shape_id(typeInfo.base, typeInfo.pointer_depth, typeInfo.array_size, typeInfo.arr_size_expr, typeInfo.is_nullable)
+end
+
+prop func builtin_atom_id(atom: @TypeAtom): int
+    return builtin_shape_id(atom.base, atom.pointer_depth, atom.array_size, atom.arr_size_expr, atom.is_nullable)
+end
