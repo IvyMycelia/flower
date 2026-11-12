@@ -73,6 +73,7 @@ test: build
 	@sh ./scripts/tests/types/test_sizeof_operands.sh
 	@sh ./scripts/tests/types/test_integer_ranges.sh
 	@sh ./scripts/tests/types/test_integer_conversion_diagnostics.sh
+	@sh ./scripts/tests/types/test_type_store.sh
 
 clean:
 	@rm -rf output/

@@ -3932,6 +3932,111 @@ mod_src_module_flo_prune_module((set->modules + i));
 }
 free(set);
 }
+int32_t SEMANTIC_PRIMITIVE = ((int32_t)(INT64_C(1)));
+int32_t SEMANTIC_POINTER = ((int32_t)(INT64_C(2)));
+int32_t SEMANTIC_ARRAY = ((int32_t)(INT64_C(3)));
+typedef struct SemanticTypeNode SemanticTypeNode;
+
+
+typedef struct SemanticTypeNode {
+int32_t id;
+int32_t kind;
+int32_t primitive;
+int32_t element;
+uint64_t length;
+SemanticTypeNode* next;
+} SemanticTypeNode;
+SemanticTypeNode* semantic_type_head = NULL;
+int32_t semantic_type_count = ((int32_t)(INT64_C(0)));
+
+
+void mod_src_type_store_flo_type_store_failure(char* message) {
+printf("Internal type store error: %s\n", message);
+exit(((int32_t)(INT64_C(1))));
+}
+
+
+SemanticTypeNode* mod_src_type_store_flo_find_semantic_type(int32_t id) {
+SemanticTypeNode* node = semantic_type_head;
+while ((node != NULL)) {
+if ((node->id == id)) {
+return node;
+}
+node = node->next;
+}
+return NULL;
+}
+
+
+int32_t mod_src_type_store_flo_intern_semantic_type(int32_t kind, int32_t primitive, int32_t element, uint64_t length) {
+SemanticTypeNode* node = semantic_type_head;
+while ((node != NULL)) {
+if (((((node->kind == kind)  &&  (node->primitive == primitive))  &&  (node->element == element))  &&  (node->length == length))) {
+return node->id;
+}
+node = node->next;
+}
+if ((semantic_type_count == ((int32_t)(INT64_C(2147483647))))) {
+mod_src_type_store_flo_type_store_failure("type ID space exhausted");
+return ((int32_t)(INT64_C(0)));
+}
+node = malloc(sizeof(SemanticTypeNode));
+if ((node == NULL)) {
+mod_src_type_store_flo_type_store_failure("could not allocate type node");
+return ((int32_t)(INT64_C(0)));
+}
+semantic_type_count = flower_add_i32(semantic_type_count, ((int32_t)(INT64_C(1))));
+node->id = semantic_type_count;
+node->kind = kind;
+node->primitive = primitive;
+node->element = element;
+node->length = length;
+node->next = semantic_type_head;
+semantic_type_head = node;
+return node->id;
+}
+
+
+int32_t mod_src_type_store_flo_primitive_from_token(int32_t base) {
+if ((base == TOKEN_INT)) {
+base = TOKEN_I32;
+}
+if (((((base >= TOKEN_I8)  &&  (base <= TOKEN_STRING))  ||  (base == TOKEN_VOID))  ||  (base == TOKEN_NULL))) {
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_PRIMITIVE, base, ((int32_t)(INT64_C(0))), ((uint64_t)(UINT64_C(0))));
+}
+mod_src_type_store_flo_type_store_failure("expected a primitive type token");
+return ((int32_t)(INT64_C(0)));
+}
+
+
+int32_t mod_src_type_store_flo_pointer_type(int32_t element) {
+if ((mod_src_type_store_flo_find_semantic_type(element) == NULL)) {
+mod_src_type_store_flo_type_store_failure("invalid pointer element type");
+return ((int32_t)(INT64_C(0)));
+}
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_POINTER, ((int32_t)(INT64_C(0))), element, ((uint64_t)(UINT64_C(0))));
+}
+
+
+int32_t mod_src_type_store_flo_array_type(int32_t element, uint64_t length) {
+if ((mod_src_type_store_flo_find_semantic_type(element) == NULL)) {
+mod_src_type_store_flo_type_store_failure("invalid array element type");
+return ((int32_t)(INT64_C(0)));
+}
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_ARRAY, ((int32_t)(INT64_C(0))), element, length);
+}
+
+
+void mod_src_type_store_flo_reset() {
+SemanticTypeNode* node = semantic_type_head;
+while ((node != NULL)) {
+SemanticTypeNode* following = node->next;
+free(node);
+node = following;
+}
+semantic_type_head = NULL;
+semantic_type_count = ((int32_t)(INT64_C(0)));
+}
 
 
 typedef struct FieldInfo {
@@ -4701,6 +4806,11 @@ return 0;
 }
 if ((mod_src_typecheck_flo_is_decimal_type(expected)  &&  mod_src_typecheck_flo_is_decimal_type(actual))) {
 return 1;
+}
+if ((mod_src_typecheck_flo_is_scalar_fixed_integer(expected)  &&  mod_src_typecheck_flo_is_scalar_fixed_integer(actual))) {
+int32_t expected_id = mod_src_type_store_flo_primitive_from_token(expected->base);
+int32_t actual_id = mod_src_type_store_flo_primitive_from_token(actual->base);
+return (expected_id == actual_id);
 }
 if ((expected->base != actual->base)) {
 return 0;
@@ -7242,6 +7352,7 @@ env->error_count = ((int32_t)(INT64_C(0)));
 
 
 int32_t mod_src_typecheck_flo_check_modules(ModuleSet* mods) {
+mod_src_type_store_flo_reset();
 TypeEnv* env = malloc(sizeof(TypeEnv));
 mod_src_typecheck_flo_init_type_env(env);
 active_type_modules = mods;
@@ -7276,6 +7387,7 @@ mod_src_typecheck_flo_typecheck_ast(env, m->ast, m->src);
 current_type_module = NULL;
 int32_t count = env->error_count;
 free(env);
+mod_src_type_store_flo_reset();
 return count;
 }
 int32_t has_stdlib = ((int32_t)(INT64_C(0)));

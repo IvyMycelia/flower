@@ -1,3 +1,4 @@
+import "src/type_store.flo" as semantic_types
 import "src/module.flo" as module
 import "src/lexer.flo" as lexer
 import "src/ast.flo" as parser
@@ -839,6 +840,12 @@ func types_match(expected: @TypeInfo, actual: @TypeInfo): bool
 
     if is_decimal_type(expected) and is_decimal_type(actual):
         return true
+    end
+
+    if is_scalar_fixed_integer(expected) and is_scalar_fixed_integer(actual):
+        expected_id: int = semantic_types.primitive_from_token(expected.base)
+        actual_id: int = semantic_types.primitive_from_token(actual.base)
+        return expected_id == actual_id
     end
 
     if expected.base != actual.base:
@@ -3786,6 +3793,8 @@ func init_type_env(env: @TypeEnv): void
 end
 
 func check_modules(mods: @ModuleSet): int
+    semantic_types.reset()
+
     env: @TypeEnv = new TypeEnv
     init_type_env(env)
 
@@ -3807,5 +3816,6 @@ func check_modules(mods: @ModuleSet): int
 
     count: int = env.error_count
     prune env
+    semantic_types.reset()
     return count
 end

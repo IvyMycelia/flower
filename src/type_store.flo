@@ -1,0 +1,113 @@
+import <stdio>
+import <stdlib>
+import "src/token.flo"
+
+SEMANTIC_PRIMITIVE: int = 1
+SEMANTIC_POINTER: int = 2
+SEMANTIC_ARRAY: int = 3
+
+forward struct SemanticTypeNode
+
+struct SemanticTypeNode {
+    id: int,
+    kind: int,
+    primitive: int,
+    element: int,
+    length: u64,
+    next: @SemanticTypeNode
+}
+
+semantic_type_head: @SemanticTypeNode = null
+semantic_type_count: int = 0
+
+func type_store_failure(message: @char): void
+    printf("Internal type store error: %s\n", message)
+    exit(1)
+end
+
+func find_semantic_type(id: int): @SemanticTypeNode
+    node: @SemanticTypeNode = semantic_type_head
+    while node != null:
+        if node.id == id:
+            return node
+        end
+        node = node.next
+    end
+    return null
+end
+
+func intern_semantic_type(kind: int, primitive: int, element: int, length: u64): int
+    node: @SemanticTypeNode = semantic_type_head
+    while node != null:
+        if node.kind == kind and node.primitive == primitive and node.element == element and node.length == length:
+            return node.id
+        end
+        node = node.next
+    end
+
+    if semantic_type_count == 2147483647:
+        type_store_failure("type ID space exhausted")
+        return 0
+    end
+
+    node = new SemanticTypeNode
+    if node == null:
+        type_store_failure("could not allocate type node")
+        return 0
+    end
+
+    semantic_type_count = semantic_type_count + 1
+
+    node.id = semantic_type_count
+    node.kind = kind
+    node.primitive = primitive
+    node.element = element
+    node.length = length
+    node.next = semantic_type_head
+    semantic_type_head = node
+
+    return node.id
+end
+
+prop func primitive_from_token(base: int): int
+    if base == TOKEN_INT:
+        base = TOKEN_I32
+    end
+
+    if (base >= TOKEN_I8 and base <= TOKEN_STRING) or base == TOKEN_VOID or base == TOKEN_NULL:
+        return intern_semantic_type(SEMANTIC_PRIMITIVE, base, 0, 0)
+    end
+
+    type_store_failure("expected a primitive type token")
+    return 0
+end
+
+prop func pointer_type(element: int): int
+    if find_semantic_type(element) == null:
+        type_store_failure("invalid pointer element type")
+        return 0
+    end
+
+    return intern_semantic_type(SEMANTIC_POINTER, 0, element, 0)
+end
+
+prop func array_type(element: int, length: u64): int
+    if find_semantic_type(element) == null:
+        type_store_failure("invalid array element type")
+        return 0
+    end
+
+    return intern_semantic_type(SEMANTIC_ARRAY, 0, element, length)
+end
+
+prop func reset(): void
+    node: @SemanticTypeNode = semantic_type_head
+    while node != null:
+        following: @SemanticTypeNode = node.next
+        prune node
+        node = following
+    end
+
+    semantic_type_head = null
+    semantic_type_count = 0
+end
