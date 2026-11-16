@@ -23,7 +23,9 @@ struct StructInfo {
     name_length: int,
     fields: FieldInfo[128],
     field_count: int,
-    is_raw_union: bool
+    is_raw_union: bool,
+    declaration: @AST,
+    semantic_type_id: int,
 }
 
 VAR_BINDING_BASE:   int = 0
@@ -962,6 +964,67 @@ forward func type_error(env: @TypeEnv, ast: @AST, message: @char): void
 
 // Collection Pass
 
+func find_registered_definition(env: @TypeEnv, declaration: @AST): @StructInfo
+    i: int = 0
+    while i < env.struct_count:
+        info: @StructInfo = env.structs + i
+        if info.declaration == declaration:
+            return info
+        end
+        i = i + 1
+    end
+
+    return null
+end
+
+func register_named_declaration(env: @TypeEnv, declaration: @AST, src: @char): void
+    if find_registered_definition(env, declaration) != null:
+        return
+    end
+
+    if env.struct_count >= 1024:
+        type_error(env, declaration, "type environment struct table overflow")
+        return
+    end
+
+    info: @StructInfo = env.structs + env.struct_count
+    info.src = src
+    info.declaration = declaration
+    info.field_count = 0
+    info.is_raw_union = declaration.kind == AST_UNION_DEF
+
+    if info.is_raw_union:
+        info.name_start = declaration.data._union_def.name_start
+        info.name_length = declaration.data._union_def.name_length
+    else:
+        info.name_start = declaration.data._struct_def.name_start
+        info.name_length = declaration.data._struct_def.name_length
+    end
+
+    info.semantic_type_id = semantic_types.named_type(env.struct_count + 1, info.is_raw_union)
+    env.struct_count = env.struct_count + 1
+end
+
+func collect_named_declarations(env: @TypeEnv, ast: @AST, src: @char):void
+    curr: @AST = ast
+
+    while curr != null:
+        declaration: @AST = curr
+
+        if curr.kind == AST_PROP:
+            declaration = curr.data._prop.decl
+        end
+
+        if declaration != null:
+            if declaration.kind == AST_STRUCT_DEF or declaration.kind == AST_UNION_DEF:
+                register_named_declaration(env, declaration, src)
+            end
+        end
+
+        curr = curr.next
+    end
+end
+
 func typecheck_collect(env: @TypeEnv, ast: @AST, src: @char): void
     curr: @AST = ast
     while curr != null:
@@ -1010,21 +1073,22 @@ end
 
 // Registrations
 
-func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
-    if env.struct_count >= 1024:
-        type_error(env, ast, "type environment struct table overflow")
+func complete_named_fields(env: @TypeEnv, ast: @AST, src: @char, fields: @AST): void
+    info: @StructInfo = find_registered_definition(env, ast)
+    if info == null:
+        type_error(env, ast, "internal error: named type was not registered")
         return
     end
-    info: @StructInfo = env.structs + env.struct_count
-    
-    info.src = src
-    info.name_start = ast.data._struct_def.name_start
-    info.name_length = ast.data._struct_def.name_length
-    info.field_count = 0
-    info.is_raw_union = false
 
-    field: @AST = ast.data._struct_def.fields
+    info.field_count = 0
+    field: @AST = fields
+
     while field != null:
+        if info.field_count >= 128:
+            type_error(env, field, "type environment field table overflow")
+            return
+        end
+
         finfo: @FieldInfo = info.fields + info.field_count
         finfo.src = src
         finfo.name_start = field.data._struct_field.name_start
@@ -1038,7 +1102,10 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
 
         copy_type(&field.data._struct_field.typeInfo, &finfo.typeInfo)
 
-        resolve_type_alias(env, &finfo.typeInfo, field)
+        if info.is_raw_union and finfo.typeInfo.is_union:
+            type_error(env, field, "semantic union fields are not lowered yet")
+        end
+
         finfo.is_hidden = field.data._struct_field.is_hidden
         finfo.is_frozen = field.data._struct_field.is_frozen
         finfo.is_readonly = field.data._struct_field.is_readonly
@@ -1046,51 +1113,14 @@ func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
         info.field_count = info.field_count + 1
         field = field.next
     end
+end
 
-    env.struct_count = env.struct_count + 1
+func register_struct(env: @TypeEnv, ast: @AST, src: @char): void
+    complete_named_fields(env, ast, src, ast.data._struct_def.fields)
 end
 
 func register_union(env: @TypeEnv, ast: @AST, src: @char): void
-    if env.struct_count >= 1024:
-        type_error(env, ast, "type environment struct table overflow")
-        return
-    end
-    info: @StructInfo = env.structs + env.struct_count
-
-    info.src = src
-    info.name_start = ast.data._union_def.name_start
-    info.name_length = ast.data._union_def.name_length
-    info.field_count = 0
-    info.is_raw_union = true
-
-    field: @AST = ast.data._union_def.fields
-    while field != null:
-        finfo: @FieldInfo = info.fields + info.field_count
-        finfo.src = src
-        finfo.name_start = field.data._struct_field.name_start
-        finfo.name_length = field.data._struct_field.name_length
-
-        copy_type(&finfo.typeInfo, &field.data._struct_field.typeInfo)
-
-        if not resolve_type_alias(env, &finfo.typeInfo, field):
-            return
-        end
-
-        copy_type(&field.data._struct_field.typeInfo, &finfo.typeInfo)
-
-        resolve_type_alias(env, &finfo.typeInfo, field)
-        if finfo.typeInfo.is_union:
-            type_error(env, field, "semantic union fields are not lowered yet")
-        end
-        finfo.is_hidden = field.data._struct_field.is_hidden
-        finfo.is_frozen = field.data._struct_field.is_frozen
-        finfo.is_readonly = field.data._struct_field.is_readonly
-
-        info.field_count = info.field_count + 1
-        field = field.next
-    end
-
-    env.struct_count = env.struct_count + 1
+    complete_named_fields(env, ast, src, ast.data._union_def.fields)
 end
 
 func resolve_parameter_types(env: @TypeEnv, params: @AST): bool
@@ -3818,6 +3848,21 @@ func check_modules(mods: @ModuleSet): int
 
     active_type_modules = mods
 
+    for i in 0..mods.count:
+        m: @Module = mods.modules + i
+        current_type_module = m
+        collect_named_declarations(env, m.ast, m.src)
+    end
+
+    if env.error_count > 0:
+        current_type_module = null
+        failed_count: int = env.error_count
+        prune env
+        semantic_types.reset()
+        return failed_count
+    end
+
+    
     for i in 0..mods.count:
         m: @Module = mods.modules + i
         current_type_module = m

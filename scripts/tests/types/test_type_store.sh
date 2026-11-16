@@ -116,6 +116,37 @@ func main(): int
         return 20
     end
 
+    first_struct: int = types.named_type(1, false)
+    second_struct: int = types.named_type(2, false)
+    raw_union: int = types.named_type(1, true)
+
+    if types.named_type(1, false) != first_struct:
+        return 21
+    end
+
+    if first_struct == second_struct:
+        return 22
+    end
+
+    if first_struct == raw_union:
+        return 23
+    end
+
+    first_pointer: int = types.pointer_type(first_struct)
+    second_pointer: int = types.pointer_type(second_struct)
+
+    if first_pointer == second_pointer:
+        return 24
+    end
+
+    if types.pointer_type(types.named_type(1, false)) != first_pointer:
+        return 25
+    end
+
+    if types.array_type(first_struct, 2) == types.array_type(second_struct, 2):
+        return 26
+    end
+
     types.reset()
 
     rebuilt: int = types.primitive_from_token(TOKEN_U8)

@@ -3937,6 +3937,8 @@ int32_t SEMANTIC_POINTER = ((int32_t)(INT64_C(2)));
 int32_t SEMANTIC_ARRAY = ((int32_t)(INT64_C(3)));
 int32_t SEMANTIC_UNION = ((int32_t)(INT64_C(4)));
 int32_t SEMANTIC_UNION_MEMBER = ((int32_t)(INT64_C(5)));
+int32_t SEMANTIC_STRUCT = ((int32_t)(INT64_C(6)));
+int32_t SEMANTIC_RAW_UNION = ((int32_t)(INT64_C(7)));
 typedef struct SemanticTypeNode SemanticTypeNode;
 
 
@@ -4059,6 +4061,19 @@ return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_UNION, ((int32_t)(IN
 }
 
 
+int32_t mod_src_type_store_flo_named_type(int32_t declaration_id, int is_raw_union) {
+if ((declaration_id <= ((int32_t)(INT64_C(0))))) {
+mod_src_type_store_flo_type_store_failure("invalid named-type declaration ID");
+return ((int32_t)(INT64_C(0)));
+}
+int32_t kind = SEMANTIC_STRUCT;
+if (is_raw_union) {
+kind = SEMANTIC_RAW_UNION;
+}
+return mod_src_type_store_flo_intern_semantic_type(kind, ((int32_t)(INT64_C(0))), ((int32_t)(INT64_C(0))), declaration_id, ((uint64_t)(UINT64_C(0))));
+}
+
+
 void mod_src_type_store_flo_reset() {
 SemanticTypeNode* node = semantic_type_head;
 while ((node != NULL)) {
@@ -4146,6 +4161,8 @@ int32_t name_length;
 FieldInfo fields[128];
 int32_t field_count;
 int is_raw_union;
+AST* declaration;
+int32_t semantic_type_id;
 } StructInfo;
 int32_t VAR_BINDING_BASE = ((int32_t)(INT64_C(0)));
 int32_t VAR_BINDING_NARROW = ((int32_t)(INT64_C(1)));
@@ -4993,6 +5010,60 @@ int mod_src_typecheck_flo_resolve_parameter_types(TypeEnv* env, AST* params);
 void mod_src_typecheck_flo_type_error(TypeEnv* env, AST* ast, char* message);
 
 
+StructInfo* mod_src_typecheck_flo_find_registered_definition(TypeEnv* env, AST* declaration) {
+int32_t i = ((int32_t)(INT64_C(0)));
+while ((i < env->struct_count)) {
+StructInfo* info = (env->structs + i);
+if ((info->declaration == declaration)) {
+return info;
+}
+i = flower_add_i32(i, ((int32_t)(INT64_C(1))));
+}
+return NULL;
+}
+
+
+void mod_src_typecheck_flo_register_named_declaration(TypeEnv* env, AST* declaration, char* src) {
+if ((mod_src_typecheck_flo_find_registered_definition(env, declaration) != NULL)) {
+return;}
+if ((env->struct_count >= ((int32_t)(INT64_C(1024))))) {
+mod_src_typecheck_flo_type_error(env, declaration, "type environment struct table overflow");
+return;}
+StructInfo* info = (env->structs + env->struct_count);
+info->src = src;
+info->declaration = declaration;
+info->field_count = ((int32_t)(INT64_C(0)));
+info->is_raw_union = (declaration->kind == AST_UNION_DEF);
+if (info->is_raw_union) {
+info->name_start = declaration->data._union_def.name_start;
+info->name_length = declaration->data._union_def.name_length;
+}
+else {
+info->name_start = declaration->data._struct_def.name_start;
+info->name_length = declaration->data._struct_def.name_length;
+}
+info->semantic_type_id = mod_src_type_store_flo_named_type(flower_add_i32(env->struct_count, ((int32_t)(INT64_C(1)))), info->is_raw_union);
+env->struct_count = flower_add_i32(env->struct_count, ((int32_t)(INT64_C(1))));
+}
+
+
+void mod_src_typecheck_flo_collect_named_declarations(TypeEnv* env, AST* ast, char* src) {
+AST* curr = ast;
+while ((curr != NULL)) {
+AST* declaration = curr;
+if ((curr->kind == AST_PROP)) {
+declaration = curr->data._prop.decl;
+}
+if ((declaration != NULL)) {
+if (((declaration->kind == AST_STRUCT_DEF)  ||  (declaration->kind == AST_UNION_DEF))) {
+mod_src_typecheck_flo_register_named_declaration(env, declaration, src);
+}
+}
+curr = curr->next;
+}
+}
+
+
 void mod_src_typecheck_flo_typecheck_collect(TypeEnv* env, AST* ast, char* src) {
 AST* curr = ast;
 while ((curr != NULL)) {
@@ -5037,18 +5108,17 @@ curr = curr->next;
 }
 
 
-void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src) {
-if ((env->struct_count >= ((int32_t)(INT64_C(1024))))) {
-mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
+void mod_src_typecheck_flo_complete_named_fields(TypeEnv* env, AST* ast, char* src, AST* fields) {
+StructInfo* info = mod_src_typecheck_flo_find_registered_definition(env, ast);
+if ((info == NULL)) {
+mod_src_typecheck_flo_type_error(env, ast, "internal error: named type was not registered");
 return;}
-StructInfo* info = (env->structs + env->struct_count);
-info->src = src;
-info->name_start = ast->data._struct_def.name_start;
-info->name_length = ast->data._struct_def.name_length;
 info->field_count = ((int32_t)(INT64_C(0)));
-info->is_raw_union = 0;
-AST* field = ast->data._struct_def.fields;
+AST* field = fields;
 while ((field != NULL)) {
+if ((info->field_count >= ((int32_t)(INT64_C(128))))) {
+mod_src_typecheck_flo_type_error(env, field, "type environment field table overflow");
+return;}
 FieldInfo* finfo = (info->fields + info->field_count);
 finfo->src = src;
 finfo->name_start = field->data._struct_field.name_start;
@@ -5057,39 +5127,7 @@ mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.
 if (!(mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field))) {
 return;}
 mod_src_typecheck_flo_copy_type(&(field->data._struct_field.typeInfo), &(finfo->typeInfo));
-mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
-finfo->is_hidden = field->data._struct_field.is_hidden;
-finfo->is_frozen = field->data._struct_field.is_frozen;
-finfo->is_readonly = field->data._struct_field.is_readonly;
-info->field_count = flower_add_i32(info->field_count, ((int32_t)(INT64_C(1))));
-field = field->next;
-}
-env->struct_count = flower_add_i32(env->struct_count, ((int32_t)(INT64_C(1))));
-}
-
-
-void mod_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src) {
-if ((env->struct_count >= ((int32_t)(INT64_C(1024))))) {
-mod_src_typecheck_flo_type_error(env, ast, "type environment struct table overflow");
-return;}
-StructInfo* info = (env->structs + env->struct_count);
-info->src = src;
-info->name_start = ast->data._union_def.name_start;
-info->name_length = ast->data._union_def.name_length;
-info->field_count = ((int32_t)(INT64_C(0)));
-info->is_raw_union = 1;
-AST* field = ast->data._union_def.fields;
-while ((field != NULL)) {
-FieldInfo* finfo = (info->fields + info->field_count);
-finfo->src = src;
-finfo->name_start = field->data._struct_field.name_start;
-finfo->name_length = field->data._struct_field.name_length;
-mod_src_typecheck_flo_copy_type(&(finfo->typeInfo), &(field->data._struct_field.typeInfo));
-if (!(mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field))) {
-return;}
-mod_src_typecheck_flo_copy_type(&(field->data._struct_field.typeInfo), &(finfo->typeInfo));
-mod_src_typecheck_flo_resolve_type_alias(env, &(finfo->typeInfo), field);
-if (finfo->typeInfo.is_union) {
+if ((info->is_raw_union  &&  finfo->typeInfo.is_union)) {
 mod_src_typecheck_flo_type_error(env, field, "semantic union fields are not lowered yet");
 }
 finfo->is_hidden = field->data._struct_field.is_hidden;
@@ -5098,7 +5136,16 @@ finfo->is_readonly = field->data._struct_field.is_readonly;
 info->field_count = flower_add_i32(info->field_count, ((int32_t)(INT64_C(1))));
 field = field->next;
 }
-env->struct_count = flower_add_i32(env->struct_count, ((int32_t)(INT64_C(1))));
+}
+
+
+void mod_src_typecheck_flo_register_struct(TypeEnv* env, AST* ast, char* src) {
+mod_src_typecheck_flo_complete_named_fields(env, ast, src, ast->data._struct_def.fields);
+}
+
+
+void mod_src_typecheck_flo_register_union(TypeEnv* env, AST* ast, char* src) {
+mod_src_typecheck_flo_complete_named_fields(env, ast, src, ast->data._union_def.fields);
 }
 
 
@@ -7468,8 +7515,15 @@ for (int32_t i = __flower_range_13_from;
   i = __flower_range_13_active ? (__flower_range_13_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (mods->modules + i);
 current_type_module = m;
-mod_src_typecheck_flo_typecheck_collect(env, m->ast, m->src);
+mod_src_typecheck_flo_collect_named_declarations(env, m->ast, m->src);
 }
+}
+if ((env->error_count > ((int32_t)(INT64_C(0))))) {
+current_type_module = NULL;
+int32_t failed_count = env->error_count;
+free(env);
+mod_src_type_store_flo_reset();
+return failed_count;
 }
 {
 const int32_t __flower_range_14_from = ((int32_t)(INT64_C(0)));
@@ -7480,6 +7534,20 @@ for (int32_t i = __flower_range_14_from;
   __flower_range_14_active && (__flower_range_14_descending ? i > __flower_range_14_to : i < __flower_range_14_to);
   __flower_range_14_active = (i != __flower_range_14_to),
   i = __flower_range_14_active ? (__flower_range_14_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+Module* m = (mods->modules + i);
+current_type_module = m;
+mod_src_typecheck_flo_typecheck_collect(env, m->ast, m->src);
+}
+}
+{
+const int32_t __flower_range_15_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_15_to = mods->count;
+const int __flower_range_15_descending = __flower_range_15_from > __flower_range_15_to;
+int __flower_range_15_active = 1;
+for (int32_t i = __flower_range_15_from;
+  __flower_range_15_active && (__flower_range_15_descending ? i > __flower_range_15_to : i < __flower_range_15_to);
+  __flower_range_15_active = (i != __flower_range_15_to),
+  i = __flower_range_15_active ? (__flower_range_15_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (mods->modules + i);
 current_type_module = m;
 mod_src_typecheck_flo_typecheck_ast(env, m->ast, m->src);
@@ -7626,14 +7694,14 @@ int32_t need_string_h = ((int32_t)(INT64_C(0)));
 int32_t need_ctype = ((int32_t)(INT64_C(0)));
 int32_t need_unistd = ((int32_t)(INT64_C(0)));
 {
-const int32_t __flower_range_15_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_15_to = mods->count;
-const int __flower_range_15_descending = __flower_range_15_from > __flower_range_15_to;
-int __flower_range_15_active = 1;
-for (int32_t i = __flower_range_15_from;
-  __flower_range_15_active && (__flower_range_15_descending ? i > __flower_range_15_to : i < __flower_range_15_to);
-  __flower_range_15_active = (i != __flower_range_15_to),
-  i = __flower_range_15_active ? (__flower_range_15_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_16_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_16_to = mods->count;
+const int __flower_range_16_descending = __flower_range_16_from > __flower_range_16_to;
+int __flower_range_16_active = 1;
+for (int32_t i = __flower_range_16_from;
+  __flower_range_16_active && (__flower_range_16_descending ? i > __flower_range_16_to : i < __flower_range_16_to);
+  __flower_range_16_active = (i != __flower_range_16_to),
+  i = __flower_range_16_active ? (__flower_range_16_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (mods->modules + i);
 if ((mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NULL)  ||  mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_NEW))) {
 has_stdlib = ((int32_t)(INT64_C(1)));
@@ -7819,14 +7887,14 @@ mod_src_ast_flo_type_info_from_atom(dst, src_type);
 
 int mod_src_codegen_flo_find_type_alias(char* src, int32_t start, int32_t length, TypeInfo* out) {
 {
-const int32_t __flower_range_16_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_16_to = active_modules->count;
-const int __flower_range_16_descending = __flower_range_16_from > __flower_range_16_to;
-int __flower_range_16_active = 1;
-for (int32_t i = __flower_range_16_from;
-  __flower_range_16_active && (__flower_range_16_descending ? i > __flower_range_16_to : i < __flower_range_16_to);
-  __flower_range_16_active = (i != __flower_range_16_to),
-  i = __flower_range_16_active ? (__flower_range_16_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_17_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_17_to = active_modules->count;
+const int __flower_range_17_descending = __flower_range_17_from > __flower_range_17_to;
+int __flower_range_17_active = 1;
+for (int32_t i = __flower_range_17_from;
+  __flower_range_17_active && (__flower_range_17_descending ? i > __flower_range_17_to : i < __flower_range_17_to);
+  __flower_range_17_active = (i != __flower_range_17_to),
+  i = __flower_range_17_active ? (__flower_range_17_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 Module* m = (active_modules->modules + i);
 if ((m->src != src)) {
 continue;
@@ -8200,14 +8268,14 @@ int32_t defined_count = ((int32_t)(INT64_C(0)));
 
 void mod_src_codegen_flo_gen_struct(AST* ast, FILE* out, char* src) {
 {
-const int32_t __flower_range_17_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_17_to = defined_count;
-const int __flower_range_17_descending = __flower_range_17_from > __flower_range_17_to;
-int __flower_range_17_active = 1;
-for (int32_t i = __flower_range_17_from;
-  __flower_range_17_active && (__flower_range_17_descending ? i > __flower_range_17_to : i < __flower_range_17_to);
-  __flower_range_17_active = (i != __flower_range_17_to),
-  i = __flower_range_17_active ? (__flower_range_17_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_18_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_18_to = defined_count;
+const int __flower_range_18_descending = __flower_range_18_from > __flower_range_18_to;
+int __flower_range_18_active = 1;
+for (int32_t i = __flower_range_18_from;
+  __flower_range_18_active && (__flower_range_18_descending ? i > __flower_range_18_to : i < __flower_range_18_to);
+  __flower_range_18_active = (i != __flower_range_18_to),
+  i = __flower_range_18_active ? (__flower_range_18_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 if (((defined_structs[i].length == ast->data._struct_def.name_length)  &&  mod_src_stdlib_cstr_flo_eq_n(defined_structs[i].name, (src + ast->data._struct_def.name_start), ast->data._struct_def.name_length))) {
 return;}
 }
@@ -8459,14 +8527,14 @@ int32_t defined_union_count = ((int32_t)(INT64_C(0)));
 
 void mod_src_codegen_flo_gen_union(AST* ast, FILE* out, char* src) {
 {
-const int32_t __flower_range_18_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_18_to = defined_union_count;
-const int __flower_range_18_descending = __flower_range_18_from > __flower_range_18_to;
-int __flower_range_18_active = 1;
-for (int32_t i = __flower_range_18_from;
-  __flower_range_18_active && (__flower_range_18_descending ? i > __flower_range_18_to : i < __flower_range_18_to);
-  __flower_range_18_active = (i != __flower_range_18_to),
-  i = __flower_range_18_active ? (__flower_range_18_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_19_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_19_to = defined_union_count;
+const int __flower_range_19_descending = __flower_range_19_from > __flower_range_19_to;
+int __flower_range_19_active = 1;
+for (int32_t i = __flower_range_19_from;
+  __flower_range_19_active && (__flower_range_19_descending ? i > __flower_range_19_to : i < __flower_range_19_to);
+  __flower_range_19_active = (i != __flower_range_19_to),
+  i = __flower_range_19_active ? (__flower_range_19_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 if (((defined_unions[i].length == ast->data._union_def.name_length)  &&  mod_src_stdlib_cstr_flo_eq_n(defined_unions[i].name, (src + ast->data._union_def.name_start), ast->data._union_def.name_length))) {
 return;}
 }
@@ -8715,14 +8783,14 @@ if (ast->data._import.has_alias) {
 snprintf(alias, ((uint64_t)sizeof(alias)), "%.*s", ast->data._import.alias_length, (src + ast->data._import.alias_start));
 }
 {
-const int32_t __flower_range_19_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_19_to = emitted_count;
-const int __flower_range_19_descending = __flower_range_19_from > __flower_range_19_to;
-int __flower_range_19_active = 1;
-for (int32_t i = __flower_range_19_from;
-  __flower_range_19_active && (__flower_range_19_descending ? i > __flower_range_19_to : i < __flower_range_19_to);
-  __flower_range_19_active = (i != __flower_range_19_to),
-  i = __flower_range_19_active ? (__flower_range_19_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_20_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_20_to = emitted_count;
+const int __flower_range_20_descending = __flower_range_20_from > __flower_range_20_to;
+int __flower_range_20_active = 1;
+for (int32_t i = __flower_range_20_from;
+  __flower_range_20_active && (__flower_range_20_descending ? i > __flower_range_20_to : i < __flower_range_20_to);
+  __flower_range_20_active = (i != __flower_range_20_to),
+  i = __flower_range_20_active ? (__flower_range_20_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 if (mod_src_stdlib_cstr_flo_eq(emitted_imports[i].path, path)) {
 free(path);
 return;}
@@ -9333,14 +9401,14 @@ printf("%sMissing arguments! Use -help for usage instructions.%s\n", RED, RESET)
 return ((int32_t)(-INT64_C(1)));
 }
 {
-const int32_t __flower_range_20_from = ((int32_t)(INT64_C(1)));
-const int32_t __flower_range_20_to = argc;
-const int __flower_range_20_descending = __flower_range_20_from > __flower_range_20_to;
-int __flower_range_20_active = 1;
-for (int32_t i = __flower_range_20_from;
-  __flower_range_20_active && (__flower_range_20_descending ? i > __flower_range_20_to : i < __flower_range_20_to);
-  __flower_range_20_active = (i != __flower_range_20_to),
-  i = __flower_range_20_active ? (__flower_range_20_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_21_from = ((int32_t)(INT64_C(1)));
+const int32_t __flower_range_21_to = argc;
+const int __flower_range_21_descending = __flower_range_21_from > __flower_range_21_to;
+int __flower_range_21_active = 1;
+for (int32_t i = __flower_range_21_from;
+  __flower_range_21_active && (__flower_range_21_descending ? i > __flower_range_21_to : i < __flower_range_21_to);
+  __flower_range_21_active = (i != __flower_range_21_to),
+  i = __flower_range_21_active ? (__flower_range_21_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 char* arg = argv[i];
 if ((arg[((int32_t)(INT64_C(0)))] == '-')) {
 while ((arg[((int32_t)(INT64_C(0)))] == '-')) {
@@ -9348,14 +9416,14 @@ arg = (arg + ((int32_t)(INT64_C(1))));
 }
 flower_string flag = flower_string_from_cstr(arg);
 {
-const int32_t __flower_range_21_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_21_to = flag.length;
-const int __flower_range_21_descending = __flower_range_21_from > __flower_range_21_to;
-int __flower_range_21_active = 1;
-for (int32_t i = __flower_range_21_from;
-  __flower_range_21_active && (__flower_range_21_descending ? i > __flower_range_21_to : i < __flower_range_21_to);
-  __flower_range_21_active = (i != __flower_range_21_to),
-  i = __flower_range_21_active ? (__flower_range_21_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
+const int32_t __flower_range_22_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_22_to = flag.length;
+const int __flower_range_22_descending = __flower_range_22_from > __flower_range_22_to;
+int __flower_range_22_active = 1;
+for (int32_t i = __flower_range_22_from;
+  __flower_range_22_active && (__flower_range_22_descending ? i > __flower_range_22_to : i < __flower_range_22_to);
+  __flower_range_22_active = (i != __flower_range_22_to),
+  i = __flower_range_22_active ? (__flower_range_22_descending ? flower_sub_i32(i, 1) : flower_add_i32(i, 1)) : i) {
 arg[i] = (char)(tolower((char)(arg[i])));
 }
 }
@@ -9444,14 +9512,14 @@ return ((int32_t)(-INT64_C(1)));
 }
 int32_t has_output = ((int32_t)(INT64_C(0)));
 {
-const int32_t __flower_range_22_from = ((int32_t)(INT64_C(0)));
-const int32_t __flower_range_22_to = mods->count;
-const int __flower_range_22_descending = __flower_range_22_from > __flower_range_22_to;
-int __flower_range_22_active = 1;
-for (int32_t j = __flower_range_22_from;
-  __flower_range_22_active && (__flower_range_22_descending ? j > __flower_range_22_to : j < __flower_range_22_to);
-  __flower_range_22_active = (j != __flower_range_22_to),
-  j = __flower_range_22_active ? (__flower_range_22_descending ? flower_sub_i32(j, 1) : flower_add_i32(j, 1)) : j) {
+const int32_t __flower_range_23_from = ((int32_t)(INT64_C(0)));
+const int32_t __flower_range_23_to = mods->count;
+const int __flower_range_23_descending = __flower_range_23_from > __flower_range_23_to;
+int __flower_range_23_active = 1;
+for (int32_t j = __flower_range_23_from;
+  __flower_range_23_active && (__flower_range_23_descending ? j > __flower_range_23_to : j < __flower_range_23_to);
+  __flower_range_23_active = (j != __flower_range_23_to),
+  j = __flower_range_23_active ? (__flower_range_23_descending ? flower_sub_i32(j, 1) : flower_add_i32(j, 1)) : j) {
 Module* m = (mods->modules + j);
 if (mod_src_parser_flo_token_stream_contains(m->tokens, TOKEN_PRINT)) {
 has_output = ((int32_t)(INT64_C(1)));

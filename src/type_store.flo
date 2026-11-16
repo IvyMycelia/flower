@@ -7,6 +7,8 @@ SEMANTIC_POINTER: int = 2
 SEMANTIC_ARRAY: int = 3
 SEMANTIC_UNION: int = 4
 SEMANTIC_UNION_MEMBER: int = 5
+SEMANTIC_STRUCT: int = 6
+SEMANTIC_RAW_UNION: int = 7
 
 forward struct SemanticTypeNode
 
@@ -136,6 +138,20 @@ prop func union_type(members: @int, count: int): int
     end
 
     return intern_semantic_type(SEMANTIC_UNION, 0, tail, 0, 0)
+end
+
+prop func named_type(declaration_id: int, is_raw_union: bool): int
+    if declaration_id <= 0:
+        type_store_failure("invalid named-type declaration ID")
+        return 0
+    end
+
+    kind: int = SEMANTIC_STRUCT
+    if is_raw_union:
+        kind = SEMANTIC_RAW_UNION
+    end
+
+    return intern_semantic_type(kind, 0, 0, declaration_id, 0)
 end
 
 prop func reset(): void
