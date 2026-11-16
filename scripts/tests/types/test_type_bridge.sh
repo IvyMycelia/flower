@@ -97,6 +97,47 @@ func main(): int
         return 12
     end
 
+    union_info: @TypeInfo = new TypeInfo
+    type_info_copy(union_info, legacy)
+    union_info.pointer_depth = 0
+    union_info.array_size = 0
+    union_info.is_union = true
+    union_info.union_count = 2
+
+    legacy.pointer_depth = 0
+    legacy.array_size = 0
+    legacy.base = TOKEN_U8
+    type_atom_from_info(&union_info.union_members[0], legacy)
+
+    legacy.base = TOKEN_NULL
+    type_atom_from_info(&union_info.union_members[1], legacy)
+
+    member_ids: int[2] = [byte_id, types.primitive_from_token(TOKEN_NULL)]
+    expected_union: int = types.union_type(&member_ids[0], 2)
+
+    if bridge.builtin_union_id(union_info) != expected_union:
+        return 13
+    end
+
+    union_info.union_members[0].base = TOKEN_NULL
+    union_info.union_members[1].base = TOKEN_U8
+
+    if bridge.builtin_union_id(union_info) == expected_union:
+        return 14
+    end
+
+    union_info.union_members[0].base = TOKEN_IDENTIFIER
+    if bridge.builtin_union_id(union_info) != 0:
+        return 15
+    end
+
+    union_info.union_count = 0
+    if bridge.builtin_union_id(union_info) != 0:
+        return 16
+    end
+
+    prune union_info
+
     prune atom
     prune legacy
     types.reset()

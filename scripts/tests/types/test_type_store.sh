@@ -75,6 +75,47 @@ func main(): int
         return 12
     end
 
+    members: int[2] = [signed_byte, unsigned_byte]
+    original_union: int = types.union_type(&members[0], 2)
+
+    if types.union_type(&members[0], 2) != original_union:
+        return 14
+    end
+
+    members[0] = unsigned_byte
+    members[1] = signed_byte
+    reversed_union: int = types.union_type(&members[0], 2)
+
+    if reversed_union == original_union:
+        return 15
+    end
+
+    members[0] = signed_byte
+    members[1] = unsigned_byte
+    if types.union_type(&members[0], 2) != original_union:
+        return 16
+    end
+
+    if types.union_type(&members[0], 1) == original_union:
+        return 17
+    end
+
+    members[1] = signed_word
+    if types.union_type(&members[0], 2) == original_union:
+        return 18
+    end
+
+    nullable_members: int[2] = [unsigned_byte, types.primitive_from_token(TOKEN_NULL)]
+    nullable_union: int = types.union_type(&nullable_members[0], 2)
+
+    if nullable_union == original_union:
+        return 19
+    end
+
+    if types.pointer_type(original_union) == original_union:
+        return 20
+    end
+
     types.reset()
 
     rebuilt: int = types.primitive_from_token(TOKEN_U8)

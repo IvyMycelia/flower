@@ -783,6 +783,13 @@ func union_types_exact_match(expected: @TypeInfo, actual: @TypeInfo): bool
         return false
     end
 
+    expected_id: int = type_bridge.builtin_union_id(expected)
+    actual_id: int = type_bridge.builtin_union_id(actual)
+
+    if expected_id != 0 and actual_id != 0:
+        return expected_id == actual_id
+    end
+
     i: int = 0
     while i < expected.union_count:
         if not union_atom_exact_match(expected.union_members + i, actual.union_members + i):

@@ -3935,6 +3935,8 @@ free(set);
 int32_t SEMANTIC_PRIMITIVE = ((int32_t)(INT64_C(1)));
 int32_t SEMANTIC_POINTER = ((int32_t)(INT64_C(2)));
 int32_t SEMANTIC_ARRAY = ((int32_t)(INT64_C(3)));
+int32_t SEMANTIC_UNION = ((int32_t)(INT64_C(4)));
+int32_t SEMANTIC_UNION_MEMBER = ((int32_t)(INT64_C(5)));
 typedef struct SemanticTypeNode SemanticTypeNode;
 
 
@@ -3943,6 +3945,7 @@ int32_t id;
 int32_t kind;
 int32_t primitive;
 int32_t element;
+int32_t other;
 uint64_t length;
 SemanticTypeNode* next;
 } SemanticTypeNode;
@@ -3968,10 +3971,10 @@ return NULL;
 }
 
 
-int32_t mod_src_type_store_flo_intern_semantic_type(int32_t kind, int32_t primitive, int32_t element, uint64_t length) {
+int32_t mod_src_type_store_flo_intern_semantic_type(int32_t kind, int32_t primitive, int32_t element, int32_t other, uint64_t length) {
 SemanticTypeNode* node = semantic_type_head;
 while ((node != NULL)) {
-if (((((node->kind == kind)  &&  (node->primitive == primitive))  &&  (node->element == element))  &&  (node->length == length))) {
+if ((((((node->kind == kind)  &&  (node->primitive == primitive))  &&  (node->element == element))  &&  (node->length == length))  &&  (node->other == other))) {
 return node->id;
 }
 node = node->next;
@@ -3990,6 +3993,7 @@ node->id = semantic_type_count;
 node->kind = kind;
 node->primitive = primitive;
 node->element = element;
+node->other = other;
 node->length = length;
 node->next = semantic_type_head;
 semantic_type_head = node;
@@ -4002,7 +4006,7 @@ if ((base == TOKEN_INT)) {
 base = TOKEN_I32;
 }
 if (((((base >= TOKEN_I8)  &&  (base <= TOKEN_STRING))  ||  (base == TOKEN_VOID))  ||  (base == TOKEN_NULL))) {
-return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_PRIMITIVE, base, ((int32_t)(INT64_C(0))), ((uint64_t)(UINT64_C(0))));
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_PRIMITIVE, base, ((int32_t)(INT64_C(0))), ((int32_t)(INT64_C(0))), ((uint64_t)(UINT64_C(0))));
 }
 mod_src_type_store_flo_type_store_failure("expected a primitive type token");
 return ((int32_t)(INT64_C(0)));
@@ -4014,7 +4018,7 @@ if ((mod_src_type_store_flo_find_semantic_type(element) == NULL)) {
 mod_src_type_store_flo_type_store_failure("invalid pointer element type");
 return ((int32_t)(INT64_C(0)));
 }
-return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_POINTER, ((int32_t)(INT64_C(0))), element, ((uint64_t)(UINT64_C(0))));
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_POINTER, ((int32_t)(INT64_C(0))), element, ((int32_t)(INT64_C(0))), ((uint64_t)(UINT64_C(0))));
 }
 
 
@@ -4023,7 +4027,35 @@ if ((mod_src_type_store_flo_find_semantic_type(element) == NULL)) {
 mod_src_type_store_flo_type_store_failure("invalid array element type");
 return ((int32_t)(INT64_C(0)));
 }
-return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_ARRAY, ((int32_t)(INT64_C(0))), element, length);
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_ARRAY, ((int32_t)(INT64_C(0))), element, ((int32_t)(INT64_C(0))), length);
+}
+
+
+int32_t mod_src_type_store_flo_union_type(int32_t* members, int32_t count) {
+if ((count <= ((int32_t)(INT64_C(0))))) {
+mod_src_type_store_flo_type_store_failure("semantic union requires at least one member");
+return ((int32_t)(INT64_C(0)));
+}
+if ((members == NULL)) {
+mod_src_type_store_flo_type_store_failure("missing semantic union members");
+return ((int32_t)(INT64_C(0)));
+}
+int32_t tail = ((int32_t)(INT64_C(0)));
+int32_t index = count;
+while ((index > ((int32_t)(INT64_C(0))))) {
+index = flower_sub_i32(index, ((int32_t)(INT64_C(1))));
+SemanticTypeNode* member = mod_src_type_store_flo_find_semantic_type(members[index]);
+if ((member == NULL)) {
+mod_src_type_store_flo_type_store_failure("invalid semantic union member");
+return ((int32_t)(INT64_C(0)));
+}
+if ((member->kind == SEMANTIC_UNION_MEMBER)) {
+mod_src_type_store_flo_type_store_failure("member list is not a semantic type");
+return ((int32_t)(INT64_C(0)));
+}
+tail = mod_src_type_store_flo_intern_semantic_type(SEMANTIC_UNION_MEMBER, ((int32_t)(INT64_C(0))), members[index], tail, ((uint64_t)(UINT64_C(0))));
+}
+return mod_src_type_store_flo_intern_semantic_type(SEMANTIC_UNION, ((int32_t)(INT64_C(0))), tail, ((int32_t)(INT64_C(0))), ((uint64_t)(UINT64_C(0))));
 }
 
 
@@ -4072,6 +4104,27 @@ return mod_src_type_bridge_flo_builtin_shape_id(typeInfo->base, typeInfo->pointe
 
 int32_t mod_src_type_bridge_flo_builtin_atom_id(TypeAtom* atom) {
 return mod_src_type_bridge_flo_builtin_shape_id(atom->base, atom->pointer_depth, atom->array_size, atom->arr_size_expr, atom->is_nullable);
+}
+
+
+int32_t mod_src_type_bridge_flo_builtin_union_id(TypeInfo* typeInfo) {
+if (!(typeInfo->is_union)) {
+return ((int32_t)(INT64_C(0)));
+}
+if (((typeInfo->union_count <= ((int32_t)(INT64_C(0))))  ||  (typeInfo->union_count > ((int32_t)(INT64_C(8)))))) {
+return ((int32_t)(INT64_C(0)));
+}
+int32_t members[8];
+int32_t index = ((int32_t)(INT64_C(0)));
+while ((index < typeInfo->union_count)) {
+int32_t member_id = mod_src_type_bridge_flo_builtin_atom_id((typeInfo->union_members + index));
+if ((member_id == ((int32_t)(INT64_C(0))))) {
+return ((int32_t)(INT64_C(0)));
+}
+members[index] = member_id;
+index = flower_add_i32(index, ((int32_t)(INT64_C(1))));
+}
+return mod_src_type_store_flo_union_type(&(members[((int32_t)(INT64_C(0)))]), typeInfo->union_count);
 }
 
 
@@ -4791,6 +4844,11 @@ return 0;
 }
 if ((expected->union_count != actual->union_count)) {
 return 0;
+}
+int32_t expected_id = mod_src_type_bridge_flo_builtin_union_id(expected);
+int32_t actual_id = mod_src_type_bridge_flo_builtin_union_id(actual);
+if (((expected_id != ((int32_t)(INT64_C(0))))  &&  (actual_id != ((int32_t)(INT64_C(0)))))) {
+return (expected_id == actual_id);
 }
 int32_t i = ((int32_t)(INT64_C(0)));
 while ((i < expected->union_count)) {

@@ -41,3 +41,28 @@ end
 prop func builtin_atom_id(atom: @TypeAtom): int
     return builtin_shape_id(atom.base, atom.pointer_depth, atom.array_size, atom.arr_size_expr, atom.is_nullable)
 end
+
+prop func builtin_union_id(typeInfo: @TypeInfo): int
+    if not typeInfo.is_union:
+        return 0
+    end
+
+    if typeInfo.union_count <= 0 or typeInfo.union_count > 8:
+        return 0
+    end
+
+    members: int[8]
+    index: int = 0
+
+    while index < typeInfo.union_count:
+        member_id: int = builtin_atom_id(typeInfo.union_members + index)
+        if member_id == 0:
+            return 0
+        end
+
+        members[index] = member_id
+        index = index + 1
+    end
+
+    return semantic_types.union_type(&members[0], typeInfo.union_count)
+end

@@ -5,6 +5,8 @@ import "src/token.flo"
 SEMANTIC_PRIMITIVE: int = 1
 SEMANTIC_POINTER: int = 2
 SEMANTIC_ARRAY: int = 3
+SEMANTIC_UNION: int = 4
+SEMANTIC_UNION_MEMBER: int = 5
 
 forward struct SemanticTypeNode
 
@@ -13,6 +15,7 @@ struct SemanticTypeNode {
     kind: int,
     primitive: int,
     element: int,
+    other: int,
     length: u64,
     next: @SemanticTypeNode
 }
@@ -36,10 +39,10 @@ func find_semantic_type(id: int): @SemanticTypeNode
     return null
 end
 
-func intern_semantic_type(kind: int, primitive: int, element: int, length: u64): int
+func intern_semantic_type(kind: int, primitive: int, element: int, other: int, length: u64): int
     node: @SemanticTypeNode = semantic_type_head
     while node != null:
-        if node.kind == kind and node.primitive == primitive and node.element == element and node.length == length:
+        if node.kind == kind and node.primitive == primitive and node.element == element and node.length == length and node.other == other:
             return node.id
         end
         node = node.next
@@ -62,6 +65,7 @@ func intern_semantic_type(kind: int, primitive: int, element: int, length: u64):
     node.kind = kind
     node.primitive = primitive
     node.element = element
+    node.other = other
     node.length = length
     node.next = semantic_type_head
     semantic_type_head = node
@@ -75,7 +79,7 @@ prop func primitive_from_token(base: int): int
     end
 
     if (base >= TOKEN_I8 and base <= TOKEN_STRING) or base == TOKEN_VOID or base == TOKEN_NULL:
-        return intern_semantic_type(SEMANTIC_PRIMITIVE, base, 0, 0)
+        return intern_semantic_type(SEMANTIC_PRIMITIVE, base, 0, 0, 0)
     end
 
     type_store_failure("expected a primitive type token")
@@ -88,7 +92,7 @@ prop func pointer_type(element: int): int
         return 0
     end
 
-    return intern_semantic_type(SEMANTIC_POINTER, 0, element, 0)
+    return intern_semantic_type(SEMANTIC_POINTER, 0, element, 0, 0)
 end
 
 prop func array_type(element: int, length: u64): int
@@ -97,7 +101,41 @@ prop func array_type(element: int, length: u64): int
         return 0
     end
 
-    return intern_semantic_type(SEMANTIC_ARRAY, 0, element, length)
+    return intern_semantic_type(SEMANTIC_ARRAY, 0, element, 0, length)
+end
+
+prop func union_type(members: @int, count: int): int
+    if count <= 0:
+        type_store_failure("semantic union requires at least one member")
+        return 0
+    end
+
+    if members == null:
+        type_store_failure("missing semantic union members")
+        return 0
+    end
+
+    tail: int = 0
+    index: int = count
+
+    while index > 0:
+        index = index -1
+
+        member: @SemanticTypeNode = find_semantic_type(members[index])
+        if member == null:
+            type_store_failure("invalid semantic union member")
+            return 0
+        end
+
+        if member.kind == SEMANTIC_UNION_MEMBER:
+            type_store_failure("member list is not a semantic type")
+            return 0
+        end
+
+        tail = intern_semantic_type(SEMANTIC_UNION_MEMBER, 0, members[index], tail, 0)
+    end
+
+    return intern_semantic_type(SEMANTIC_UNION, 0, tail, 0, 0)
 end
 
 prop func reset(): void
